@@ -53,16 +53,22 @@ def main() -> None:
     transport = config.mcp_transport
 
     if transport == "streamable-http":
-        mcp.run(
-            transport="streamable-http",
+        # For HTTP transport, use uvicorn to serve FastMCP directly
+        import uvicorn
+        uvicorn.run(
+            mcp,
             host=config.mcp_host,
             port=config.mcp_port,
+            log_level="info",
         )
     elif transport == "sse":
-        mcp.run(
-            transport="sse",
+        # For SSE transport, use uvicorn as well
+        import uvicorn
+        uvicorn.run(
+            mcp,
             host=config.mcp_host,
             port=config.mcp_port,
+            log_level="info",
         )
     else:
         # Default to stdio for local development
