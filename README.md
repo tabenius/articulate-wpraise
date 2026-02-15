@@ -125,6 +125,227 @@ wp-ai/
 | `get_media` | List media library |
 | `search_content` | Search posts and pages |
 
+## Production Deployment with HAProxy
+
+This section describes how to deploy WP-AI to a production server using HAProxy as a reverse proxy with SSL termination.
+
+### Architecture
+
+```
+Internet --> HAProxy (443/80) --> Next.js (3000)
+                              --> WordPress (8080)
+                              --> MCP Server (8000)
+```
+
+### Prerequisites
+
+- HAProxy installed (`sudo apt install haproxy`)
+- SSL certificate for your domain
+- Docker & Docker Compose running the backend services
+- Node.js for the Next.js frontend
+
+### HAProxy Configuration
+
+Add the following to your `/etc/haproxy/haproxy.cfg`:
+
+```haproxy
+#---------------------------------------------------------------------
+# WP-AI Project Configuration
+#---------------------------------------------------------------------
+
+# Frontend for HTTPS (port 443)
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/yourdomain.pem
+    mode http
+
+    # Security headers
+    http-response set-header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    http-response set-header X-Frame-Options "SAMEORIGIN"
+    http-response set-header X-Content-Type-Options "nosniff"
+    http-response set-header X-XSS-Protection "1; mode=block"
+
+    # ACL rules for routing
+    acl is_your_domain hdr(host) -i yourdomain.com
+    acl is_wp_admin path_beg /wp-admin
+    acl is_wp_login path_beg /wp-login.php
+    acl is_wp_includes path_beg /wp-includes
+    acl is_wp_content path_beg /wp-content
+    acl is_graphql path_beg /graphql
+    acl is_mcp_api path_beg /api/mcp
+
+    # Route to appropriate backend
+    use_backend wp_backend if is_your_domain is_wp_admin
+    use_backend wp_backend if is_your_domain is_wp_login
+    use_backend wp_backend if is_your_domain is_wp_includes
+    use_backend wp_backend if is_your_domain is_wp_content
+    use_backend wp_backend if is_your_domain is_graphql
+    use_backend mcp_backend if is_your_domain is_mcp_api
+    use_backend nextjs_backend if is_your_domain
+
+    default_backend nextjs_backend
+
+# Frontend for HTTP (port 80) - redirect to HTTPS
+frontend http_front
+    bind *:80
+    mode http
+
+    acl is_your_domain hdr(host) -i yourdomain.com
+
+    # Redirect HTTP to HTTPS
+    redirect scheme https code 301 if is_your_domain !{ ssl_fc }
+
+# Backend for Next.js frontend
+backend nextjs_backend
+    mode http
+    balance roundrobin
+    option httpchk GET /
+    http-check expect status 200
+
+    # WebSocket support for Next.js HMR
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-For %[src]
+
+    server nextjs1 127.0.0.1:3000 check
+
+# Backend for WordPress
+backend wp_backend
+    mode http
+    balance roundrobin
+    option httpchk GET /wp-admin/
+    http-check expect status 200-399
+
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-For %[src]
+    http-request set-header X-Real-IP %[src]
+
+    server wordpress1 127.0.0.1:8080 check
+
+# Backend for MCP Server
+backend mcp_backend
+    mode http
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200-399
+
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-For %[src]
+
+    # Remove /api/mcp prefix before forwarding to MCP server
+    http-request replace-path /api/mcp(/)?(.*) /\2
+
+    server mcp1 127.0.0.1:8000 check
+
+# Stats page (optional)
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 30s
+    stats auth admin:change_this_password
+```
+
+### SSL Certificate Setup
+
+Create a combined PEM file for HAProxy:
+
+```bash
+# Create certificate directory
+sudo mkdir -p /etc/haproxy/certs
+
+# Combine certificate and private key (e.g., from Let's Encrypt)
+sudo cat /etc/letsencrypt/live/yourdomain.com/fullchain.pem \
+        /etc/letsencrypt/live/yourdomain.com/privkey.pem \
+        > /etc/haproxy/certs/yourdomain.pem
+
+# Secure the certificate
+sudo chmod 600 /etc/haproxy/certs/yourdomain.pem
+```
+
+### Deployment Steps
+
+1. **Start Docker services**:
+   ```bash
+   cd /path/to/wp-ai
+   docker compose up -d
+   ```
+
+2. **Build and start Next.js in production mode**:
+   ```bash
+   cd web
+   npm install
+   npm run build
+   npm start  # Runs on port 3000
+   ```
+
+3. **Configure HAProxy**:
+   - Edit `/etc/haproxy/haproxy.cfg` with the configuration above
+   - Replace `yourdomain.com` with your actual domain
+   - Update certificate path if needed
+
+4. **Test HAProxy configuration**:
+   ```bash
+   sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+   ```
+
+5. **Reload HAProxy**:
+   ```bash
+   sudo systemctl reload haproxy
+   ```
+
+### Routing
+
+- `https://yourdomain.com/` → Next.js frontend (main application)
+- `https://yourdomain.com/wp-admin` → WordPress admin panel
+- `https://yourdomain.com/graphql` → WordPress GraphQL endpoint
+- `https://yourdomain.com/api/mcp/*` → MCP server API
+
+### Process Management
+
+For production, use a process manager like PM2 or systemd to keep Next.js running:
+
+**Using PM2:**
+```bash
+npm install -g pm2
+cd /path/to/wp-ai/web
+pm2 start npm --name "wp-ai-web" -- start
+pm2 save
+pm2 startup  # Follow instructions to enable on boot
+```
+
+**Using systemd:**
+Create `/etc/systemd/system/wp-ai-web.service`:
+```ini
+[Unit]
+Description=WP-AI Next.js Frontend
+After=network.target
+
+[Service]
+Type=simple
+User=your_user
+WorkingDirectory=/path/to/wp-ai/web
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable wp-ai-web
+sudo systemctl start wp-ai-web
+```
+
+### Monitoring
+
+Access HAProxy stats at `http://yourserver:8404/stats` (username: admin, password: as configured).
+
 ## License
 
 MIT
