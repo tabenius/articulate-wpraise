@@ -1,0 +1,100 @@
+"use client";
+
+import { usePostStore } from "@/stores/post-store";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Plus, X } from "lucide-react";
+import type { PostSummary } from "@/types/post";
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectPost: (postId: number) => void;
+  onCreatePost: () => void;
+}
+
+export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: SidebarProps) {
+  const posts = usePostStore((s) => s.posts);
+  const currentPost = usePostStore((s) => s.currentPost);
+  const isLoading = usePostStore((s) => s.isLoading);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="absolute inset-0 z-50 flex">
+      <div className="w-80 bg-background border-r shadow-lg flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="font-semibold">Posts</h2>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onCreatePost} title="New Post">
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          {isLoading ? (
+            <div className="p-4 text-muted-foreground text-sm">Loading posts...</div>
+          ) : posts.length === 0 ? (
+            <div className="p-4 text-muted-foreground text-sm">No posts found.</div>
+          ) : (
+            <div className="p-2">
+              {posts.map((post) => (
+                <PostItem
+                  key={post.id}
+                  post={post}
+                  isActive={currentPost?.id === post.id}
+                  onClick={() => onSelectPost(post.id)}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      <div className="flex-1 bg-black/20" onClick={onClose} />
+    </div>
+  );
+}
+
+function PostItem({
+  post,
+  isActive,
+  onClick,
+}: {
+  post: PostSummary;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
+        isActive
+          ? "bg-primary/10 border border-primary/20"
+          : "hover:bg-accent"
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+        <div className="min-w-0">
+          <div className="font-medium text-sm truncate">
+            {post.title || "Untitled"}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="secondary" className="text-xs">
+              {post.status}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {new Date(post.date).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}

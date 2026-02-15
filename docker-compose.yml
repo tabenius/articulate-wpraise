@@ -1,0 +1,83 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: wp-ai-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  wordpress:
+    build:
+      context: ./docker/wordpress
+      dockerfile: Dockerfile
+    container_name: wp-ai-wordpress
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_DB_CHARSET: utf8mb4
+      WORDPRESS_DB_COLLATE: utf8mb4_unicode_ci
+    volumes:
+      - wp_data:/var/www/html
+    ports:
+      - "8080:80"
+
+  wp-setup:
+    build:
+      context: ./docker/wordpress
+      dockerfile: Dockerfile
+    container_name: wp-ai-setup
+    depends_on:
+      - wordpress
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WP_ADMIN_USER: ${WP_ADMIN_USER}
+      WP_ADMIN_PASS: ${WP_ADMIN_PASS}
+    volumes:
+      - wp_data:/var/www/html
+    entrypoint: ["/usr/local/bin/wp-setup.sh"]
+    restart: "no"
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: docker/mcp-server/Dockerfile
+    container_name: wp-ai-mcp
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+    environment:
+      WP_URL: http://wordpress:80
+      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+      WP_USER: ${WP_ADMIN_USER}
+      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+    ports:
+      - "8000:8000"
+
+volumes:
+  db_data:
+  wp_data:
