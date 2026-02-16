@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import {
   createAnthropicClient,
@@ -14,6 +15,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { messages, postId } = body;
+
+    // Get session ID from cookie for MCP authentication
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("session");
+    const authHeaders = sessionCookie
+      ? { "X-Session-ID": sessionCookie.value }
+      : {};
 
     // Use BYOK key from header, or fall back to server env
     const clientKey = request.headers.get("X-API-Key");
@@ -37,10 +45,10 @@ export async function POST(request: NextRequest) {
       try {
         const post = (await callMCPTool("get_post", {
           post_id: postId,
-        })) as { id: number; title: string };
+        }, authHeaders)) as { id: number; title: string };
         const blocks = (await callMCPTool("get_blocks", {
           post_id: postId,
-        })) as unknown[];
+        }, authHeaders)) as unknown[];
         postContext = {
           id: postId,
           title: post?.title || "Untitled",
@@ -107,7 +115,8 @@ export async function POST(request: NextRequest) {
                 try {
                   const result = await callMCPTool(
                     block.name,
-                    block.input as Record<string, unknown>
+                    block.input as Record<string, unknown>,
+                    authHeaders
                   );
                   const resultStr =
                     typeof result === "string"
