@@ -60,6 +60,24 @@ fi
 echo "==> Configuring WPGraphQL settings..."
 wp option update graphql_general_settings '{"show_graphiql":"on","delete_data_on_deactivate":""}' --format=json --path=/var/www/html --allow-root 2>/dev/null || true
 
+# Copy and activate custom plugins
+echo "==> Installing WP-AI custom plugins..."
+if [ -d "/tmp/wp-ai-plugins" ]; then
+  cp -r /tmp/wp-ai-plugins/* /var/www/html/wp-content/plugins/
+  echo "    Custom plugins copied."
+else
+  echo "    No custom plugins found to install."
+fi
+
+# Activate WP-AI Auth plugin
+echo "==> Activating WP-AI Auth plugin..."
+if [ -d "/var/www/html/wp-content/plugins/wp-ai-auth" ]; then
+  wp plugin activate wp-ai-auth --path=/var/www/html --allow-root 2>/dev/null || true
+  echo "    WP-AI Auth plugin activated."
+else
+  echo "    WARNING: WP-AI Auth plugin not found."
+fi
+
 # Create application password for API authentication
 echo "==> Creating application password..."
 APP_PASS=$(wp user application-password create 1 "wp-ai-mcp" --porcelain --path=/var/www/html --allow-root 2>/dev/null || echo "")

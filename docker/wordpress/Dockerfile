@@ -19,3 +19,7 @@ COPY run-migrations.sh /usr/local/bin/run-migrations.sh
 RUN chmod +x /usr/local/bin/run-migrations.sh
 COPY migrations /usr/local/migrations
 RUN chmod +x /usr/local/migrations/*.sh
+
+# Copy custom plugins to a temporary location
+# (will be moved during setup since /var/www/html is a volume)
+COPY plugins /tmp/wp-ai-plugins/

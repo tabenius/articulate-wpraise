@@ -25,14 +25,22 @@ interface MCPToolResponse {
  */
 export async function callMCPTool(
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  authHeaders?: Record<string, string>
 ): Promise<unknown> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json, text/event-stream",
+  };
+
+  // Forward authentication headers if provided
+  if (authHeaders) {
+    Object.assign(headers, authHeaders);
+  }
+
   const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-    },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: crypto.randomUUID(),
