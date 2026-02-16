@@ -90,10 +90,54 @@ async def metrics_endpoint(request):
     return JSONResponse(stats)
 
 
+async def audit_logs_endpoint(request):
+    """Audit logs query endpoint (requires authentication)."""
+    from wp_mcp.audit import AuditLog
+
+    # User will be in request.state if authenticated
+    user = getattr(request.state, "user", None)
+    if not user:
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+
+    # Parse query parameters
+    limit = int(request.query_params.get("limit", "100"))
+    event_type = request.query_params.get("event_type")
+
+    # Get logs
+    logs = await AuditLog.get_recent_events(
+        limit=min(limit, 1000),  # Cap at 1000
+        user_id=user.get("id") if not user.get("is_admin") else None,  # Regular users see only their own logs
+        event_type=event_type,
+    )
+
+    return JSONResponse({"logs": logs})
+
+
+async def audit_summary_endpoint(request):
+    """Security event summary endpoint (requires authentication)."""
+    from wp_mcp.audit import AuditLog
+
+    # User will be in request.state if authenticated
+    user = getattr(request.state, "user", None)
+    if not user:
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+
+    hours = int(request.query_params.get("hours", "24"))
+
+    # Get security summary
+    summary = await AuditLog.get_security_summary(hours=hours)
+
+    return JSONResponse(summary)
+
+
 # Authentication endpoints
 async def register_endpoint(request):
     """User registration endpoint."""
+    from wp_mcp.audit import AuditLog
     from wp_mcp.user_manager import UserManager
+
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     try:
         data = await request.json()
@@ -102,17 +146,49 @@ async def register_endpoint(request):
         name = data.get("name", "")
 
         user = await UserManager.register_user(email, password, name)
+
+        # Log successful registration
+        await AuditLog.log_auth_event(
+            event_type="register",
+            status="success",
+            user_id=user["id"],
+            email=email,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            message=f"New user registered: {email}",
+        )
+
         return JSONResponse(user, status_code=201)
     except ValueError as e:
+        # Log failed registration (validation error)
+        await AuditLog.log_auth_event(
+            event_type="register",
+            status="failure",
+            email=data.get("email") if 'data' in locals() else None,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            message=f"Registration failed: {str(e)}",
+        )
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error("Registration error: %s", e)
+        await AuditLog.log_auth_event(
+            event_type="register",
+            status="error",
+            ip_address=client_ip,
+            user_agent=user_agent,
+            message=f"Registration error: {str(e)}",
+        )
         return JSONResponse({"error": "Registration failed"}, status_code=500)
 
 
 async def login_endpoint(request):
     """User login endpoint."""
+    from wp_mcp.audit import AuditLog
     from wp_mcp.user_manager import UserManager
+
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     try:
         data = await request.json()
@@ -121,25 +197,69 @@ async def login_endpoint(request):
 
         result = await UserManager.authenticate(email, password)
         if result:
+            # Log successful login
+            await AuditLog.log_auth_event(
+                event_type="login",
+                status="success",
+                user_id=result["user"]["id"],
+                email=email,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                message=f"User logged in: {email}",
+            )
             return JSONResponse(result)
         else:
+            # Log failed login
+            await AuditLog.log_auth_event(
+                event_type="login",
+                status="failure",
+                email=email,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                message=f"Login failed for {email}: Invalid credentials",
+            )
             return JSONResponse({"error": "Invalid credentials"}, status_code=401)
     except Exception as e:
         logger.error("Login error: %s", e)
+        await AuditLog.log_auth_event(
+            event_type="login",
+            status="error",
+            ip_address=client_ip,
+            user_agent=user_agent,
+            message=f"Login error: {str(e)}",
+        )
         return JSONResponse({"error": "Login failed"}, status_code=500)
 
 
 async def logout_endpoint(request):
     """User logout endpoint."""
+    from wp_mcp.audit import AuditLog
     from wp_mcp.user_manager import UserManager
+
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     try:
         session_id = request.headers.get("X-Session-ID")
         if not session_id:
             return JSONResponse({"error": "Session ID required"}, status_code=400)
 
+        # Get user info before logout
+        user = await UserManager.get_user_from_session(session_id)
+
         success = await UserManager.logout(session_id)
         if success:
+            # Log successful logout
+            if user:
+                await AuditLog.log_auth_event(
+                    event_type="logout",
+                    status="success",
+                    user_id=user["id"],
+                    email=user["email"],
+                    ip_address=client_ip,
+                    user_agent=user_agent,
+                    message=f"User logged out: {user['email']}",
+                )
             return JSONResponse({"success": True})
         else:
             return JSONResponse({"error": "Invalid session"}, status_code=404)
@@ -329,6 +449,9 @@ mcp._app.routes.extend(
         Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
         Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
         Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
+        # Audit logs routes (require authentication)
+        Route("/audit/logs", audit_logs_endpoint, methods=["GET"]),
+        Route("/audit/summary", audit_summary_endpoint, methods=["GET"]),
     ]
 )
 

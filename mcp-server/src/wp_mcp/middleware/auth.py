@@ -8,6 +8,7 @@ from typing import Awaitable, Callable
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from wp_mcp.audit import AuditLog
 from wp_mcp.connection_manager import connection_manager
 from wp_mcp.middleware.rate_limit import (
     RateLimitExceeded,
@@ -52,6 +53,15 @@ class AuthMiddleware:
                     client_ip = client[0] if client else "unknown"
                     await ai_chat_rate_limiter.check_rate_limit(f"auth:{client_ip}")
                 except RateLimitExceeded as e:
+                    # Log rate limit violation
+                    await AuditLog.log_rate_limit_event(
+                        user_id=None,
+                        endpoint=path,
+                        ip_address=client_ip,
+                        limit=e.limit if hasattr(e, "limit") else None,
+                        retry_after=e.retry_after,
+                    )
+
                     response = JSONResponse(
                         {
                             "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
@@ -67,7 +77,19 @@ class AuthMiddleware:
 
         # Require authentication for all other endpoints
         session_id = request.headers.get("X-Session-ID")
+        client = scope.get("client")
+        client_ip = client[0] if client else None
+
         if not session_id:
+            # Log unauthenticated access attempt
+            await AuditLog.log_access_denied(
+                user_id=None,
+                resource_type="endpoint",
+                resource_id=path,
+                reason="No session ID provided",
+                ip_address=client_ip,
+            )
+
             response = JSONResponse(
                 {"error": "Authentication required. Provide X-Session-ID header."},
                 status_code=401,
@@ -78,6 +100,15 @@ class AuthMiddleware:
         # Validate session
         user = await UserManager.get_user_from_session(session_id)
         if not user:
+            # Log invalid session attempt
+            await AuditLog.log_access_denied(
+                user_id=None,
+                resource_type="endpoint",
+                resource_id=path,
+                reason="Invalid or expired session",
+                ip_address=client_ip,
+            )
+
             response = JSONResponse(
                 {"error": "Invalid or expired session"}, status_code=401
             )
@@ -95,6 +126,15 @@ class AuthMiddleware:
                 # Rate limit connection management endpoints (10 per minute)
                 await ai_chat_rate_limiter.check_rate_limit(user_identifier)
         except RateLimitExceeded as e:
+            # Log rate limit violation for authenticated user
+            await AuditLog.log_rate_limit_event(
+                user_id=user["id"],
+                endpoint=path,
+                ip_address=client_ip,
+                limit=e.limit if hasattr(e, "limit") else None,
+                retry_after=e.retry_after,
+            )
+
             response = JSONResponse(
                 {
                     "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
@@ -110,6 +150,15 @@ class AuthMiddleware:
         if path.startswith("/mcp"):
             active_conn = await connection_manager.get_active_connection(user["id"])
             if not active_conn:
+                # Log access denied - no active connection
+                await AuditLog.log_access_denied(
+                    user_id=user["id"],
+                    resource_type="mcp_endpoint",
+                    resource_id=path,
+                    reason="No active WordPress connection",
+                    ip_address=client_ip,
+                )
+
                 response = JSONResponse(
                     {
                         "error": "No active WordPress connection. Please add and activate a connection."

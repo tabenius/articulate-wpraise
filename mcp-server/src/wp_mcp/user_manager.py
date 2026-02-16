@@ -9,6 +9,7 @@ from typing import Optional
 
 import bcrypt
 
+from wp_mcp.audit import AuditLog
 from wp_mcp.database import db
 
 logger = logging.getLogger(__name__)
