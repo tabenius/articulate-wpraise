@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -151,7 +151,7 @@ async def get_health_status() -> dict[str, Any]:
 
     return {
         "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "services": {
             "redis": redis_health,
             "wordpress": wordpress_health,
@@ -174,7 +174,7 @@ async def get_readiness_status() -> dict[str, Any]:
 
     return {
         "ready": is_ready,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "services": {
             "wordpress": wordpress_health,
         },
@@ -189,5 +189,5 @@ async def get_liveness_status() -> dict[str, Any]:
     """
     return {
         "alive": True,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }

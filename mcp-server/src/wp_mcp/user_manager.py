@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
@@ -96,7 +96,7 @@ class UserManager:
 
         # Create session
         session_id = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(days=7)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
         await db.execute(
             "INSERT INTO wp_sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
@@ -143,7 +143,7 @@ class UserManager:
             return None
 
         # Check expiration
-        if session["expires_at"] < datetime.utcnow():
+        if session["expires_at"] < datetime.now(timezone.utc):
             # Delete expired session
             await db.execute("DELETE FROM wp_sessions WHERE id = %s", (session_id,))
             logger.info("Session expired: %s", session_id)
@@ -200,7 +200,7 @@ class UserManager:
     async def cleanup_expired_sessions():
         """Remove expired sessions from database."""
         result = await db.execute(
-            "DELETE FROM wp_sessions WHERE expires_at < %s", (datetime.utcnow(),)
+            "DELETE FROM wp_sessions WHERE expires_at < %s", (datetime.now(timezone.utc),)
         )
         if result > 0:
             logger.info("Cleaned up %d expired sessions", result)

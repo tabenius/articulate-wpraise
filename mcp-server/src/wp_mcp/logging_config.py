@@ -6,7 +6,7 @@ import json
 import logging
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -23,7 +23,7 @@ class StructuredFormatter(logging.Formatter):
             JSON string
         """
         log_data: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -82,7 +82,7 @@ class HumanReadableFormatter(logging.Formatter):
         color = self.COLORS.get(record.levelname, "")
         reset = self.COLORS["RESET"]
 
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         level = f"{color}[{record.levelname}]{reset}"
         logger = record.name
         message = record.getMessage()
