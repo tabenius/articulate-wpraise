@@ -10,11 +10,14 @@ import logging
 import os
 
 from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from wp_mcp.config import config
 from wp_mcp.logging_config import configure_logging
+from wp_mcp.middleware.auth import AuthMiddleware
 from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies, revisions
 
 # Configure structured logging
@@ -285,9 +288,12 @@ async def activate_connection_endpoint(request):
 # Get or create the app attribute
 if not hasattr(mcp, "_app"):
     # FastMCP might not have _app yet, try to get/create it
-    from starlette.applications import Starlette
     mcp._app = Starlette()
     logger.info("Created Starlette app for FastMCP")
+
+# Wrap app with authentication middleware
+mcp._app = AuthMiddleware(mcp._app)
+logger.info("Authentication middleware enabled")
 
 # Add health check routes
 mcp._app.routes.extend(
