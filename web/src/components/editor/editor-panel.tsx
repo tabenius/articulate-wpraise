@@ -10,11 +10,22 @@ import { Undo2, Redo2 } from "lucide-react";
 
 export function EditorPanel() {
   const currentPost = usePostStore((s) => s.currentPost);
-  const blockCount = useEditorStore((s) => s.blocks.length);
+  const blocks = useEditorStore((s) => s.blocks);
+  const blockCount = blocks.length;
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
   const canUndo = useEditorStore((s) => s.canUndo());
   const canRedo = useEditorStore((s) => s.canRedo());
+
+  // Calculate word count and reading time
+  const wordCount = blocks.reduce((count, block) => {
+    const content = block.attributes.content as string || "";
+    const text = content.replace(/<[^>]*>/g, ""); // Strip HTML tags
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    return count + words.length;
+  }, 0);
+
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -44,9 +55,17 @@ export function EditorPanel() {
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {blockCount} block{blockCount !== 1 ? "s" : ""}
-          </span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{blockCount} block{blockCount !== 1 ? "s" : ""}</span>
+            {wordCount > 0 && (
+              <>
+                <span>•</span>
+                <span>{wordCount} word{wordCount !== 1 ? "s" : ""}</span>
+                <span>•</span>
+                <span>{readingTime} min read</span>
+              </>
+            )}
+          </div>
         </div>
         {currentPost && (
           <span className="text-xs text-muted-foreground truncate max-w-[200px]">

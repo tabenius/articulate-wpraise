@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { usePostStore } from "@/stores/post-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileText, Plus, X, Search } from "lucide-react";
 import type { PostSummary } from "@/types/post";
 import { PostListSkeleton } from "./post-list-skeleton";
 
@@ -19,27 +21,54 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
   const posts = usePostStore((s) => s.posts);
   const currentPost = usePostStore((s) => s.currentPost);
   const isLoading = usePostStore((s) => s.isLoading);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter posts based on search query
+  const filteredPosts = useMemo(() => {
+    if (!searchQuery.trim()) return posts;
+
+    const query = searchQuery.toLowerCase();
+    return posts.filter((post) =>
+      post.title.toLowerCase().includes(query) ||
+      post.status.toLowerCase().includes(query)
+    );
+  }, [posts, searchQuery]);
 
   if (!isOpen) return null;
 
   return (
     <div className="absolute inset-0 z-50 flex">
       <div className="w-80 bg-background border-r shadow-lg flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold">Posts</h2>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={onCreatePost} title="New Post">
-              <Plus className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+        <div className="p-4 border-b space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Posts</h2>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={onCreatePost} title="New Post">
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
           </div>
         </div>
 
         <ScrollArea className="flex-1">
           {isLoading ? (
             <PostListSkeleton />
+          ) : filteredPosts.length === 0 && searchQuery ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No posts found for &quot;{searchQuery}&quot;
+            </div>
           ) : posts.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
               <FileText className="h-12 w-12 text-muted-foreground mb-3" />
@@ -54,7 +83,7 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
             </div>
           ) : (
             <div className="p-2">
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <PostItem
                   key={post.id}
                   post={post}

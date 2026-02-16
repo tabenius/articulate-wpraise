@@ -42,7 +42,7 @@ export function KeyboardShortcutsDialog({
       category: "Navigation",
       items: [
         { keys: ["?"], description: "Show keyboard shortcuts" },
-        { keys: [`${mod}`, "K"], description: "Command palette (coming soon)" },
+        { keys: [`${mod}`, "K"], description: "Command palette" },
       ],
     },
     {

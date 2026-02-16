@@ -8,6 +8,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
+import { CommandPalette } from "@/components/command-palette";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface AppShellProps {
@@ -21,12 +22,20 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // Listen for ? key to open shortcuts dialog
+  // Listen for keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Command Palette: Cmd+K or Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      // Shortcuts dialog: ?
       if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        // Check if user is not in an input field
         const target = e.target as HTMLElement;
         const isInput =
           target.tagName === "INPUT" ||
@@ -43,6 +52,19 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Listen for custom loadPost event from command palette
+  useEffect(() => {
+    const handleLoadPost = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.postId) {
+        onLoadPost(customEvent.detail.postId);
+      }
+    };
+
+    window.addEventListener("loadPost", handleLoadPost);
+    return () => window.removeEventListener("loadPost", handleLoadPost);
+  }, [onLoadPost]);
 
   const handleOpenPostList = useCallback(() => {
     onLoadPosts();
@@ -92,6 +114,15 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
         <KeyboardShortcutsDialog
           open={shortcutsOpen}
           onOpenChange={setShortcutsOpen}
+        />
+
+        <CommandPalette
+          open={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+          onCreatePost={onCreatePost}
+          onSave={onSave}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenShortcuts={() => setShortcutsOpen(true)}
         />
       </div>
     </TooltipProvider>
