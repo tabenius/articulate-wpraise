@@ -7,6 +7,7 @@ interface EditorState {
   isDirty: boolean;
   history: Block[][];
   historyIndex: number;
+  lastHistoryPush: number;
 
   setBlocks: (blocks: Block[]) => void;
   updateBlock: (clientId: string, attributes: Record<string, unknown>) => void;
@@ -18,6 +19,8 @@ interface EditorState {
   undo: () => void;
   redo: () => void;
   pushHistory: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -26,6 +29,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isDirty: false,
   history: [],
   historyIndex: -1,
+  lastHistoryPush: 0,
 
   setBlocks: (blocks) => {
     set({ blocks, isDirty: false, history: [blocks], historyIndex: 0 });
@@ -107,12 +111,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   pushHistory: () => {
-    const { blocks, history, historyIndex } = get();
+    const { blocks, history, historyIndex, lastHistoryPush } = get();
+    const now = Date.now();
+
+    // Debounce: only push if more than 500ms since last push
+    if (now - lastHistoryPush < 500) {
+      return;
+    }
+
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(structuredClone(blocks));
     // Keep max 50 history entries
     if (newHistory.length > 50) newHistory.shift();
-    set({ history: newHistory, historyIndex: newHistory.length - 1 });
+    set({
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+      lastHistoryPush: now,
+    });
+  },
+
+  canUndo: () => {
+    const { historyIndex } = get();
+    return historyIndex > 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
   },
 }));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -25,6 +25,8 @@ export function BlockEditor() {
   const blocks = useEditorStore((s) => s.blocks);
   const moveBlock = useEditorStore((s) => s.moveBlock);
   const selectBlock = useEditorStore((s) => s.selectBlock);
+  const undo = useEditorStore((s) => s.undo);
+  const redo = useEditorStore((s) => s.redo);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -34,6 +36,29 @@ export function BlockEditor() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Cmd (Mac) or Ctrl (Windows/Linux)
+      const isMod = e.metaKey || e.ctrlKey;
+
+      // Undo: Cmd+Z or Ctrl+Z
+      if (isMod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+
+      // Redo: Cmd+Shift+Z or Ctrl+Y or Ctrl+Shift+Z
+      if ((isMod && e.shiftKey && e.key === "z") || (e.ctrlKey && e.key === "y")) {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
