@@ -1,3 +1,11 @@
+export interface FeaturedImage {
+  id: number;
+  url: string;
+  altText?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface Post {
   id: number;
   title: string;
@@ -8,6 +16,7 @@ export interface Post {
   modified?: string;
   excerpt?: string;
   author?: string;
+  featuredImage?: FeaturedImage;
 }
 
 export interface PostSummary {
@@ -18,4 +27,5 @@ export interface PostSummary {
   date: string;
   modified?: string;
   excerpt?: string;
+  featuredImage?: FeaturedImage;
 }

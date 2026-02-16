@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useEditorStore } from "@/stores/editor-store";
 import { BlockWrapper } from "./block-wrapper";
+import { FeaturedImagePanel } from "./featured-image-panel";
 
 export function BlockEditor() {
   const blocks = useEditorStore((s) => s.blocks);
@@ -62,22 +63,25 @@ export function BlockEditor() {
 
   return (
     <div className="pl-12 pr-4 py-4" onClick={handleBackgroundClick}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={blocks.map((b) => b.clientId)}
-          strategy={verticalListSortingStrategy}
+      <div className="max-w-3xl mx-auto">
+        <FeaturedImagePanel />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          <div className="space-y-1 max-w-3xl mx-auto">
-            {blocks.map((block) => (
-              <BlockWrapper key={block.clientId} block={block} />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+          <SortableContext
+            items={blocks.map((b) => b.clientId)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-1">
+              {blocks.map((block) => (
+                <BlockWrapper key={block.clientId} block={block} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
     </div>
   );
 }
