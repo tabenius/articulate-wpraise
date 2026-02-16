@@ -18,6 +18,7 @@ import {
 import { useEditorStore } from "@/stores/editor-store";
 import { BlockWrapper } from "./block-wrapper";
 import { FeaturedImagePanel } from "./featured-image-panel";
+import { TaxonomyPanel } from "./taxonomy-panel";
 
 export function BlockEditor() {
   const blocks = useEditorStore((s) => s.blocks);
@@ -65,6 +66,7 @@ export function BlockEditor() {
     <div className="pl-12 pr-4 py-4" onClick={handleBackgroundClick}>
       <div className="max-w-3xl mx-auto">
         <FeaturedImagePanel />
+        <TaxonomyPanel />
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

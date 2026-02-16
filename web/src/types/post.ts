@@ -6,6 +6,14 @@ export interface FeaturedImage {
   height?: number;
 }
 
+export interface Term {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  count?: number;
+}
+
 export interface Post {
   id: number;
   title: string;
@@ -17,6 +25,8 @@ export interface Post {
   excerpt?: string;
   author?: string;
   featuredImage?: FeaturedImage;
+  categories?: Term[];
+  tags?: Term[];
 }
 
 export interface PostSummary {
@@ -28,4 +38,6 @@ export interface PostSummary {
   modified?: string;
   excerpt?: string;
   featuredImage?: FeaturedImage;
+  categories?: Term[];
+  tags?: Term[];
 }

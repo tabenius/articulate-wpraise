@@ -32,7 +32,8 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, content, status, featured_image_id } = body;
+    const { title, content, status, featured_image_id, category_ids, tag_ids } =
+      body;
 
     const result = await callMCPTool("update_post", {
       post_id: postId,
@@ -40,6 +41,8 @@ export async function PUT(
       ...(content !== undefined ? { content } : {}),
       ...(status !== undefined ? { status } : {}),
       ...(featured_image_id !== undefined ? { featured_image_id } : {}),
+      ...(category_ids !== undefined ? { category_ids } : {}),
+      ...(tag_ids !== undefined ? { tag_ids } : {}),
     });
 
     return NextResponse.json(result);
@@ -61,7 +64,8 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { title, content, status, featured_image_id } = body;
+    const { title, content, status, featured_image_id, category_ids, tag_ids } =
+      body;
 
     const result = await callMCPTool("update_post", {
       post_id: postId,
@@ -69,6 +73,8 @@ export async function PATCH(
       ...(content !== undefined ? { content } : {}),
       ...(status !== undefined ? { status } : {}),
       ...(featured_image_id !== undefined ? { featured_image_id } : {}),
+      ...(category_ids !== undefined ? { category_ids } : {}),
+      ...(tag_ids !== undefined ? { tag_ids } : {}),
     });
 
     return NextResponse.json(result);
