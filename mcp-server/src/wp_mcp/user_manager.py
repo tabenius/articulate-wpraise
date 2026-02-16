@@ -143,7 +143,12 @@ class UserManager:
             return None
 
         # Check expiration
-        if session["expires_at"] < datetime.now(timezone.utc):
+        # Database returns naive datetime, make it timezone-aware (UTC)
+        expires_at = session["expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at < datetime.now(timezone.utc):
             # Delete expired session
             await db.execute("DELETE FROM wp_sessions WHERE id = %s", (session_id,))
             logger.info("Session expired: %s", session_id)
