@@ -19,6 +19,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { BlockWrapper } from "./block-wrapper";
 import { FeaturedImagePanel } from "./featured-image-panel";
 import { TaxonomyPanel } from "./taxonomy-panel";
+import { PublishPanel } from "./publish-panel";
 
 export function BlockEditor() {
   const blocks = useEditorStore((s) => s.blocks);
@@ -65,6 +66,7 @@ export function BlockEditor() {
   return (
     <div className="pl-12 pr-4 py-4" onClick={handleBackgroundClick}>
       <div className="max-w-3xl mx-auto">
+        <PublishPanel />
         <FeaturedImagePanel />
         <TaxonomyPanel />
         <DndContext
