@@ -335,11 +335,11 @@ def main() -> None:
     transport = config.mcp_transport
 
     if transport == "streamable-http":
-        # For HTTP transport, use uvicorn to serve FastMCP directly
+        # For HTTP transport, use uvicorn to serve FastMCP's ASGI app
         import uvicorn
 
         uvicorn.run(
-            mcp,
+            mcp._app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
@@ -349,7 +349,7 @@ def main() -> None:
         import uvicorn
 
         uvicorn.run(
-            mcp,
+            mcp._app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
