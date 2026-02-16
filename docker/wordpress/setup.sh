@@ -120,6 +120,14 @@ else
   echo "    Sample post already exists."
 fi
 
+# Run database migrations
+echo "==> Running database migrations..."
+if [ -f "/usr/local/bin/run-migrations.sh" ]; then
+  bash /usr/local/bin/run-migrations.sh
+else
+  echo "    No migration runner found, skipping migrations."
+fi
+
 echo "==> Setup complete!"
 echo "    WordPress: http://localhost:8080"
 echo "    WP Admin:  http://localhost:8080/wp-admin"
