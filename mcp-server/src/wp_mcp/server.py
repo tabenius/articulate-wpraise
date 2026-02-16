@@ -12,7 +12,7 @@ import sys
 from mcp.server.fastmcp import FastMCP
 
 from wp_mcp.config import config
-from wp_mcp.tools import posts, pages, blocks, media, search
+from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies
 
 # Configure logging to stderr (required for MCP servers)
 logging.basicConfig(
@@ -42,6 +42,7 @@ pages.register(mcp)
 blocks.register(mcp)
 media.register(mcp)
 search.register(mcp)
+taxonomies.register(mcp)
 
 logger.info("WordPress MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)

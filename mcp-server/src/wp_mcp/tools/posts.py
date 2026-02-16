@@ -68,6 +68,8 @@ def register(mcp: FastMCP) -> None:
         content: str = "",
         status: str = "draft",
         featured_image_id: int | None = None,
+        category_ids: list[int] | None = None,
+        tag_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         """Create a new WordPress post.
 
@@ -76,6 +78,8 @@ def register(mcp: FastMCP) -> None:
             content: The post content in WordPress block format (serialized HTML comments).
             status: Post status (draft, publish, pending, private). Default: draft.
             featured_image_id: Database ID of the featured image (optional).
+            category_ids: List of category database IDs to assign (optional).
+            tag_ids: List of tag database IDs to assign (optional).
 
         Returns:
             The created post object with id, title, slug, status.
@@ -87,6 +91,14 @@ def register(mcp: FastMCP) -> None:
         }
         if featured_image_id is not None:
             input_data["featuredImageId"] = str(featured_image_id)
+        if category_ids is not None:
+            input_data["categories"] = {
+                "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
+            }
+        if tag_ids is not None:
+            input_data["tags"] = {
+                "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
+            }
 
         data = await gql_client.mutate(
             CREATE_POST,
@@ -104,6 +116,8 @@ def register(mcp: FastMCP) -> None:
         content: str | None = None,
         status: str | None = None,
         featured_image_id: int | None = None,
+        category_ids: list[int] | None = None,
+        tag_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         """Update an existing WordPress post.
 
@@ -113,6 +127,8 @@ def register(mcp: FastMCP) -> None:
             content: New content in WordPress block format (optional).
             status: New status (optional).
             featured_image_id: Database ID of the featured image (optional, use 0 to remove).
+            category_ids: List of category database IDs to assign (optional).
+            tag_ids: List of tag database IDs to assign (optional).
 
         Returns:
             The updated post object.
@@ -126,6 +142,14 @@ def register(mcp: FastMCP) -> None:
             input_data["status"] = status.upper()
         if featured_image_id is not None:
             input_data["featuredImageId"] = str(featured_image_id) if featured_image_id > 0 else None
+        if category_ids is not None:
+            input_data["categories"] = {
+                "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
+            }
+        if tag_ids is not None:
+            input_data["tags"] = {
+                "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
+            }
 
         data = await gql_client.mutate(
             UPDATE_POST,
@@ -211,5 +235,29 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
             "width": details.get("width"),
             "height": details.get("height"),
         }
+
+    # Add categories if present
+    categories = post.get("categories", {}).get("nodes", [])
+    if categories:
+        result["categories"] = [
+            {
+                "id": cat.get("databaseId"),
+                "name": cat.get("name", ""),
+                "slug": cat.get("slug", ""),
+            }
+            for cat in categories
+        ]
+
+    # Add tags if present
+    tags = post.get("tags", {}).get("nodes", [])
+    if tags:
+        result["tags"] = [
+            {
+                "id": tag.get("databaseId"),
+                "name": tag.get("name", ""),
+                "slug": tag.get("slug", ""),
+            }
+            for tag in tags
+        ]
 
     return result

@@ -58,6 +58,20 @@ query GetPost($id: ID!) {
         }
       }
     }
+    categories {
+      nodes {
+        databaseId
+        name
+        slug
+      }
+    }
+    tags {
+      nodes {
+        databaseId
+        name
+        slug
+      }
+    }
   }
 }
 """
@@ -304,6 +318,34 @@ query SearchContent($search: String!, $first: Int) {
       title
       excerpt
       status
+    }
+  }
+}
+"""
+
+GET_CATEGORIES = """
+query GetCategories($first: Int) {
+  categories(first: $first) {
+    nodes {
+      databaseId
+      name
+      slug
+      description
+      count
+    }
+  }
+}
+"""
+
+GET_TAGS = """
+query GetTags($first: Int) {
+  tags(first: $first) {
+    nodes {
+      databaseId
+      name
+      slug
+      description
+      count
     }
   }
 }

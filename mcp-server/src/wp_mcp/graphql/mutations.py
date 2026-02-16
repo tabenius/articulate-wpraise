@@ -101,3 +101,29 @@ mutation DeletePage($input: DeletePageInput!) {
   }
 }
 """
+
+CREATE_CATEGORY = """
+mutation CreateCategory($input: CreateCategoryInput!) {
+  createCategory(input: $input) {
+    category {
+      databaseId
+      name
+      slug
+      description
+    }
+  }
+}
+"""
+
+CREATE_TAG = """
+mutation CreateTag($input: CreateTagInput!) {
+  createTag(input: $input) {
+    tag {
+      databaseId
+      name
+      slug
+      description
+    }
+  }
+}
+"""
