@@ -21,7 +21,7 @@ async def test_user_registration(setup_db):
     # Register a new user
     user = await UserManager.register_user(
         email="test@example.com",
-        password="securepass123",
+        password="securepassword123",
         name="Test User"
     )
     
@@ -46,7 +46,7 @@ async def test_user_registration(setup_db):
 async def test_duplicate_registration(setup_db):
     """Test that duplicate email registration fails."""
     # Register first user
-    await UserManager.register_user("duplicate@test.com", "pass123", "User 1")
+    await UserManager.register_user("duplicate@test.com", "password123", "User 1")
     
     # Try to register with same email
     with pytest.raises(ValueError, match="already exists"):
@@ -106,8 +106,8 @@ async def test_authentication_failure(setup_db):
 async def test_get_user_from_session(setup_db):
     """Test retrieving user from valid session."""
     # Register and authenticate
-    await UserManager.register_user("session@test.com", "pass123", "Session User")
-    auth_result = await UserManager.authenticate("session@test.com", "pass123")
+    await UserManager.register_user("session@test.com", "password123", "Session User")
+    auth_result = await UserManager.authenticate("session@test.com", "password123")
     session_id = auth_result["session_id"]
     
     # Get user from session
@@ -126,8 +126,8 @@ async def test_get_user_from_session(setup_db):
 async def test_expired_session(setup_db):
     """Test that expired sessions are rejected."""
     # Register and authenticate
-    await UserManager.register_user("expired@test.com", "pass123", "User")
-    auth_result = await UserManager.authenticate("expired@test.com", "pass123")
+    await UserManager.register_user("expired@test.com", "password123", "User")
+    auth_result = await UserManager.authenticate("expired@test.com", "password123")
     session_id = auth_result["session_id"]
     
     # Manually expire the session
@@ -156,8 +156,8 @@ async def test_expired_session(setup_db):
 async def test_logout(setup_db):
     """Test logout deletes session."""
     # Register and authenticate
-    await UserManager.register_user("logout@test.com", "pass123", "User")
-    auth_result = await UserManager.authenticate("logout@test.com", "pass123")
+    await UserManager.register_user("logout@test.com", "password123", "User")
+    auth_result = await UserManager.authenticate("logout@test.com", "password123")
     session_id = auth_result["session_id"]
     
     # Logout

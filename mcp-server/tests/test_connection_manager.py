@@ -20,7 +20,7 @@ async def test_user(setup_db):
     """Create a test user."""
     user = await UserManager.register_user(
         email="conntest@example.com",
-        password="pass123",
+        password="password123",
         name="Connection Test User"
     )
     yield user
