@@ -291,11 +291,7 @@ if not hasattr(mcp, "_app"):
     mcp._app = Starlette()
     logger.info("Created Starlette app for FastMCP")
 
-# Wrap app with authentication middleware
-mcp._app = AuthMiddleware(mcp._app)
-logger.info("Authentication middleware enabled")
-
-# Add health check routes
+# Add health check routes BEFORE wrapping with middleware
 mcp._app.routes.extend(
     [
         Route("/health", health_endpoint),
@@ -315,6 +311,10 @@ mcp._app.routes.extend(
         Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
     ]
 )
+
+# NOW wrap app with authentication middleware AFTER routes are added
+mcp._app = AuthMiddleware(mcp._app)
+logger.info("Authentication middleware enabled")
 
 
 async def startup():
