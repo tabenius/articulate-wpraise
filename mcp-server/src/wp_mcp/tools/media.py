@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Any
+import httpx
 
 from mcp.server.fastmcp import FastMCP
 
 from wp_mcp.graphql.client import gql_client
 from wp_mcp.graphql.queries import GET_MEDIA, GET_MEDIA_ITEM
+from wp_mcp.config import config
 
 
 def register(mcp: FastMCP) -> None:
@@ -48,6 +50,79 @@ def register(mcp: FastMCP) -> None:
         if not item:
             return {"error": f"Media item {media_id} not found"}
         return _format_media(item)
+
+    @mcp.tool()
+    async def upload_media(
+        file_url: str,
+        title: str = "",
+        alt_text: str = "",
+    ) -> dict[str, Any]:
+        """Upload a media file to WordPress from a URL.
+
+        Args:
+            file_url: URL of the file to download and upload.
+            title: Title for the media item (optional).
+            alt_text: Alt text for the image (optional).
+
+        Returns:
+            Uploaded media object with id, url, and dimensions.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Download the file from the URL
+            try:
+                response = await client.get(file_url)
+                response.raise_for_status()
+                file_content = response.content
+
+                # Determine filename and content type
+                filename = file_url.split("/")[-1].split("?")[0] or "upload.jpg"
+                content_type = response.headers.get("content-type", "image/jpeg")
+
+            except Exception as e:
+                return {"error": f"Failed to download file: {str(e)}"}
+
+            # Upload to WordPress REST API
+            try:
+                files = {"file": (filename, file_content, content_type)}
+                headers = {}
+                data = {}
+
+                if title:
+                    data["title"] = title
+                if alt_text:
+                    data["alt_text"] = alt_text
+
+                wp_auth = config.wp_auth
+                if not wp_auth:
+                    return {"error": "WordPress authentication not configured"}
+
+                upload_url = f"{config.wp_url}/wp-json/wp/v2/media"
+                upload_response = await client.post(
+                    upload_url,
+                    files=files,
+                    data=data,
+                    headers=headers,
+                    auth=wp_auth,
+                )
+                upload_response.raise_for_status()
+
+                result = upload_response.json()
+
+                # Format response to match our media format
+                return {
+                    "id": result.get("id"),
+                    "title": result.get("title", {}).get("rendered", ""),
+                    "url": result.get("source_url", ""),
+                    "alt": result.get("alt_text", ""),
+                    "width": result.get("media_details", {}).get("width"),
+                    "height": result.get("media_details", {}).get("height"),
+                    "mimeType": result.get("mime_type", ""),
+                }
+
+            except httpx.HTTPStatusError as e:
+                return {"error": f"Upload failed: {e.response.status_code} - {e.response.text}"}
+            except Exception as e:
+                return {"error": f"Upload failed: {str(e)}"}
 
 
 def _format_media(media: dict[str, Any]) -> dict[str, Any]:

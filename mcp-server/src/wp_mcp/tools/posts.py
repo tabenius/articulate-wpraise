@@ -67,6 +67,7 @@ def register(mcp: FastMCP) -> None:
         title: str,
         content: str = "",
         status: str = "draft",
+        featured_image_id: int | None = None,
     ) -> dict[str, Any]:
         """Create a new WordPress post.
 
@@ -74,6 +75,7 @@ def register(mcp: FastMCP) -> None:
             title: The post title.
             content: The post content in WordPress block format (serialized HTML comments).
             status: Post status (draft, publish, pending, private). Default: draft.
+            featured_image_id: Database ID of the featured image (optional).
 
         Returns:
             The created post object with id, title, slug, status.
@@ -83,6 +85,9 @@ def register(mcp: FastMCP) -> None:
             "content": content,
             "status": status.upper(),
         }
+        if featured_image_id is not None:
+            input_data["featuredImageId"] = str(featured_image_id)
+
         data = await gql_client.mutate(
             CREATE_POST,
             variables={"input": input_data},
@@ -98,6 +103,7 @@ def register(mcp: FastMCP) -> None:
         title: str | None = None,
         content: str | None = None,
         status: str | None = None,
+        featured_image_id: int | None = None,
     ) -> dict[str, Any]:
         """Update an existing WordPress post.
 
@@ -106,6 +112,7 @@ def register(mcp: FastMCP) -> None:
             title: New title (optional).
             content: New content in WordPress block format (optional).
             status: New status (optional).
+            featured_image_id: Database ID of the featured image (optional, use 0 to remove).
 
         Returns:
             The updated post object.
@@ -117,6 +124,8 @@ def register(mcp: FastMCP) -> None:
             input_data["content"] = content
         if status is not None:
             input_data["status"] = status.upper()
+        if featured_image_id is not None:
+            input_data["featuredImageId"] = str(featured_image_id) if featured_image_id > 0 else None
 
         data = await gql_client.mutate(
             UPDATE_POST,
@@ -152,7 +161,7 @@ def register(mcp: FastMCP) -> None:
 
 def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
     """Format a post for the summary list."""
-    return {
+    result = {
         "id": post.get("databaseId"),
         "title": post.get("title", ""),
         "slug": post.get("slug", ""),
@@ -163,10 +172,24 @@ def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
         "author": post.get("author", {}).get("node", {}).get("name", ""),
     }
 
+    # Add featured image if present
+    featured_image = post.get("featuredImage", {}).get("node")
+    if featured_image:
+        details = featured_image.get("mediaDetails", {}) or {}
+        result["featuredImage"] = {
+            "id": featured_image.get("databaseId"),
+            "url": featured_image.get("sourceUrl", ""),
+            "altText": featured_image.get("altText", ""),
+            "width": details.get("width"),
+            "height": details.get("height"),
+        }
+
+    return result
+
 
 def _format_post(post: dict[str, Any]) -> dict[str, Any]:
     """Format a full post object."""
-    return {
+    result = {
         "id": post.get("databaseId"),
         "title": post.get("title", ""),
         "slug": post.get("slug", ""),
@@ -176,3 +199,17 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
         "modified": post.get("modified", ""),
         "author": post.get("author", {}).get("node", {}).get("name", ""),
     }
+
+    # Add featured image if present
+    featured_image = post.get("featuredImage", {}).get("node")
+    if featured_image:
+        details = featured_image.get("mediaDetails", {}) or {}
+        result["featuredImage"] = {
+            "id": featured_image.get("databaseId"),
+            "url": featured_image.get("sourceUrl", ""),
+            "altText": featured_image.get("altText", ""),
+            "width": details.get("width"),
+            "height": details.get("height"),
+        }
+
+    return result

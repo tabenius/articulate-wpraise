@@ -16,6 +16,17 @@ query GetPosts($first: Int, $where: RootQueryToPostConnectionWhereArgs) {
           name
         }
       }
+      featuredImage {
+        node {
+          databaseId
+          sourceUrl
+          altText
+          mediaDetails {
+            width
+            height
+          }
+        }
+      }
     }
   }
 }
@@ -34,6 +45,17 @@ query GetPost($id: ID!) {
     author {
       node {
         name
+      }
+    }
+    featuredImage {
+      node {
+        databaseId
+        sourceUrl
+        altText
+        mediaDetails {
+          width
+          height
+        }
       }
     }
   }

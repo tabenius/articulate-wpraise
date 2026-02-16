@@ -9,6 +9,17 @@ mutation CreatePost($input: CreatePostInput!) {
       slug
       status
       content
+      featuredImage {
+        node {
+          databaseId
+          sourceUrl
+          altText
+          mediaDetails {
+            width
+            height
+          }
+        }
+      }
     }
   }
 }
@@ -23,6 +34,17 @@ mutation UpdatePost($input: UpdatePostInput!) {
       slug
       status
       content
+      featuredImage {
+        node {
+          databaseId
+          sourceUrl
+          altText
+          mediaDetails {
+            width
+            height
+          }
+        }
+      }
     }
   }
 }
