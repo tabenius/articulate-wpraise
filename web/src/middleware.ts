@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define public routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/api/auth/login"];
+const PUBLIC_ROUTES = [
+  "/auth",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/me",
+];
 
-// Define API routes that should have token passed through
-const API_ROUTES = ["/api/posts", "/api/pages", "/api/blocks", "/api/media", "/api/taxonomies"];
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
@@ -15,51 +17,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for authentication token
-  const authHeader = request.headers.get("authorization");
-  let token: string | null = null;
+  // Check for session cookie (HTTP-only)
+  const sessionCookie = request.cookies.get("session");
 
-  // Get token from Authorization header
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.substring(7);
-  }
-
-  // Try to get token from stored state (for client-side navigation)
-  // Note: This requires the auth store to be initialized on the client
-  if (!token && typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem("wp-ai-auth-storage");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        token = parsed.state?.token || null;
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  }
-
-  // For API routes, add token header if available
-  if (API_ROUTES.some((route) => pathname.startsWith(route))) {
-    const headers = new Headers(request.headers);
-
-    if (token) {
-      headers.set("X-WP-AI-Token", token);
-    }
-
-    return NextResponse.next({
-      request: {
-        headers,
-      },
-    });
-  }
-
-  // For protected pages, redirect to login if no token
-  // Note: This is a basic check. Full verification happens on the server
-  if (!pathname.startsWith("/api") && !token) {
+  // For protected pages, redirect to auth if no session
+  if (!pathname.startsWith("/api") && !sessionCookie) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/auth";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
+  }
+
+  // For API routes, verify session exists
+  if (pathname.startsWith("/api") && !PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+    if (!sessionCookie) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
   }
 
   return NextResponse.next();
