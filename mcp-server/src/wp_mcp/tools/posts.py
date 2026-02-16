@@ -70,6 +70,7 @@ def register(mcp: FastMCP) -> None:
         featured_image_id: int | None = None,
         category_ids: list[int] | None = None,
         tag_ids: list[int] | None = None,
+        date: str | None = None,
     ) -> dict[str, Any]:
         """Create a new WordPress post.
 
@@ -80,6 +81,7 @@ def register(mcp: FastMCP) -> None:
             featured_image_id: Database ID of the featured image (optional).
             category_ids: List of category database IDs to assign (optional).
             tag_ids: List of tag database IDs to assign (optional).
+            date: ISO 8601 date string. Future dates schedule the post (optional).
 
         Returns:
             The created post object with id, title, slug, status.
@@ -99,6 +101,8 @@ def register(mcp: FastMCP) -> None:
             input_data["tags"] = {
                 "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
             }
+        if date is not None:
+            input_data["date"] = date
 
         data = await gql_client.mutate(
             CREATE_POST,
@@ -118,6 +122,7 @@ def register(mcp: FastMCP) -> None:
         featured_image_id: int | None = None,
         category_ids: list[int] | None = None,
         tag_ids: list[int] | None = None,
+        date: str | None = None,
     ) -> dict[str, Any]:
         """Update an existing WordPress post.
 
@@ -129,6 +134,7 @@ def register(mcp: FastMCP) -> None:
             featured_image_id: Database ID of the featured image (optional, use 0 to remove).
             category_ids: List of category database IDs to assign (optional).
             tag_ids: List of tag database IDs to assign (optional).
+            date: ISO 8601 date string. Future dates schedule the post (optional).
 
         Returns:
             The updated post object.
@@ -150,6 +156,8 @@ def register(mcp: FastMCP) -> None:
             input_data["tags"] = {
                 "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
             }
+        if date is not None:
+            input_data["date"] = date
 
         data = await gql_client.mutate(
             UPDATE_POST,
