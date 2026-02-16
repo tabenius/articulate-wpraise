@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { BlockEditor } from "./block-editor";
 import { BlockToolbar } from "./block-toolbar";
+import { PreviewMode } from "./preview-mode";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { Undo2, Redo2 } from "lucide-react";
 
 export function EditorPanel() {
+  const [isPreview, setIsPreview] = useState(false);
   const currentPost = usePostStore((s) => s.currentPost);
   const blocks = useEditorStore((s) => s.blocks);
   const blockCount = blocks.length;
@@ -26,6 +29,15 @@ export function EditorPanel() {
   }, 0);
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
+
+  if (isPreview) {
+    return (
+      <PreviewMode
+        isPreview={isPreview}
+        onTogglePreview={() => setIsPreview(false)}
+      />
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -67,11 +79,17 @@ export function EditorPanel() {
             )}
           </div>
         </div>
-        {currentPost && (
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-            {currentPost.title}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <PreviewMode
+            isPreview={false}
+            onTogglePreview={() => setIsPreview(true)}
+          />
+          {currentPost && (
+            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {currentPost.title}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Editor content */}

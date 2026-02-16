@@ -20,11 +20,13 @@ import { BlockWrapper } from "./block-wrapper";
 import { FeaturedImagePanel } from "./featured-image-panel";
 import { TaxonomyPanel } from "./taxonomy-panel";
 import { PublishPanel } from "./publish-panel";
+import { BlockInserter } from "./block-inserter";
 
 export function BlockEditor() {
   const blocks = useEditorStore((s) => s.blocks);
   const moveBlock = useEditorStore((s) => s.moveBlock);
   const selectBlock = useEditorStore((s) => s.selectBlock);
+  const addBlock = useEditorStore((s) => s.addBlock);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
 
@@ -74,6 +76,34 @@ export function BlockEditor() {
   const handleBackgroundClick = useCallback(() => {
     selectBlock(null);
   }, [selectBlock]);
+
+  const handleInsertBlock = useCallback(
+    (blockType: string, index?: number) => {
+      const blockDefaults: Record<string, any> = {
+        "core/paragraph": { content: "" },
+        "core/heading": { content: "", level: 2 },
+        "core/image": { url: "", alt: "" },
+        "core/list": { ordered: false, values: "" },
+        "core/quote": { value: "", citation: "" },
+        "core/code": { content: "" },
+        "core/separator": {},
+        "core/spacer": { height: 50 },
+        "core/columns": { columns: 2 },
+        "core/group": {},
+      };
+
+      addBlock(
+        {
+          clientId: `block-${Date.now()}-${Math.random()}`,
+          name: blockType,
+          attributes: blockDefaults[blockType] || {},
+          innerBlocks: [],
+        },
+        index
+      );
+    },
+    [addBlock]
+  );
 
   if (blocks.length === 0) {
     return (
@@ -133,12 +163,25 @@ export function BlockEditor() {
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-1">
-              {blocks.map((block) => (
-                <BlockWrapper key={block.clientId} block={block} />
+              {blocks.map((block, index) => (
+                <div key={block.clientId} className="group relative">
+                  <BlockWrapper block={block} />
+                  <BlockInserter
+                    onInsertBlock={(type) => handleInsertBlock(type, index + 1)}
+                    position="below"
+                  />
+                </div>
               ))}
             </div>
           </SortableContext>
         </DndContext>
+
+        {/* Add block inserter at the end if no blocks */}
+        {blocks.length === 0 && (
+          <div className="mt-8">
+            <BlockInserter onInsertBlock={(type) => handleInsertBlock(type)} />
+          </div>
+        )}
       </div>
     </div>
   );
