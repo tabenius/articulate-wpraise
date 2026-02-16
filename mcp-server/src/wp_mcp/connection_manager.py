@@ -35,8 +35,56 @@ class ConnectionManager:
         return self.cipher.encrypt(value.encode()).decode()
 
     def _decrypt(self, value: str) -> str:
-        """Decrypt a value."""
-        return self.cipher.decrypt(value.encode()).decode()
+        """Decrypt a value.
+
+        Args:
+            value: Encrypted value
+
+        Returns:
+            Decrypted value
+
+        Raises:
+            ValueError: If decryption fails (invalid key or corrupted data)
+        """
+        try:
+            return self.cipher.decrypt(value.encode()).decode()
+        except Exception as e:
+            logger.error("Decryption failed: %s", e)
+            raise ValueError(f"Failed to decrypt value: {str(e)}")
+
+    def _build_connection_dict(self, connection: dict, include_password: bool = False) -> dict:
+        """Build connection dictionary from database row.
+
+        Args:
+            connection: Database row dict
+            include_password: Whether to decrypt and include password
+
+        Returns:
+            Formatted connection dict
+
+        Raises:
+            ValueError: If password decryption fails
+        """
+        result = {
+            "id": connection["id"],
+            "user_id": connection["user_id"],
+            "name": connection["name"],
+            "wp_url": connection["wp_url"],
+            "wp_graphql_endpoint": connection["wp_graphql_endpoint"],
+            "wp_user": connection["wp_user"],
+            "is_active": bool(connection.get("is_active", False)),
+        }
+
+        if include_password and "wp_app_password" in connection:
+            try:
+                result["wp_app_password"] = self._decrypt(connection["wp_app_password"])
+            except ValueError as e:
+                raise ValueError(f"Connection {connection['id']}: {str(e)}")
+
+        if "created_at" in connection:
+            result["created_at"] = connection["created_at"].isoformat()
+
+        return result
 
     async def add_connection(
         self,
@@ -177,24 +225,7 @@ class ConnectionManager:
         if not connection:
             return None
 
-        # Decrypt password
-        try:
-            decrypted_password = self._decrypt(connection["wp_app_password"])
-        except Exception as e:
-            logger.error("Failed to decrypt password for connection %d: %s", connection_id, e)
-            decrypted_password = ""
-
-        return {
-            "id": connection["id"],
-            "user_id": connection["user_id"],
-            "name": connection["name"],
-            "wp_url": connection["wp_url"],
-            "wp_graphql_endpoint": connection["wp_graphql_endpoint"],
-            "wp_user": connection["wp_user"],
-            "wp_app_password": decrypted_password,
-            "is_active": bool(connection["is_active"]),
-            "created_at": connection["created_at"].isoformat(),
-        }
+        return self._build_connection_dict(connection, include_password=True)
 
     async def get_active_connection(self, user_id: int) -> Optional[dict]:
         """Get the active WordPress connection for a user.
@@ -219,23 +250,7 @@ class ConnectionManager:
         if not connection:
             return None
 
-        # Decrypt password
-        try:
-            decrypted_password = self._decrypt(connection["wp_app_password"])
-        except Exception as e:
-            logger.error("Failed to decrypt password for connection %d: %s", connection["id"], e)
-            decrypted_password = ""
-
-        return {
-            "id": connection["id"],
-            "user_id": connection["user_id"],
-            "name": connection["name"],
-            "wp_url": connection["wp_url"],
-            "wp_graphql_endpoint": connection["wp_graphql_endpoint"],
-            "wp_user": connection["wp_user"],
-            "wp_app_password": decrypted_password,
-            "is_active": True,
-        }
+        return self._build_connection_dict(connection, include_password=True)
 
     async def set_active_connection(self, connection_id: int, user_id: int) -> bool:
         """Set a connection as active for a user.

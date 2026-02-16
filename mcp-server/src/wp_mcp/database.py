@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 import aiomysql
 
+from wp_mcp.config import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,10 +34,16 @@ class Database:
                 db=os.getenv("MYSQL_DATABASE", "wordpress"),
                 charset="utf8mb4",
                 autocommit=True,
-                minsize=1,
-                maxsize=10,
+                minsize=config.db_pool_minsize,
+                maxsize=config.db_pool_maxsize,
+                pool_recycle=3600,  # Recycle connections after 1 hour
+                connect_timeout=config.db_pool_timeout,
             )
-            logger.info("Database connection pool created")
+            logger.info(
+                "Database connection pool created (min=%d, max=%d)",
+                config.db_pool_minsize,
+                config.db_pool_maxsize,
+            )
         except Exception as e:
             logger.error("Failed to create database connection pool: %s", e)
             self.pool = None
@@ -48,6 +56,18 @@ class Database:
             self.pool = None
             logger.info("Database connection pool closed")
 
+    async def _ensure_connection(self):
+        """Ensure database connection is available.
+
+        Raises:
+            RuntimeError: If connection cannot be established
+        """
+        if not self.pool:
+            await self.connect()
+
+        if not self.pool:
+            raise RuntimeError("Database connection not available")
+
     async def execute(self, query: str, params: tuple = ()) -> int:
         """Execute a query (INSERT, UPDATE, DELETE).
 
@@ -58,11 +78,7 @@ class Database:
         Returns:
             Number of affected rows
         """
-        if not self.pool:
-            await self.connect()
-
-        if not self.pool:
-            raise RuntimeError("Database connection not available")
+        await self._ensure_connection()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -79,11 +95,7 @@ class Database:
         Returns:
             Row as dict or None
         """
-        if not self.pool:
-            await self.connect()
-
-        if not self.pool:
-            raise RuntimeError("Database connection not available")
+        await self._ensure_connection()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -100,11 +112,7 @@ class Database:
         Returns:
             List of rows as dicts
         """
-        if not self.pool:
-            await self.connect()
-
-        if not self.pool:
-            raise RuntimeError("Database connection not available")
+        await self._ensure_connection()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -121,11 +129,7 @@ class Database:
         Returns:
             Last inserted ID
         """
-        if not self.pool:
-            await self.connect()
-
-        if not self.pool:
-            raise RuntimeError("Database connection not available")
+        await self._ensure_connection()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:

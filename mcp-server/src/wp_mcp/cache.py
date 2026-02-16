@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import redis.asyncio as redis
 
 from wp_mcp.config import config
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_redis_connection(func: Callable) -> Callable:
+    """Decorator to ensure Redis connection before executing cache operations."""
+
+    @functools.wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if not self.redis:
+            await self.connect()
+            if not self.redis:
+                # Return appropriate default based on operation
+                if func.__name__ == "get":
+                    return None
+                return
+        return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class CacheManager:
@@ -43,6 +61,7 @@ class CacheManager:
             self.redis = None
             logger.info("Disconnected from Redis")
 
+    @ensure_redis_connection
     async def get(self, key: str) -> Optional[dict[str, Any]]:
         """Get cached value by key.
 
@@ -52,11 +71,6 @@ class CacheManager:
         Returns:
             Cached value as dict, or None if not found or Redis unavailable
         """
-        if not self.redis:
-            await self.connect()
-            if not self.redis:
-                return None
-
         try:
             value = await self.redis.get(key)
             if value:
@@ -68,6 +82,7 @@ class CacheManager:
             logger.warning("Cache get error for key %s: %s", key, e)
             return None
 
+    @ensure_redis_connection
     async def set(self, key: str, value: dict[str, Any], ttl: int = 300):
         """Set cached value with TTL.
 
@@ -76,45 +91,32 @@ class CacheManager:
             value: Value to cache (must be JSON-serializable)
             ttl: Time to live in seconds (default 5 minutes)
         """
-        if not self.redis:
-            await self.connect()
-            if not self.redis:
-                return
-
         try:
             await self.redis.setex(key, ttl, json.dumps(value))
             logger.debug("Cache SET: %s (TTL: %ds)", key, ttl)
         except Exception as e:
             logger.warning("Cache set error for key %s: %s", key, e)
 
+    @ensure_redis_connection
     async def delete(self, key: str):
         """Delete cached value by key.
 
         Args:
             key: Cache key
         """
-        if not self.redis:
-            await self.connect()
-            if not self.redis:
-                return
-
         try:
             await self.redis.delete(key)
             logger.debug("Cache DELETE: %s", key)
         except Exception as e:
             logger.warning("Cache delete error for key %s: %s", key, e)
 
+    @ensure_redis_connection
     async def invalidate_pattern(self, pattern: str):
         """Invalidate all keys matching pattern.
 
         Args:
             pattern: Redis pattern (e.g., "post:*", "posts:*")
         """
-        if not self.redis:
-            await self.connect()
-            if not self.redis:
-                return
-
         try:
             keys = []
             async for key in self.redis.scan_iter(match=pattern):
@@ -126,13 +128,9 @@ class CacheManager:
         except Exception as e:
             logger.warning("Cache invalidate error for pattern %s: %s", pattern, e)
 
+    @ensure_redis_connection
     async def clear_all(self):
         """Clear all cached data (use with caution)."""
-        if not self.redis:
-            await self.connect()
-            if not self.redis:
-                return
-
         try:
             await self.redis.flushdb()
             logger.info("Cache cleared (flushdb)")

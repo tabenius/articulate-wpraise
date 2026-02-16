@@ -21,6 +21,11 @@ class Config:
     celery_broker_url: str = field(default_factory=lambda: os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1"))
     celery_result_backend: str = field(default_factory=lambda: os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/2"))
 
+    # Database connection pool configuration
+    db_pool_minsize: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_MINSIZE", "2")))
+    db_pool_maxsize: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_MAXSIZE", "20")))
+    db_pool_timeout: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_TIMEOUT", "30")))
+
     @property
     def wp_auth(self) -> tuple[str, str] | None:
         """Return HTTP Basic Auth tuple for WordPress API."""
