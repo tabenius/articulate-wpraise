@@ -20,19 +20,28 @@ class GraphQLClient:
         self._auth = config.wp_auth
         self._cache = None
 
-    def _get_cache_key(self, query: str, variables: dict[str, Any] | None = None) -> str:
-        """Generate cache key from query and variables.
+    def _get_cache_key(
+        self, query: str, variables: dict[str, Any] | None = None, user_id: int | None = None
+    ) -> str:
+        """Generate cache key from query, variables, and user context.
 
         Args:
             query: GraphQL query string
             variables: Query variables
+            user_id: User ID for cache isolation (prevents cross-user cache sharing)
 
         Returns:
             Cache key string
         """
-        # Create deterministic hash from query + variables
+        # Create deterministic hash from query + variables + user context
+        # Use SHA256 instead of MD5 to avoid collision attacks
         content = query + json.dumps(variables or {}, sort_keys=True)
-        query_hash = hashlib.md5(content.encode()).hexdigest()
+
+        # Include user_id to isolate cache per user
+        if user_id is not None:
+            content = f"user:{user_id}:" + content
+
+        query_hash = hashlib.sha256(content.encode()).hexdigest()
         return f"gql:{query_hash}"
 
     def _extract_cache_ttl(self, query: str) -> int:
@@ -105,6 +114,7 @@ class GraphQLClient:
         query: str,
         variables: dict[str, Any] | None = None,
         use_cache: bool = True,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Execute a GraphQL query with caching support.
 
@@ -122,7 +132,7 @@ class GraphQLClient:
                 from wp_mcp.cache import cache
                 self._cache = cache
 
-            cache_key = self._get_cache_key(query, variables)
+            cache_key = self._get_cache_key(query, variables, user_id)
             cached_result = await self._cache.get(cache_key)
 
             if cached_result is not None:
@@ -131,9 +141,9 @@ class GraphQLClient:
         # Execute query
         result = await self.execute(query, variables)
 
-        # Cache the result
+        # Cache the result with user isolation
         if use_cache and result:
-            cache_key = self._get_cache_key(query, variables)
+            cache_key = self._get_cache_key(query, variables, user_id)
             ttl = self._extract_cache_ttl(query)
             await self._cache.set(cache_key, result, ttl=ttl)
 
