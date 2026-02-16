@@ -282,27 +282,33 @@ async def activate_connection_endpoint(request):
 
 
 # Add custom routes to the FastMCP app
-if hasattr(mcp, "_app"):
-    # Add health check routes
-    mcp._app.routes.extend(
-        [
-            Route("/health", health_endpoint),
-            Route("/health/ready", health_ready_endpoint),
-            Route("/health/live", health_endpoint),
-            Route("/health/deep", health_deep_endpoint),
-            Route("/metrics", metrics_endpoint),
-            # Auth routes
-            Route("/register", register_endpoint, methods=["POST"]),
-            Route("/login", login_endpoint, methods=["POST"]),
-            Route("/logout", logout_endpoint, methods=["POST"]),
-            # Connection routes
-            Route("/connections", get_connections_endpoint, methods=["GET"]),
-            Route("/connections", add_connection_endpoint, methods=["POST"]),
-            Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
-            Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
-            Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
-        ]
-    )
+# Get or create the app attribute
+if not hasattr(mcp, "_app"):
+    # FastMCP might not have _app yet, try to get/create it
+    from starlette.applications import Starlette
+    mcp._app = Starlette()
+    logger.info("Created Starlette app for FastMCP")
+
+# Add health check routes
+mcp._app.routes.extend(
+    [
+        Route("/health", health_endpoint),
+        Route("/health/ready", health_ready_endpoint),
+        Route("/health/live", health_endpoint),
+        Route("/health/deep", health_deep_endpoint),
+        Route("/metrics", metrics_endpoint),
+        # Auth routes
+        Route("/register", register_endpoint, methods=["POST"]),
+        Route("/login", login_endpoint, methods=["POST"]),
+        Route("/logout", logout_endpoint, methods=["POST"]),
+        # Connection routes
+        Route("/connections", get_connections_endpoint, methods=["GET"]),
+        Route("/connections", add_connection_endpoint, methods=["POST"]),
+        Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
+        Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
+        Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
+    ]
+)
 
 
 async def startup():
@@ -338,8 +344,11 @@ def main() -> None:
         # For HTTP transport, use uvicorn to serve FastMCP's ASGI app
         import uvicorn
 
+        # Try different attributes to get the ASGI app
+        app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+
         uvicorn.run(
-            mcp._app,
+            app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
@@ -348,8 +357,11 @@ def main() -> None:
         # For SSE transport, use uvicorn as well
         import uvicorn
 
+        # Try different attributes to get the ASGI app
+        app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+
         uvicorn.run(
-            mcp._app,
+            app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
