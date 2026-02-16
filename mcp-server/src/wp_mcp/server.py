@@ -345,16 +345,20 @@ def main() -> None:
         # For HTTP transport, use uvicorn to serve FastMCP's ASGI app
         import uvicorn
 
-        # Try different attributes to get the ASGI app
-        app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+        # Get the wrapped app (AuthMiddleware wrapping Starlette)
+        wrapped_app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
 
-        # Add startup event to the app
-        @app.on_event("startup")
+        # Get the underlying Starlette app to register startup event
+        # AuthMiddleware.app contains the actual Starlette instance
+        starlette_app = wrapped_app.app if hasattr(wrapped_app, 'app') else wrapped_app
+
+        # Add startup event to the underlying Starlette app
+        @starlette_app.on_event("startup")
         async def on_startup():
             await startup()
 
         uvicorn.run(
-            app,
+            wrapped_app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
@@ -363,16 +367,19 @@ def main() -> None:
         # For SSE transport, use uvicorn as well
         import uvicorn
 
-        # Try different attributes to get the ASGI app
-        app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+        # Get the wrapped app (AuthMiddleware wrapping Starlette)
+        wrapped_app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
 
-        # Add startup event to the app
-        @app.on_event("startup")
+        # Get the underlying Starlette app to register startup event
+        starlette_app = wrapped_app.app if hasattr(wrapped_app, 'app') else wrapped_app
+
+        # Add startup event to the underlying Starlette app
+        @starlette_app.on_event("startup")
         async def on_startup():
             await startup()
 
         uvicorn.run(
-            app,
+            wrapped_app,
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
