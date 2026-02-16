@@ -9,6 +9,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from wp_mcp.connection_manager import connection_manager
+from wp_mcp.middleware.rate_limit import (
+    RateLimitExceeded,
+    tool_rate_limiter,
+    ai_chat_rate_limiter,
+)
 from wp_mcp.user_manager import UserManager
 
 logger = logging.getLogger(__name__)
@@ -39,6 +44,24 @@ class AuthMiddleware:
 
         # Skip authentication for health, metrics, and auth endpoints
         if path.startswith(("/health", "/metrics", "/register", "/login")):
+            # Still apply rate limiting to auth endpoints
+            if path in ["/register", "/login"]:
+                try:
+                    # Use IP address as identifier for unauthenticated endpoints
+                    client = scope.get("client")
+                    client_ip = client[0] if client else "unknown"
+                    await ai_chat_rate_limiter.check_rate_limit(f"auth:{client_ip}")
+                except RateLimitExceeded as e:
+                    response = JSONResponse(
+                        {
+                            "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
+                            "retry_after": e.retry_after,
+                        },
+                        status_code=429,
+                        headers={"Retry-After": str(e.retry_after)},
+                    )
+                    await response(scope, receive, send)
+                    return
             await self.app(scope, receive, send)
             return
 
@@ -57,6 +80,28 @@ class AuthMiddleware:
         if not user:
             response = JSONResponse(
                 {"error": "Invalid or expired session"}, status_code=401
+            )
+            await response(scope, receive, send)
+            return
+
+        # Apply rate limiting based on user ID
+        user_identifier = f"user:{user['id']}"
+
+        try:
+            if path.startswith("/mcp"):
+                # Rate limit MCP tool calls (100 per minute)
+                await tool_rate_limiter.check_rate_limit(user_identifier)
+            else:
+                # Rate limit connection management endpoints (10 per minute)
+                await ai_chat_rate_limiter.check_rate_limit(user_identifier)
+        except RateLimitExceeded as e:
+            response = JSONResponse(
+                {
+                    "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
+                    "retry_after": e.retry_after,
+                },
+                status_code=429,
+                headers={"Retry-After": str(e.retry_after)},
             )
             await response(scope, receive, send)
             return
