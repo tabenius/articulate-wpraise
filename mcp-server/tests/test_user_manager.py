@@ -55,7 +55,7 @@ async def test_duplicate_registration(setup_db):
     await UserManager.register_user("duplicate@test.com", "password123", "User 1")
     
     # Try to register with same email
-    with pytest.raises(ValueError, match="already exists"):
+    with pytest.raises(ValueError, match="already registered"):
         await UserManager.register_user("duplicate@test.com", "password456", "User 2")
     
     # Cleanup
