@@ -50,8 +50,25 @@ logger.info("Transport: %s", config.mcp_transport)
 logger.info("WordPress URL: %s", config.wp_url)
 
 
+async def startup():
+    """Initialize services on startup."""
+    from wp_mcp.cache import cache
+
+    # Try to connect to Redis (optional)
+    try:
+        await cache.connect()
+        logger.info("Redis caching enabled at %s", config.redis_url)
+    except Exception as e:
+        logger.warning("Redis unavailable, running without cache: %s", e)
+
+
 def main() -> None:
     """Run the MCP server."""
+    import asyncio
+
+    # Initialize cache on startup
+    asyncio.run(startup())
+
     transport = config.mcp_transport
 
     if transport == "streamable-http":

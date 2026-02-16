@@ -107,6 +107,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             CREATE_POST,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*post*"],
         )
         post = data.get("createPost", {}).get("post")
         if not post:
@@ -162,6 +163,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             UPDATE_POST,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*post*"],
         )
         post = data.get("updatePost", {}).get("post")
         if not post:
@@ -181,6 +183,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             DELETE_POST,
             variables={"input": {"id": str(post_id)}},
+            invalidate_patterns=["gql:*post*"],
         )
         result = data.get("deletePost", {})
         post = result.get("post", {})

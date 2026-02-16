@@ -59,6 +59,21 @@ services:
     entrypoint: ["/usr/local/bin/wp-setup.sh"]
     restart: "no"
 
+  redis:
+    image: redis:7-alpine
+    container_name: wp-ai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
   mcp-server:
     build:
       context: .
@@ -67,6 +82,7 @@ services:
     restart: unless-stopped
     depends_on:
       - wordpress
+      - redis
     environment:
       WP_URL: http://wordpress:80
       WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
@@ -75,9 +91,55 @@ services:
       MCP_TRANSPORT: streamable-http
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     ports:
       - "8000:8000"
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/mcp-server/Dockerfile
+    container_name: wp-ai-celery
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - wordpress
+    environment:
+      WP_URL: http://wordpress:80
+      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+      WP_USER: ${WP_ADMIN_USER}
+      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: celery -A wp_mcp.tasks worker --loglevel=info
+    volumes:
+      - wp_data:/var/www/html
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/mcp-server/Dockerfile
+    container_name: wp-ai-celery-beat
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - wordpress
+    environment:
+      WP_URL: http://wordpress:80
+      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+      WP_USER: ${WP_ADMIN_USER}
+      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: celery -A wp_mcp.tasks beat --loglevel=info
+    volumes:
+      - wp_data:/var/www/html
 
 volumes:
   db_data:
   wp_data:
+  redis_data:

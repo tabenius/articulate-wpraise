@@ -17,6 +17,9 @@ class Config:
     mcp_transport: str = field(default_factory=lambda: os.environ.get("MCP_TRANSPORT", "streamable-http"))
     mcp_host: str = field(default_factory=lambda: os.environ.get("MCP_HOST", "0.0.0.0"))
     mcp_port: int = field(default_factory=lambda: int(os.environ.get("MCP_PORT", "8000")))
+    redis_url: str = field(default_factory=lambda: os.environ.get("REDIS_URL", "redis://localhost:6379/0"))
+    celery_broker_url: str = field(default_factory=lambda: os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1"))
+    celery_result_backend: str = field(default_factory=lambda: os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/2"))
 
     @property
     def wp_auth(self) -> tuple[str, str] | None:
