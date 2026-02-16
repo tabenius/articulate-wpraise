@@ -4,6 +4,8 @@ import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ConnectionSwitcher } from "@/components/header/connection-switcher";
+import { UserMenu } from "@/components/header/user-menu";
 import {
   Undo2,
   Redo2,
@@ -90,6 +92,11 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
         <Button variant="ghost" size="icon" onClick={onOpenSettings} title="Settings">
           <Settings className="h-4 w-4" />
         </Button>
+
+        <div className="ml-2 pl-2 border-l flex items-center gap-2">
+          <ConnectionSwitcher />
+          <UserMenu />
+        </div>
       </div>
     </header>
   );
