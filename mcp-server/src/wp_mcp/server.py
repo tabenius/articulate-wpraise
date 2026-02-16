@@ -104,6 +104,7 @@ if hasattr(mcp, "_app"):
 async def startup():
     """Initialize services on startup."""
     from wp_mcp.cache import cache
+    from wp_mcp.database import db
 
     # Try to connect to Redis (optional)
     try:
@@ -111,6 +112,13 @@ async def startup():
         logger.info("Redis caching enabled at %s", config.redis_url)
     except Exception as e:
         logger.warning("Redis unavailable, running without cache: %s", e)
+
+    # Connect to database
+    try:
+        await db.connect()
+        logger.info("Database connection established")
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
 
 
 def main() -> None:
