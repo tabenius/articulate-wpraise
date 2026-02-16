@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BlockEditor } from "./block-editor";
 import { BlockToolbar } from "./block-toolbar";
 import { PreviewMode } from "./preview-mode";
+import { DesignSystemPanel } from "./design-system-panel";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { Undo2, Redo2 } from "lucide-react";
@@ -80,6 +81,7 @@ export function EditorPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <DesignSystemPanel />
           <PreviewMode
             isPreview={false}
             onTogglePreview={() => setIsPreview(true)}
