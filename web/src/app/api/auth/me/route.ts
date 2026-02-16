@@ -15,12 +15,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Call MCP server to get user from session
-    // Note: We'll need to add a /me endpoint to MCP server
-    // For now, return a simple response
-    return NextResponse.json(
-      { authenticated: true, session_id: sessionCookie.value },
-      { status: 200 }
-    );
+    const response = await fetch("http://mcp-server:8000/me", {
+      method: "GET",
+      headers: {
+        "X-Session-ID": sessionCookie.value,
+      },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: "Session invalid" },
+        { status: 401 }
+      );
+    }
+
+    const user = await response.json();
+    return NextResponse.json({ user });
   } catch (error) {
     console.error("Auth check error:", error);
     return NextResponse.json(

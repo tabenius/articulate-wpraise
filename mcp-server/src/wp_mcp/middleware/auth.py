@@ -42,8 +42,8 @@ class AuthMiddleware:
         request = Request(scope, receive=receive)
         path = request.url.path
 
-        # Skip authentication for health, metrics, and auth endpoints
-        if path.startswith(("/health", "/metrics", "/register", "/login")):
+        # Skip authentication for health, metrics, and public auth endpoints
+        if path.startswith(("/health", "/metrics", "/register", "/login")) or path == "/me":
             # Still apply rate limiting to auth endpoints
             if path in ["/register", "/login"]:
                 try:

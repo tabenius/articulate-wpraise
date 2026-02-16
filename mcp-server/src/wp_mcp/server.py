@@ -148,6 +148,25 @@ async def logout_endpoint(request):
         return JSONResponse({"error": "Logout failed"}, status_code=500)
 
 
+async def me_endpoint(request):
+    """Get current user info from session."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session ID required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if user:
+            return JSONResponse(user)
+        else:
+            return JSONResponse({"error": "Invalid or expired session"}, status_code=401)
+    except Exception as e:
+        logger.error("Get user error: %s", e)
+        return JSONResponse({"error": "Failed to get user"}, status_code=500)
+
+
 # Connection management endpoints
 async def get_connections_endpoint(request):
     """Get user's WordPress connections."""
@@ -303,6 +322,7 @@ mcp._app.routes.extend(
         Route("/register", register_endpoint, methods=["POST"]),
         Route("/login", login_endpoint, methods=["POST"]),
         Route("/logout", logout_endpoint, methods=["POST"]),
+        Route("/me", me_endpoint, methods=["GET"]),
         # Connection routes
         Route("/connections", get_connections_endpoint, methods=["GET"]),
         Route("/connections", add_connection_endpoint, methods=["POST"]),
