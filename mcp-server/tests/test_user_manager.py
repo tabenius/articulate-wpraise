@@ -48,6 +48,9 @@ async def test_user_registration(setup_db):
 @pytest.mark.asyncio
 async def test_duplicate_registration(setup_db):
     """Test that duplicate email registration fails."""
+    # Cleanup any existing user from previous runs
+    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("duplicate@test.com",))
+
     # Register first user
     await UserManager.register_user("duplicate@test.com", "password123", "User 1")
     
