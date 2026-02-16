@@ -350,3 +350,44 @@ query GetTags($first: Int) {
   }
 }
 """
+
+GET_POST_REVISIONS = """
+query GetPostRevisions($id: ID!, $first: Int = 20) {
+  post(id: $id, idType: DATABASE_ID) {
+    databaseId
+    revisions(first: $first, where: {orderby: {field: DATE, order: DESC}}) {
+      nodes {
+        databaseId
+        date
+        modified
+        author {
+          node {
+            name
+            email
+          }
+        }
+        content
+        title
+      }
+    }
+  }
+}
+"""
+
+GET_REVISION_DETAILS = """
+query GetRevision($id: ID!) {
+  post(id: $id, idType: DATABASE_ID) {
+    databaseId
+    date
+    modified
+    title
+    content
+    author {
+      node {
+        name
+        email
+      }
+    }
+  }
+}
+"""
