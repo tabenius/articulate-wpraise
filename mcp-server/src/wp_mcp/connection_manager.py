@@ -9,6 +9,7 @@ from typing import Optional
 from cryptography.fernet import Fernet
 
 from wp_mcp.database import db
+from wp_mcp.url_validator import validate_wordpress_url
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,17 @@ class ConnectionManager:
             Connection dict
 
         Raises:
-            ValueError: If connection with name already exists
+            ValueError: If connection with name already exists or URL validation fails
         """
+        # Validate URLs to prevent SSRF
+        is_valid, error = validate_wordpress_url(wp_url)
+        if not is_valid:
+            raise ValueError(f"Invalid WordPress URL: {error}")
+
+        is_valid, error = validate_wordpress_url(wp_graphql_endpoint)
+        if not is_valid:
+            raise ValueError(f"Invalid GraphQL endpoint URL: {error}")
+
         # Check for duplicate name
         existing = await db.fetchone(
             "SELECT id FROM wp_wordpress_connections WHERE user_id = %s AND name = %s",
@@ -289,8 +299,19 @@ class ConnectionManager:
             True if successful
 
         Raises:
-            ValueError: If connection not found or unauthorized
+            ValueError: If connection not found, unauthorized, or URL validation fails
         """
+        # Validate URLs if provided
+        if wp_url is not None:
+            is_valid, error = validate_wordpress_url(wp_url)
+            if not is_valid:
+                raise ValueError(f"Invalid WordPress URL: {error}")
+
+        if wp_graphql_endpoint is not None:
+            is_valid, error = validate_wordpress_url(wp_graphql_endpoint)
+            if not is_valid:
+                raise ValueError(f"Invalid GraphQL endpoint URL: {error}")
+
         # Verify connection exists and belongs to user
         connection = await db.fetchone(
             "SELECT id FROM wp_wordpress_connections WHERE id = %s AND user_id = %s",
