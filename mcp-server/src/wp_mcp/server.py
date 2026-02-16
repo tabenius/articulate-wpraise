@@ -333,11 +333,6 @@ async def startup():
 
 def main() -> None:
     """Run the MCP server."""
-    import asyncio
-
-    # Initialize cache on startup
-    asyncio.run(startup())
-
     transport = config.mcp_transport
 
     if transport == "streamable-http":
@@ -346,6 +341,11 @@ def main() -> None:
 
         # Try different attributes to get the ASGI app
         app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+
+        # Add startup event to the app
+        @app.on_event("startup")
+        async def on_startup():
+            await startup()
 
         uvicorn.run(
             app,
@@ -359,6 +359,11 @@ def main() -> None:
 
         # Try different attributes to get the ASGI app
         app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+
+        # Add startup event to the app
+        @app.on_event("startup")
+        async def on_startup():
+            await startup()
 
         uvicorn.run(
             app,
