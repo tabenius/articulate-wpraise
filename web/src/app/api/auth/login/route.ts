@@ -1,50 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { username, password } = body;
+    const { email, password } = await request.json();
 
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Email and password required" },
         { status: 400 }
       );
     }
 
-    // Get WordPress URL from environment
-    const wpUrl = process.env.WP_URL || "http://wordpress:80";
-
-    // Call WordPress JWT login endpoint
-    const response = await fetch(`${wpUrl}/wp-json/wp-ai/v1/auth/login`, {
+    const response = await fetch("http://mcp-server:8000/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
     if (!response.ok) {
       const error = await response.json();
       return NextResponse.json(
-        { error: error.message || "Login failed" },
+        { error: error.error || "Login failed" },
         { status: response.status }
       );
     }
 
     const data = await response.json();
 
-    // Return the token and user data
+    const cookieStore = await cookies();
+    cookieStore.set("session", data.session_id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
     return NextResponse.json({
-      success: true,
-      token: data.token,
       user: data.user,
-      expiresAt: data.expiresAt,
+      expires_at: data.expires_at,
     });
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Login failed" },
+      { error: "Login failed" },
       { status: 500 }
     );
   }

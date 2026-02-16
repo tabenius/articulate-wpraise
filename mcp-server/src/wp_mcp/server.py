@@ -87,6 +87,200 @@ async def metrics_endpoint(request):
     return JSONResponse(stats)
 
 
+# Authentication endpoints
+async def register_endpoint(request):
+    """User registration endpoint."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        email = data.get("email")
+        password = data.get("password")
+        name = data.get("name", "")
+
+        user = await UserManager.register_user(email, password, name)
+        return JSONResponse(user, status_code=201)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Registration error: %s", e)
+        return JSONResponse({"error": "Registration failed"}, status_code=500)
+
+
+async def login_endpoint(request):
+    """User login endpoint."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        email = data.get("email")
+        password = data.get("password")
+
+        result = await UserManager.authenticate(email, password)
+        if result:
+            return JSONResponse(result)
+        else:
+            return JSONResponse({"error": "Invalid credentials"}, status_code=401)
+    except Exception as e:
+        logger.error("Login error: %s", e)
+        return JSONResponse({"error": "Login failed"}, status_code=500)
+
+
+async def logout_endpoint(request):
+    """User logout endpoint."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session ID required"}, status_code=400)
+
+        success = await UserManager.logout(session_id)
+        if success:
+            return JSONResponse({"success": True})
+        else:
+            return JSONResponse({"error": "Invalid session"}, status_code=404)
+    except Exception as e:
+        logger.error("Logout error: %s", e)
+        return JSONResponse({"error": "Logout failed"}, status_code=500)
+
+
+# Connection management endpoints
+async def get_connections_endpoint(request):
+    """Get user's WordPress connections."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        connections = await connection_manager.get_connections(user["id"])
+        return JSONResponse(connections)
+    except Exception as e:
+        logger.error("Get connections error: %s", e)
+        return JSONResponse({"error": "Failed to get connections"}, status_code=500)
+
+
+async def add_connection_endpoint(request):
+    """Add new WordPress connection."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        connection = await connection_manager.add_connection(
+            user_id=user["id"],
+            name=data.get("name"),
+            wp_url=data.get("wp_url"),
+            wp_graphql_endpoint=data.get("wp_graphql_endpoint"),
+            wp_user=data.get("wp_user"),
+            wp_app_password=data.get("wp_app_password"),
+        )
+        return JSONResponse(connection, status_code=201)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Add connection error: %s", e)
+        return JSONResponse({"error": "Failed to add connection"}, status_code=500)
+
+
+async def update_connection_endpoint(request):
+    """Update WordPress connection."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        # Get connection ID from path
+        connection_id = int(request.path_params.get("id"))
+        data = await request.json()
+
+        await connection_manager.update_connection(
+            connection_id=connection_id,
+            user_id=user["id"],
+            name=data.get("name"),
+            wp_url=data.get("wp_url"),
+            wp_graphql_endpoint=data.get("wp_graphql_endpoint"),
+            wp_user=data.get("wp_user"),
+            wp_app_password=data.get("wp_app_password"),
+        )
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Update connection error: %s", e)
+        return JSONResponse({"error": "Failed to update connection"}, status_code=500)
+
+
+async def delete_connection_endpoint(request):
+    """Delete WordPress connection."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        connection_id = int(request.path_params.get("id"))
+        await connection_manager.delete_connection(connection_id, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Delete connection error: %s", e)
+        return JSONResponse({"error": "Failed to delete connection"}, status_code=500)
+
+
+async def activate_connection_endpoint(request):
+    """Set connection as active."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        connection_id = int(request.path_params.get("id"))
+        await connection_manager.set_active_connection(connection_id, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Activate connection error: %s", e)
+        return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
+
+
 # Add custom routes to the FastMCP app
 if hasattr(mcp, "_app"):
     # Add health check routes
@@ -97,6 +291,16 @@ if hasattr(mcp, "_app"):
             Route("/health/live", health_endpoint),
             Route("/health/deep", health_deep_endpoint),
             Route("/metrics", metrics_endpoint),
+            # Auth routes
+            Route("/register", register_endpoint, methods=["POST"]),
+            Route("/login", login_endpoint, methods=["POST"]),
+            Route("/logout", logout_endpoint, methods=["POST"]),
+            # Connection routes
+            Route("/connections", get_connections_endpoint, methods=["GET"]),
+            Route("/connections", add_connection_endpoint, methods=["POST"]),
+            Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
+            Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
+            Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
         ]
     )
 
