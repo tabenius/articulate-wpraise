@@ -18,6 +18,9 @@ async def setup_db():
 @pytest.mark.asyncio
 async def test_user_registration(setup_db):
     """Test user registration with password hashing."""
+    # Cleanup any existing user from previous runs
+    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("test@example.com",))
+
     # Register a new user
     user = await UserManager.register_user(
         email="test@example.com",
@@ -50,7 +53,7 @@ async def test_duplicate_registration(setup_db):
     
     # Try to register with same email
     with pytest.raises(ValueError, match="already exists"):
-        await UserManager.register_user("duplicate@test.com", "pass456", "User 2")
+        await UserManager.register_user("duplicate@test.com", "password456", "User 2")
     
     # Cleanup
     await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("duplicate@test.com",))
