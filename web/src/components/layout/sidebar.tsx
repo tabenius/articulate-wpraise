@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Plus, X } from "lucide-react";
 import type { PostSummary } from "@/types/post";
+import { PostListSkeleton } from "./post-list-skeleton";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -38,9 +39,19 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
 
         <ScrollArea className="flex-1">
           {isLoading ? (
-            <div className="p-4 text-muted-foreground text-sm">Loading posts...</div>
+            <PostListSkeleton />
           ) : posts.length === 0 ? (
-            <div className="p-4 text-muted-foreground text-sm">No posts found.</div>
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+              <h3 className="font-medium text-sm mb-1">No posts yet</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Get started by creating your first post
+              </p>
+              <Button size="sm" onClick={onCreatePost}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Post
+              </Button>
+            </div>
           ) : (
             <div className="p-2">
               {posts.map((post) => (

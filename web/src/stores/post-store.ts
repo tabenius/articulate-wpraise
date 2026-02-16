@@ -11,6 +11,7 @@ interface PostState {
   setPosts: (posts: PostSummary[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  updatePost: (postId: number, updates: Partial<Post>) => void;
 }
 
 export const usePostStore = create<PostState>((set) => ({
@@ -23,4 +24,14 @@ export const usePostStore = create<PostState>((set) => ({
   setPosts: (posts) => set({ posts }),
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
+  updatePost: (postId, updates) =>
+    set((state) => ({
+      currentPost:
+        state.currentPost?.id === postId
+          ? { ...state.currentPost, ...updates }
+          : state.currentPost,
+      posts: state.posts.map((post) =>
+        post.id === postId ? { ...post, ...updates } : post
+      ),
+    })),
 }));

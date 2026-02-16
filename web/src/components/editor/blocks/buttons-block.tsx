@@ -14,7 +14,7 @@ export function ButtonsBlock({
       }`}
     >
       {block.innerBlocks.map((btn) => (
-        <ButtonItem key={btn.clientId} attributes={btn.attributes as ButtonAttributes} />
+        <ButtonItem key={btn.clientId} attributes={btn.attributes as unknown as ButtonAttributes} />
       ))}
       {block.innerBlocks.length === 0 && (
         <span className="text-sm text-muted-foreground">No buttons</span>

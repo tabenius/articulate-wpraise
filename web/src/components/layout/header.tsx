@@ -10,15 +10,17 @@ import {
   Save,
   Settings,
   FileText,
+  Keyboard,
 } from "lucide-react";
 
 interface HeaderProps {
   onOpenSettings: () => void;
   onOpenPostList: () => void;
   onSave: () => void;
+  onOpenShortcuts?: () => void;
 }
 
-export function Header({ onOpenSettings, onOpenPostList, onSave }: HeaderProps) {
+export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts }: HeaderProps) {
   const currentPost = usePostStore((s) => s.currentPost);
   const isDirty = useEditorStore((s) => s.isDirty);
   const undo = useEditorStore((s) => s.undo);
@@ -68,10 +70,22 @@ export function Header({ onOpenSettings, onOpenPostList, onSave }: HeaderProps) 
           size="sm"
           onClick={onSave}
           disabled={!isDirty}
+          title="Save (Cmd+S)"
         >
           <Save className="h-4 w-4 mr-2" />
           Save
         </Button>
+
+        {onOpenShortcuts && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onOpenShortcuts}
+            title="Keyboard Shortcuts (?)"
+          >
+            <Keyboard className="h-4 w-4" />
+          </Button>
+        )}
 
         <Button variant="ghost" size="icon" onClick={onOpenSettings} title="Settings">
           <Settings className="h-4 w-4" />

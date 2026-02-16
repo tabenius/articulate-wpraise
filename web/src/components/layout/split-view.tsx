@@ -1,7 +1,6 @@
 "use client";
 
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { GripVertical } from "lucide-react";
 
 interface SplitViewProps {
   left: React.ReactNode;
@@ -11,16 +10,29 @@ interface SplitViewProps {
 export function SplitView({ left, right }: SplitViewProps) {
   return (
     <PanelGroup direction="horizontal" className="h-full">
-      <Panel defaultSize={40} minSize={25} maxSize={60}>
-        <div className="h-full overflow-hidden">{left}</div>
+      <Panel
+        defaultSize={40}
+        minSize={25}
+        maxSize={60}
+        id="chat-panel"
+        order={1}
+      >
+        {left}
       </Panel>
 
-      <PanelResizeHandle className="w-2 bg-border hover:bg-primary/20 transition-colors flex items-center justify-center group">
-        <GripVertical className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+      <PanelResizeHandle className="w-1 bg-border hover:bg-primary/20 transition-colors cursor-col-resize group">
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="w-0.5 h-8 bg-border group-hover:bg-primary/40 rounded-full transition-colors" />
+        </div>
       </PanelResizeHandle>
 
-      <Panel defaultSize={60} minSize={30}>
-        <div className="h-full overflow-hidden">{right}</div>
+      <Panel
+        defaultSize={60}
+        minSize={40}
+        id="editor-panel"
+        order={2}
+      >
+        {right}
       </Panel>
     </PanelGroup>
   );

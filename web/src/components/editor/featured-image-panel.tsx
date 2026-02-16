@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 export function FeaturedImagePanel() {
   const currentPost = usePostStore((s) => s.currentPost);
@@ -21,6 +21,7 @@ export function FeaturedImagePanel() {
   const [imageUrl, setImageUrl] = useState("");
   const [altText, setAltText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
 
   const handleUpload = async () => {
     if (!imageUrl || !currentPost) return;
@@ -63,13 +64,11 @@ export function FeaturedImagePanel() {
       const updatedPost = await updateRes.json();
       updatePost(currentPost.id, updatedPost);
 
-      toast.success("Featured image uploaded successfully");
+      toast({ variant: "success", title: "Success", description: "Featured image uploaded successfully" });
       setImageUrl("");
       setAltText("");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload image"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to upload image" });
     } finally {
       setUploading(false);
     }
@@ -94,11 +93,9 @@ export function FeaturedImagePanel() {
       const updatedPost = await res.json();
       updatePost(currentPost.id, updatedPost);
 
-      toast.success("Featured image removed");
+      toast({ variant: "success", title: "Success", description: "Featured image removed" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to remove image"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to remove image" });
     }
   };
 

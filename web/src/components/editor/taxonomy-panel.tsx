@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { Term } from "@/types/post";
 
 export function TaxonomyPanel() {
@@ -44,6 +44,7 @@ export function TaxonomyPanel() {
   const [creatingCategory, setCreatingCategory] = useState(false);
 
   const [tagInput, setTagInput] = useState("");
+  const { toast } = useToast();
   const [creatingTag, setCreatingTag] = useState(false);
 
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
@@ -99,11 +100,9 @@ export function TaxonomyPanel() {
       setCategories([...categories, newCategory]);
       setSelectedCategories([...selectedCategories, newCategory.id]);
       setNewCategoryName("");
-      toast.success("Category created");
+      toast({ variant: "success", title: "Success", description: "Category created" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create category"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create category" });
     } finally {
       setCreatingCategory(false);
     }
@@ -129,11 +128,9 @@ export function TaxonomyPanel() {
       setTags([...tags, newTag]);
       setSelectedTags([...selectedTags, newTag.id]);
       setTagInput("");
-      toast.success("Tag created");
+      toast({ variant: "success", title: "Success", description: "Tag created" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create tag"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to create tag" });
     } finally {
       setCreatingTag(false);
     }
@@ -157,11 +154,9 @@ export function TaxonomyPanel() {
 
       const updatedPost = await res.json();
       updatePost(currentPost.id, updatedPost);
-      toast.success("Taxonomies updated");
+      toast({ variant: "success", title: "Success", description: "Taxonomies updated" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update taxonomies"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to update taxonomies" });
     } finally {
       setSaving(false);
     }

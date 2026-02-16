@@ -9,7 +9,7 @@ export function QuoteBlock({
   onUpdate,
 }: BlockProps<QuoteAttributes>) {
   const valueRef = useRef<HTMLDivElement>(null);
-  const citeRef = useRef<HTMLCiteElement>(null);
+  const citeRef = useRef<HTMLElement>(null);
 
   const handleValueBlur = useCallback(() => {
     if (valueRef.current) {

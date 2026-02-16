@@ -13,11 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 export function PublishPanel() {
   const currentPost = usePostStore((s) => s.currentPost);
   const updatePost = usePostStore((s) => s.updatePost);
+  const { toast } = useToast();
 
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
@@ -31,13 +32,13 @@ export function PublishPanel() {
     const dateTime = new Date(dateTimeString);
 
     if (isNaN(dateTime.getTime())) {
-      toast.error("Invalid date or time");
+      toast({ variant: "destructive", title: "Error", description: "Invalid date or time" });
       return;
     }
 
     // Check if date is in the future
     if (dateTime <= new Date()) {
-      toast.error("Scheduled date must be in the future");
+      toast({ variant: "destructive", title: "Error", description: "Scheduled date must be in the future" });
       return;
     }
 
@@ -57,15 +58,11 @@ export function PublishPanel() {
       const updatedPost = await res.json();
       updatePost(currentPost.id, updatedPost);
 
-      toast.success(
-        `Post scheduled for ${dateTime.toLocaleString()}`
-      );
+      toast({ variant: "success", title: "Success", description: `Post scheduled for ${dateTime.toLocaleString()}` });
       setScheduledDate("");
       setScheduledTime("");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to schedule post"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to schedule post" });
     } finally {
       setScheduling(false);
     }
@@ -90,11 +87,9 @@ export function PublishPanel() {
       const updatedPost = await res.json();
       updatePost(currentPost.id, updatedPost);
 
-      toast.success("Post published successfully");
+      toast({ variant: "success", title: "Success", description: "Post published successfully" });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to publish post"
-      );
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to publish post" });
     } finally {
       setScheduling(false);
     }

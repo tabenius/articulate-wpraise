@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       file_url,
       title: title || "",
       alt_text: alt_text || "",
-    });
+    }) as { error?: string; id?: number; url?: string };
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 500 });
