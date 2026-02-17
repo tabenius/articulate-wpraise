@@ -29,13 +29,14 @@ export async function POST() {
       }
     }
 
-    // Get default WordPress config from environment
+    // Get default WordPress config from environment (server-side only)
+    // Users never access WordPress directly - all requests proxied through Next.js API
     const defaultConnection = {
-      name: process.env.DEFAULT_WP_NAME || process.env.NEXT_PUBLIC_DEFAULT_WP_NAME || "Local WordPress",
-      wp_url: process.env.DEFAULT_WP_URL || process.env.NEXT_PUBLIC_DEFAULT_WP_URL || "http://localhost:8080",
-      wp_graphql_endpoint: process.env.DEFAULT_WP_GRAPHQL_ENDPOINT || process.env.NEXT_PUBLIC_DEFAULT_WP_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql",
-      wp_user: process.env.DEFAULT_WP_USER || process.env.NEXT_PUBLIC_DEFAULT_WP_USER || "admin",
-      wp_app_password: process.env.DEFAULT_WP_APP_PASSWORD || process.env.WP_APP_PASSWORD || "",
+      name: process.env.DEFAULT_WP_NAME || "Local WordPress",
+      wp_url: process.env.DEFAULT_WP_URL || "http://localhost:8080",
+      wp_graphql_endpoint: process.env.DEFAULT_WP_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql",
+      wp_user: process.env.DEFAULT_WP_USER || "admin",
+      wp_app_password: process.env.DEFAULT_WP_APP_PASSWORD || "",
     };
 
     // Validate we have an app password
