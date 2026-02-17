@@ -132,7 +132,7 @@ If backends are down:
 docker ps --filter "name=wp-ai"
 
 # Check HAProxy can reach backends
-curl http://localhost:3000/api/auth/me
+curl http://localhost:4500/api/auth/me
 curl http://localhost:8080
 curl http://localhost:8091
 ```
@@ -169,7 +169,7 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 
 ### Backends
 
-- **wpai_frontend**: Next.js app on localhost:3000
+- **wpai_frontend**: Next.js app on localhost:4500
 - **wpai_wordpress**: WordPress on localhost:8080
 - **wpai_docs**: Documentation on localhost:8091
 

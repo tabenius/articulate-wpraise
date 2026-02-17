@@ -185,7 +185,7 @@ services:
       DEFAULT_WP_USER: ${WP_ADMIN_USER}
       DEFAULT_WP_APP_PASSWORD: ${WP_APP_PASSWORD}
     ports:
-      - "127.0.0.1:3000:3000"  # Only accessible from localhost for reverse proxy
+      - "127.0.0.1:4500:3000"  # Only accessible from localhost for reverse proxy
     networks:
       - wp-ai-internal
       - wp-ai-proxy
