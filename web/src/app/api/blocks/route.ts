@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { callMCPTool } from "@/lib/mcp-client";
 

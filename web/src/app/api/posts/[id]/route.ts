@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { callMCPTool } from "@/lib/mcp-client";
+import { getSessionHeaders } from "@/lib/server-auth";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { id } = await params;
     const postId = parseInt(id, 10);
     if (isNaN(postId)) {
       return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
     }
 
-    const result = await callMCPTool("get_post", { post_id: postId });
+    const result = await callMCPTool("get_post", { post_id: postId }, authHeaders);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -26,6 +31,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { id } = await params;
     const postId = parseInt(id, 10);
     if (isNaN(postId)) {
@@ -52,7 +62,7 @@ export async function PUT(
       ...(category_ids !== undefined ? { category_ids } : {}),
       ...(tag_ids !== undefined ? { tag_ids } : {}),
       ...(date !== undefined ? { date } : {}),
-    });
+    }, authHeaders);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -66,6 +76,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { id } = await params;
     const postId = parseInt(id, 10);
     if (isNaN(postId)) {
@@ -92,7 +107,7 @@ export async function PATCH(
       ...(category_ids !== undefined ? { category_ids } : {}),
       ...(tag_ids !== undefined ? { tag_ids } : {}),
       ...(date !== undefined ? { date } : {}),
-    });
+    }, authHeaders);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -106,13 +121,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { id } = await params;
     const postId = parseInt(id, 10);
     if (isNaN(postId)) {
       return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
     }
 
-    const result = await callMCPTool("delete_post", { post_id: postId });
+    const result = await callMCPTool("delete_post", { post_id: postId }, authHeaders);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { callMCPTool } from "@/lib/mcp-client";
+import { getSessionHeaders } from "@/lib/server-auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") || "publish";
     const search = searchParams.get("search") || undefined;
     const perPage = parseInt(searchParams.get("per_page") || "20", 10);
 
-    const result = await callMCPTool("get_posts", {
-      status,
-      per_page: perPage,
-      ...(search ? { search } : {}),
-    });
+    const result = await callMCPTool(
+      "get_posts",
+      {
+        status,
+        per_page: perPage,
+        ...(search ? { search } : {}),
+      },
+      authHeaders
+    );
 
     return NextResponse.json(result);
   } catch (error) {
@@ -24,6 +33,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, content, status } = body;
 
@@ -31,11 +45,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    const result = await callMCPTool("create_post", {
-      title,
-      content: content || "",
-      status: status || "draft",
-    });
+    const result = await callMCPTool(
+      "create_post",
+      {
+        title,
+        content: content || "",
+        status: status || "draft",
+      },
+      authHeaders
+    );
 
     return NextResponse.json(result);
   } catch (error) {
