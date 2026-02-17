@@ -22,11 +22,6 @@ export default function Home() {
   useAutosave();
   useSync();
 
-  // Load posts on mount
-  useEffect(() => {
-    handleLoadPosts();
-  }, [handleLoadPosts]);
-
   const handleLoadPosts = useCallback(async () => {
     try {
       setLoading(true);
@@ -74,6 +69,11 @@ export default function Home() {
       setLoading(false);
     }
   }, [setPosts, setLoading, setError, toast]);
+
+  // Load posts on mount
+  useEffect(() => {
+    handleLoadPosts();
+  }, [handleLoadPosts]);
 
   const handleLoadPost = useCallback(
     async (postId: number) => {
