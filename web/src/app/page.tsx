@@ -25,7 +25,7 @@ export default function Home() {
   // Load posts on mount
   useEffect(() => {
     handleLoadPosts();
-  }, []);
+  }, [handleLoadPosts]);
 
   const handleLoadPosts = useCallback(async () => {
     try {
@@ -34,7 +34,16 @@ export default function Home() {
       setPosts(Array.isArray(posts) ? posts : []);
     } catch (error) {
       console.error("Failed to load posts:", error);
-      setError(error instanceof Error ? error.message : "Failed to load posts");
+      const errorMessage = error instanceof Error ? error.message : "Failed to load posts";
+
+      // Check if it's a 403 error (no WordPress connection)
+      if (errorMessage.includes("403")) {
+        // Redirect to setup page
+        window.location.href = "/setup";
+        return;
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
