@@ -13,10 +13,10 @@ export default function SetupPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "Local WordPress",
-    wp_url: "http://localhost:8080",
-    wp_graphql_endpoint: "http://localhost:8080/graphql",
-    wp_user: "admin",
+    name: process.env.NEXT_PUBLIC_DEFAULT_WP_NAME || "Local WordPress",
+    wp_url: process.env.NEXT_PUBLIC_DEFAULT_WP_URL || "http://localhost:8080",
+    wp_graphql_endpoint: process.env.NEXT_PUBLIC_DEFAULT_WP_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql",
+    wp_user: process.env.NEXT_PUBLIC_DEFAULT_WP_USER || "admin",
     wp_app_password: "",
   });
 
@@ -87,7 +87,9 @@ export default function SetupPage() {
                 required
               />
               <p className="text-sm text-gray-500">
-                For local development: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">http://localhost:8080</code>
+                The URL where WordPress is accessible from this frontend.<br/>
+                Local: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">http://localhost:8080</code><br/>
+                Remote: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">https://yourdomain.com</code> or <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">http://server-ip:8080</code>
               </p>
             </div>
 
@@ -125,7 +127,7 @@ export default function SetupPage() {
               <div className="text-sm text-gray-500 space-y-1">
                 <p>To generate an application password:</p>
                 <ol className="list-decimal list-inside ml-2 space-y-1">
-                  <li>Go to <a href="http://localhost:8080/wp-admin/profile.php" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">WordPress Admin → Profile</a></li>
+                  <li>Go to <a href={`${formData.wp_url}/wp-admin/profile.php`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">WordPress Admin → Profile</a></li>
                   <li>Scroll to "Application Passwords"</li>
                   <li>Enter name: "WP-AI" and click "Add New Application Password"</li>
                   <li>Copy the generated password (keep the spaces)</li>
@@ -142,10 +144,12 @@ export default function SetupPage() {
 
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>Default Setup:</strong> If you ran <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">./scripts/setup.sh</code>,
-              your WordPress is at <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">http://localhost:8080</code> with
-              username <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">admin</code>.
-              Check your <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">.env</code> file for the app password.
+              <strong>Note:</strong> This manual setup is only needed if auto-setup failed.<br/>
+              Normally, WP-AI auto-creates the WordPress connection from environment variables.<br/>
+              <br/>
+              <strong>For Administrators:</strong> Configure <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">NEXT_PUBLIC_DEFAULT_WP_*</code> and
+              <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">DEFAULT_WP_APP_PASSWORD</code> in <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">web/.env.local</code>
+              to set the default WordPress connection for all users.
             </p>
           </div>
         </CardContent>
