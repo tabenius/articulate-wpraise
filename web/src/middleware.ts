@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/me",
+  "/api/auth/setup-default-connection",
 ];
 
 export async function middleware(request: NextRequest) {

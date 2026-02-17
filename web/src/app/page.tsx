@@ -38,16 +38,42 @@ export default function Home() {
 
       // Check if it's a 403 error (no WordPress connection)
       if (errorMessage.includes("403")) {
-        // Redirect to setup page
-        window.location.href = "/setup";
-        return;
+        // Try to auto-setup default connection
+        try {
+          const setupResponse = await fetch("/api/auth/setup-default-connection", {
+            method: "POST",
+          });
+
+          const setupResult = await setupResponse.json();
+
+          if (setupResult.success) {
+            // Success! Retry loading posts
+            toast({
+              title: "WordPress connected!",
+              description: "Your WordPress connection is ready.",
+            });
+            const posts = await fetchPosts();
+            setPosts(Array.isArray(posts) ? posts : []);
+            setLoading(false);
+            return;
+          } else if (setupResult.needsSetup) {
+            // Auto-setup failed, redirect to manual setup
+            window.location.href = "/setup";
+            return;
+          }
+        } catch (setupError) {
+          console.error("Auto-setup failed:", setupError);
+          // Fallback to manual setup
+          window.location.href = "/setup";
+          return;
+        }
       }
 
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [setPosts, setLoading, setError]);
+  }, [setPosts, setLoading, setError, toast]);
 
   const handleLoadPost = useCallback(
     async (postId: number) => {
