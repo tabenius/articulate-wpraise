@@ -3,11 +3,11 @@
 #
 # Usage:
 # 1. Install Caddy: https://caddyserver.com/docs/install
-# 2. Replace yourdomain.com with your actual domain
+# 2. Replace ragbaz.xyz with your actual domain
 # 3. Run: caddy run --config /path/to/Caddyfile
 
 # Your domain - replace with actual domain
-yourdomain.com {
+ragbaz.xyz {
     # Automatic HTTPS with Let's Encrypt
     # Caddy handles this automatically!
 
@@ -118,6 +118,6 @@ yourdomain.com {
 }
 
 # Optional: www subdomain redirect
-www.yourdomain.com {
-    redir https://yourdomain.com{uri} permanent
+www.ragbaz.xyz {
+    redir https://ragbaz.xyz{uri} permanent
 }

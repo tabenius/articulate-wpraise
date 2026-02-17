@@ -62,7 +62,8 @@ services:
         define('FORCE_SSL_ADMIN', true);
     volumes:
       - wp_data:/var/www/html
-    # NO PORTS EXPOSED - accessed via reverse proxy
+    ports:
+      - "127.0.0.1:8080:80"  # Only accessible from localhost for reverse proxy
     networks:
       - wp-ai-internal
       - wp-ai-proxy
@@ -115,7 +116,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    # NO PORTS EXPOSED - accessed via reverse proxy
+    ports:
+      - "127.0.0.1:8000:8000"  # Only accessible from localhost for Next.js server
     networks:
       - wp-ai-internal
       - wp-ai-proxy
@@ -166,6 +168,28 @@ services:
     networks:
       - wp-ai-internal
 
+  # Next.js frontend
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: wp-ai-web
+    restart: unless-stopped
+    depends_on:
+      - mcp-server
+    environment:
+      MCP_SERVER_URL: http://mcp-server:8000
+      DEFAULT_WP_NAME: ${DEFAULT_WP_NAME:-ragbaz.xyz WordPress}
+      DEFAULT_WP_URL: http://wordpress:80
+      DEFAULT_WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+      DEFAULT_WP_USER: ${WP_ADMIN_USER}
+      DEFAULT_WP_APP_PASSWORD: ${WP_APP_PASSWORD}
+    ports:
+      - "127.0.0.1:3000:3000"  # Only accessible from localhost for reverse proxy
+    networks:
+      - wp-ai-internal
+      - wp-ai-proxy
+
   # Documentation site
   docs:
     build:
@@ -175,6 +199,29 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8091:80"  # Only accessible from localhost for reverse proxy
+    networks:
+      - wp-ai-proxy
+
+  # Caddy reverse proxy with automatic HTTPS
+  caddy:
+    image: caddy:2-alpine
+    container_name: wp-ai-caddy
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+      - web
+      - mcp-server
+      - docs
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-ragbaz.xyz}
     networks:
       - wp-ai-proxy
 
@@ -192,3 +239,5 @@ volumes:
   db_data:
   wp_data:
   redis_data:
+  caddy_data:
+  caddy_config:
