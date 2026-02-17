@@ -8,9 +8,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Get the project root (parent of scripts directory)
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Change to project root
+cd "$PROJECT_ROOT"
+
 echo "======================================"
 echo "   WP-AI Domain Configuration Tool   "
 echo "======================================"
+echo ""
+echo "Project root: $PROJECT_ROOT"
 echo ""
 
 # Get domain from user
