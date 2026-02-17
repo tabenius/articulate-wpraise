@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${MCP_SERVER_URL}/call-tool", {
+    const response = await fetch(`${MCP_SERVER_URL}/call-tool`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
