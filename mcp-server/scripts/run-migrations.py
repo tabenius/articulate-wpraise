@@ -14,7 +14,20 @@ from pathlib import Path
 # Add parent directory to path to import wp_mcp
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from wp_mcp.database import get_connection
+import pymysql
+
+
+def get_connection():
+    """Get synchronous database connection for migrations"""
+    return pymysql.connect(
+        host=os.getenv("MYSQL_HOST", "mariadb"),
+        port=int(os.getenv("MYSQL_PORT", "3306")),
+        user=os.getenv("MYSQL_USER", "wpuser"),
+        password=os.getenv("MYSQL_PASSWORD", "wppassword"),
+        database=os.getenv("MYSQL_DATABASE", "wordpress"),
+        charset="utf8mb4",
+        autocommit=False,
+    )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
