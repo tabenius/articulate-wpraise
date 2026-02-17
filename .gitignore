@@ -50,3 +50,10 @@ npm-debug.log*
 coverage/
 htmlcov/
 .coverage
+
+# HAProxy & SSL
+haproxy.cfg.patch
+*.pem
+*.crt
+*.key
+certs/
