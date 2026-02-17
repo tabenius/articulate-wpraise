@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const sessionCookie = cookieStore.get("session");
     const authHeaders = sessionCookie
       ? { "X-Session-ID": sessionCookie.value }
-      : {};
+      : undefined;
 
     // Use BYOK key from header, or fall back to server env
     const clientKey = request.headers.get("X-API-Key");
