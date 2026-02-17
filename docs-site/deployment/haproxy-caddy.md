@@ -1,0 +1,1 @@
+../../docs/HAPROXY_WITH_CADDY.md

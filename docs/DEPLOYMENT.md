@@ -162,12 +162,13 @@ sudo certbot renew --dry-run
 
 ### Option 2: HAProxy
 
-**Best for:** High availability, advanced load balancing
+**Best for:** High availability, advanced load balancing, existing HAProxy infrastructure
 
 **Pros:**
 - Excellent performance
 - Advanced load balancing
 - Built-in statistics
+- Can integrate with existing HAProxy setups
 
 **Cons:**
 - Steeper learning curve
@@ -175,7 +176,10 @@ sudo certbot renew --dry-run
 
 **Setup:**
 
-See [README.md](../README.md#production-deployment-with-haproxy) for detailed HAProxy configuration.
+- **New HAProxy Setup**: See [README.md](../README.md#production-deployment-with-haproxy)
+- **Existing HAProxy**: See [HAPROXY_WITH_CADDY.md](HAPROXY_WITH_CADDY.md) for integration guide
+  - Option 1: HAProxy routes directly to WP-AI services
+  - Option 2: HAProxy + Caddy internal proxy (recommended for cleaner setup)
 
 ```bash
 # Install HAProxy

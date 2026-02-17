@@ -54,6 +54,19 @@ yourdomain.com {
         header Cache-Control "public, max-age=2592000"
     }
 
+    # Documentation site
+    @docs {
+        path /docs*
+    }
+    handle @docs {
+        reverse_proxy localhost:8091 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
     # GraphQL endpoint
     @graphql {
         path /graphql*

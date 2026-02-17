@@ -166,6 +166,18 @@ services:
     networks:
       - wp-ai-internal
 
+  # Documentation site
+  docs:
+    build:
+      context: ./docs-site
+      dockerfile: Dockerfile
+    container_name: wp-ai-docs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8091:80"  # Only accessible from localhost for reverse proxy
+    networks:
+      - wp-ai-proxy
+
 networks:
   # Internal network - not accessible from outside
   wp-ai-internal:
