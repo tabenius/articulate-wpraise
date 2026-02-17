@@ -1,0 +1,111 @@
+# Traefik reverse proxy configuration for WP-AI
+# Usage: docker compose -f docker-compose.production.yml -f docker/traefik/docker-compose.traefik.yml up -d
+
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: wp-ai-traefik
+    restart: unless-stopped
+    command:
+      # Enable Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=wp-ai-proxy"
+
+      # Entry points
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # Let's Encrypt automatic SSL
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+
+      # Dashboard (optional - comment out for production)
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+
+      # Logging
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard (remove in production)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - wp-ai-proxy
+    labels:
+      # Dashboard authentication (change these!)
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH}"  # user:$$apr1$$encrypted$$password
+
+  # Next.js frontend with Traefik labels
+  nextjs:
+    image: node:20-alpine
+    container_name: wp-ai-nextjs
+    restart: unless-stopped
+    working_dir: /app
+    command: npm start
+    volumes:
+      - ./web:/app
+    environment:
+      - NODE_ENV=production
+    networks:
+      - wp-ai-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextjs.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.nextjs.entrypoints=websecure"
+      - "traefik.http.routers.nextjs.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nextjs.loadbalancer.server.port=3000"
+
+  # Update existing services with Traefik labels
+  wordpress:
+    labels:
+      - "traefik.enable=true"
+      # WordPress admin
+      - "traefik.http.routers.wordpress.rule=Host(`${DOMAIN}`) && (PathPrefix(`/wp-admin`) || PathPrefix(`/wp-login.php`) || PathPrefix(`/wp-content`) || PathPrefix(`/wp-includes`))"
+      - "traefik.http.routers.wordpress.entrypoints=websecure"
+      - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      # GraphQL endpoint
+      - "traefik.http.routers.graphql.rule=Host(`${DOMAIN}`) && PathPrefix(`/graphql`)"
+      - "traefik.http.routers.graphql.entrypoints=websecure"
+      - "traefik.http.routers.graphql.tls.certresolver=letsencrypt"
+      - "traefik.http.services.graphql.loadbalancer.server.port=80"
+      # Rate limiting for WordPress
+      - "traefik.http.middlewares.wp-ratelimit.ratelimit.average=20"
+      - "traefik.http.middlewares.wp-ratelimit.ratelimit.burst=5"
+      - "traefik.http.routers.wordpress.middlewares=wp-ratelimit"
+
+  mcp-server:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/mcp`)"
+      - "traefik.http.routers.mcp.entrypoints=websecure"
+      - "traefik.http.routers.mcp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mcp.loadbalancer.server.port=8000"
+      # Strip /api/mcp prefix
+      - "traefik.http.middlewares.mcp-stripprefix.stripprefix.prefixes=/api/mcp"
+      - "traefik.http.routers.mcp.middlewares=mcp-stripprefix,mcp-ratelimit"
+      # Rate limiting for API
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.mcp-ratelimit.ratelimit.burst=10"
+
+volumes:
+  traefik_letsencrypt:

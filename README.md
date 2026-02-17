@@ -2,6 +2,12 @@
 
 AI-powered WordPress content editor. Chat with Claude to create and edit WordPress posts using a block editor, or edit blocks directly in a split-view interface.
 
+## 🚀 Quick Links
+
+- **Development Setup**: See [Quick Start](#quick-start) below
+- **Production Deployment**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) or [Quick Reference](docs/DEPLOYMENT_QUICK_REFERENCE.md)
+- **Security Guide**: See [SECURITY.md](SECURITY.md)
+
 ## Architecture
 
 ```
@@ -20,37 +26,39 @@ Browser  <--SSE/HTTP-->  Next.js API  <--JSON-RPC-->  Python MCP Server (Docker)
 - Node.js 20+
 - An Anthropic API key (optional if using BYOK in the UI)
 
-## Quick Start
+## Quick Start (Development)
 
-### 1. Configure environment
+> **⚠️ This is for local development only. For production deployment, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
+
+### Automated Setup
 
 ```bash
+# Run setup script (validates prerequisites, generates secrets)
+./scripts/setup.sh
+```
+
+The setup script will:
+- ✅ Check Docker, Node.js prerequisites
+- ✅ Create .env with secure auto-generated passwords
+- ✅ Start Docker services (MariaDB, WordPress, Redis, MCP Server)
+- ✅ Display WordPress admin credentials
+
+### Manual Setup
+
+If you prefer manual setup:
+
+```bash
+# 1. Configure environment
 cp .env.example .env
-```
+# Edit .env and set passwords (or let setup.sh generate them)
 
-Edit `.env` and set your `ANTHROPIC_API_KEY` (or leave it blank and use the BYOK option in the UI settings).
-
-### 2. Start Docker services
-
-```bash
+# 2. Start Docker services
 docker compose up -d
-```
 
-This starts:
-- **MariaDB** on port 3306
-- **WordPress** on port 8080
-- **wp-setup** (one-shot) - installs WPGraphQL plugins, creates app password, adds sample content
-- **MCP Server** on port 8000
+# 3. Wait for setup to complete
+docker compose logs -f wp-setup
 
-Wait for the `wp-ai-setup` container to finish (it exits after setup). You can check with:
-
-```bash
-docker compose logs wp-setup
-```
-
-### 3. Start the frontend
-
-```bash
+# 4. Start the frontend
 cd web
 cp .env.local.example .env.local
 npm install
@@ -125,7 +133,48 @@ wp-ai/
 | `get_media` | List media library |
 | `search_content` | Search posts and pages |
 
-## Production Deployment with HAProxy
+## Production Deployment
+
+> **📚 Complete deployment guide with multiple reverse proxy options available at [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
+>
+> **🚀 Quick reference for fast deployment: [docs/DEPLOYMENT_QUICK_REFERENCE.md](docs/DEPLOYMENT_QUICK_REFERENCE.md)**
+
+### Deployment Options
+
+WP-AI supports multiple production deployment configurations:
+
+1. **Caddy** (Easiest - automatic HTTPS) - Recommended for beginners
+2. **Traefik** (Docker-native - automatic HTTPS) - Recommended for Docker deployments
+3. **Nginx** (Most popular - manual SSL setup)
+4. **HAProxy** (High performance - manual SSL setup)
+
+### Quick Production Setup
+
+```bash
+# 1. Run automated setup
+./scripts/setup.sh
+
+# 2. Configure your domain
+./scripts/configure-domain.sh
+
+# 3. Deploy with production compose (no exposed ports)
+docker compose -f docker-compose.production.yml up -d
+
+# 4. Choose and configure reverse proxy (see docs/DEPLOYMENT.md)
+# - Caddy: Automatic HTTPS, zero config
+# - Traefik: Docker-native, automatic HTTPS
+# - Nginx: Traditional, requires Certbot for SSL
+# - HAProxy: High performance, requires manual SSL
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions for each option.
+
+---
+
+### Legacy: HAProxy Configuration
+
+<details>
+<summary>Click to expand HAProxy configuration (for reference)</summary>
 
 This section describes how to deploy WP-AI to a production server using HAProxy as a reverse proxy with SSL termination.
 
@@ -345,6 +394,12 @@ sudo systemctl start wp-ai-web
 ### Monitoring
 
 Access HAProxy stats at `http://yourserver:8404/stats` (username: admin, password: as configured).
+
+</details>
+
+---
+
+For complete production deployment instructions with all reverse proxy options, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## License
 

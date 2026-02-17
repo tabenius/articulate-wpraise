@@ -1,0 +1,110 @@
+# Caddy configuration for WP-AI production deployment
+# Caddy automatically handles HTTPS with Let's Encrypt!
+#
+# Usage:
+# 1. Install Caddy: https://caddyserver.com/docs/install
+# 2. Replace yourdomain.com with your actual domain
+# 3. Run: caddy run --config /path/to/Caddyfile
+
+# Your domain - replace with actual domain
+yourdomain.com {
+    # Automatic HTTPS with Let's Encrypt
+    # Caddy handles this automatically!
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/wp-ai-access.log
+        format json
+    }
+
+    # WordPress admin panel
+    @wpadmin {
+        path /wp-admin* /wp-login.php*
+    }
+    handle @wpadmin {
+        reverse_proxy localhost:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # WordPress static assets
+    @wpcontent {
+        path /wp-content/* /wp-includes/*
+    }
+    handle @wpcontent {
+        reverse_proxy localhost:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # Cache static assets
+        header Cache-Control "public, max-age=2592000"
+    }
+
+    # GraphQL endpoint
+    @graphql {
+        path /graphql*
+    }
+    handle @graphql {
+        reverse_proxy localhost:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # Disable buffering for streaming responses
+            flush_interval -1
+        }
+    }
+
+    # MCP Server API
+    @mcpapi {
+        path /api/mcp/*
+    }
+    handle @mcpapi {
+        # Strip /api/mcp prefix
+        uri strip_prefix /api/mcp
+
+        reverse_proxy localhost:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # SSE support for streaming
+            flush_interval -1
+        }
+    }
+
+    # Next.js frontend (default)
+    handle {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # WebSocket support for Next.js HMR
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Connection {http.request.header.Connection}
+        }
+    }
+}
+
+# Optional: www subdomain redirect
+www.yourdomain.com {
+    redir https://yourdomain.com{uri} permanent
+}
