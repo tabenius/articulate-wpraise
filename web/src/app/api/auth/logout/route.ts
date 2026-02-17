@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call MCP server to logout
-    const response = await fetch("http://mcp-server:8000/logout", {
+    const response = await fetch(`${MCP_SERVER_URL}/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { NextRequest } from "next/server";
 import {
   createAnthropicClient,

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json();
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call MCP server to register user
-    const response = await fetch("http://mcp-server:8000/register", {
+    const response = await fetch(`${MCP_SERVER_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, name }),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { callMCPTool } from "@/lib/mcp-client";
 
 export async function GET(request: NextRequest) {

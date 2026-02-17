@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Call MCP server to get user from session
-    const response = await fetch("http://mcp-server:8000/me", {
+    const response = await fetch(`${MCP_SERVER_URL}/me`, {
       method: "GET",
       headers: {
         "X-Session-ID": sessionCookie.value,
