@@ -1,0 +1,438 @@
+"""
+Comprehensive pytest-based test suite for WP-AI MCP Server.
+
+Tests all endpoints with proper setup/teardown and data cleanup.
+"""
+
+import pytest
+import requests
+import json
+import io
+from pathlib import Path
+from typing import Dict, Optional
+
+# Configuration
+BASE_URL = "http://localhost:8000"
+TEST_TIMEOUT = 30
+
+
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def base_url():
+    """Base URL for API requests."""
+    return BASE_URL
+
+
+@pytest.fixture(scope="session")
+def test_user_credentials():
+    """Test user credentials."""
+    import time
+    return {
+        "email": f"test-{int(time.time())}@example.com",
+        "password": "SecureTestPass123!",
+        "name": "Pytest Test User"
+    }
+
+
+@pytest.fixture(scope="session")
+def registered_user(base_url, test_user_credentials):
+    """Register a test user and return user info."""
+    response = requests.post(
+        f"{base_url}/register",
+        json=test_user_credentials,
+        timeout=TEST_TIMEOUT
+    )
+    assert response.status_code == 201, f"Registration failed: {response.text}"
+    user_data = response.json()
+    assert "id" in user_data
+    assert user_data["email"] == test_user_credentials["email"]
+    return {**user_data, **test_user_credentials}
+
+
+@pytest.fixture(scope="session")
+def auth_session(base_url, registered_user):
+    """Login and return session with auth headers."""
+    response = requests.post(
+        f"{base_url}/login",
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"]
+        },
+        timeout=TEST_TIMEOUT
+    )
+    assert response.status_code == 200, f"Login failed: {response.text}"
+    session_data = response.json()
+    assert "session_id" in session_data
+
+    return {
+        "session_id": session_data["session_id"],
+        "user": registered_user,
+        "headers": {
+            "X-Session-ID": session_data["session_id"],
+            "Content-Type": "application/json"
+        }
+    }
+
+
+@pytest.fixture
+def second_user(base_url):
+    """Create a second test user for invite/organization tests."""
+    import time
+    credentials = {
+        "email": f"test2-{int(time.time())}@example.com",
+        "password": "SecureTestPass123!",
+        "name": "Second Test User"
+    }
+
+    response = requests.post(
+        f"{base_url}/register",
+        json=credentials,
+        timeout=TEST_TIMEOUT
+    )
+    assert response.status_code == 201
+    user_data = response.json()
+
+    # Login
+    response = requests.post(
+        f"{base_url}/login",
+        json={"email": credentials["email"], "password": credentials["password"]},
+        timeout=TEST_TIMEOUT
+    )
+    session_data = response.json()
+
+    yield {
+        **user_data,
+        **credentials,
+        "session_id": session_data["session_id"],
+        "headers": {
+            "X-Session-ID": session_data["session_id"],
+            "Content-Type": "application/json"
+        }
+    }
+
+    # Cleanup: Delete second user
+    requests.delete(
+        f"{base_url}/profile",
+        headers={"X-Session-ID": session_data["session_id"], "Content-Type": "application/json"},
+        json={"password": credentials["password"]},
+        timeout=TEST_TIMEOUT
+    )
+
+
+# Cleanup tracking
+created_resources = {
+    "organizations": [],
+    "connections": [],
+    "invites": []
+}
+
+
+def track_resource(resource_type: str, resource_id: int):
+    """Track created resource for cleanup."""
+    created_resources[resource_type].append(resource_id)
+
+
+# =============================================================================
+# Health Check Tests
+# =============================================================================
+
+class TestHealthEndpoints:
+    """Test health check endpoints."""
+
+    def test_health_check(self, base_url):
+        """Test /health endpoint."""
+        response = requests.get(f"{base_url}/health", timeout=TEST_TIMEOUT)
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("alive") is True
+
+    def test_health_ready(self, base_url):
+        """Test /health/ready endpoint."""
+        response = requests.get(f"{base_url}/health/ready", timeout=TEST_TIMEOUT)
+        assert response.status_code in [200, 503]
+
+
+# =============================================================================
+# Authentication Tests
+# =============================================================================
+
+class TestAuthentication:
+    """Test authentication endpoints."""
+
+    def test_register_user(self, registered_user):
+        """Test user registration (via fixture)."""
+        assert registered_user["id"] > 0
+        assert "@" in registered_user["email"]
+
+    def test_login(self, auth_session):
+        """Test user login (via fixture)."""
+        assert len(auth_session["session_id"]) > 0
+
+    def test_get_me(self, base_url, auth_session):
+        """Test /me endpoint."""
+        response = requests.get(
+            f"{base_url}/me",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == auth_session["user"]["email"]
+
+    def test_invalid_login(self, base_url):
+        """Test login with invalid credentials."""
+        response = requests.post(
+            f"{base_url}/login",
+            json={"email": "invalid@example.com", "password": "wrongpass"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code in [400, 401]
+
+
+# =============================================================================
+# Profile Tests
+# =============================================================================
+
+class TestProfile:
+    """Test profile management endpoints."""
+
+    def test_get_profile(self, base_url, auth_session):
+        """Test GET /profile."""
+        response = requests.get(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == auth_session["user"]["email"]
+
+    def test_update_profile(self, base_url, auth_session):
+        """Test PUT /profile."""
+        import time
+        username = f"testuser{int(time.time())}"
+
+        response = requests.put(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            json={
+                "username": username,
+                "name": "Updated Name",
+                "bio": "Test bio for pytest"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == username
+        assert data["bio"] == "Test bio for pytest"
+
+    def test_get_profile_by_username(self, base_url, auth_session):
+        """Test GET /profile/{username}."""
+        # First set a username
+        import time
+        username = f"pubuser{int(time.time())}"
+
+        requests.put(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            json={"username": username},
+            timeout=TEST_TIMEOUT
+        )
+
+        # Then retrieve it publicly
+        response = requests.get(
+            f"{base_url}/profile/{username}",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == username
+
+
+# =============================================================================
+# Organization Tests
+# =============================================================================
+
+class TestOrganizations:
+    """Test organization management endpoints."""
+
+    def test_create_organization(self, base_url, auth_session):
+        """Test POST /organizations."""
+        import time
+        slug = f"test-org-{int(time.time())}"
+
+        response = requests.post(
+            f"{base_url}/organizations",
+            headers=auth_session["headers"],
+            json={
+                "name": "Test Organization",
+                "slug": slug,
+                "bio": "Organization for pytest testing"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["slug"] == slug
+        assert data["owner_id"] == auth_session["user"]["id"]
+
+        track_resource("organizations", data["id"])
+        return data
+
+    def test_list_organizations(self, base_url, auth_session):
+        """Test GET /organizations."""
+        # Create an org first
+        self.test_create_organization(base_url, auth_session)
+
+        response = requests.get(
+            f"{base_url}/organizations",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+
+    def test_get_organization(self, base_url, auth_session):
+        """Test GET /organizations/{id}."""
+        org = self.test_create_organization(base_url, auth_session)
+
+        response = requests.get(
+            f"{base_url}/organizations/{org['id']}",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == org["id"]
+
+    def test_update_organization(self, base_url, auth_session):
+        """Test PUT /organizations/{id}."""
+        org = self.test_create_organization(base_url, auth_session)
+
+        response = requests.put(
+            f"{base_url}/organizations/{org['id']}",
+            headers=auth_session["headers"],
+            json={
+                "name": "Updated Organization Name",
+                "bio": "Updated bio"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Organization Name"
+
+    def test_get_members(self, base_url, auth_session):
+        """Test GET /organizations/{id}/members."""
+        org = self.test_create_organization(base_url, auth_session)
+
+        response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        # Owner should be a member
+        assert len(data) >= 1
+        assert data[0]["role"] == "owner"
+
+
+# =============================================================================
+# Invite Tests
+# =============================================================================
+
+class TestInvites:
+    """Test organization invite system."""
+
+    def test_create_invite(self, base_url, auth_session, second_user):
+        """Test POST /organizations/{id}/invites."""
+        # Create an organization
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={
+                "email": second_user["email"],
+                "role": "member"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["invitee_email"] == second_user["email"]
+        assert "token" in data
+
+        track_resource("invites", data["id"])
+        return data
+
+    def test_get_user_invites(self, base_url, auth_session, second_user):
+        """Test GET /invites."""
+        # Create an invite for second user
+        self.test_create_invite(base_url, auth_session, second_user)
+
+        # Check second user's invites
+        response = requests.get(
+            f"{base_url}/invites",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+
+    def test_accept_invite(self, base_url, auth_session, second_user):
+        """Test POST /invites/accept."""
+        invite = self.test_create_invite(base_url, auth_session, second_user)
+
+        response = requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "id" in data  # Organization data
+
+
+# =============================================================================
+# Cleanup
+# =============================================================================
+
+def test_cleanup(base_url, auth_session):
+    """Cleanup: Delete all created resources."""
+    headers = auth_session["headers"]
+
+    # Delete organizations (will cascade delete members and invites)
+    for org_id in created_resources["organizations"]:
+        try:
+            requests.delete(
+                f"{base_url}/organizations/{org_id}",
+                headers=headers,
+                timeout=TEST_TIMEOUT
+            )
+        except:
+            pass
+
+    print(f"\n✅ Cleaned up {len(created_resources['organizations'])} organizations")
+
+
+def test_final_user_deletion(base_url, auth_session):
+    """Final cleanup: Delete the test user account."""
+    response = requests.delete(
+        f"{base_url}/profile",
+        headers=auth_session["headers"],
+        json={"password": auth_session["user"]["password"]},
+        timeout=TEST_TIMEOUT
+    )
+    assert response.status_code == 200
+    print("\n✅ Test user account deleted")
