@@ -10,6 +10,7 @@ import logging
 import os
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
@@ -27,7 +28,8 @@ configure_logging(json_format=json_format, log_level=log_level)
 
 logger = logging.getLogger("wp-mcp")
 
-# Initialize MCP server
+# Initialize MCP server with transport security settings
+# Allow Docker service names and localhost for internal communication
 mcp = FastMCP(
     "WordPress MCP Server",
     instructions=(
@@ -38,6 +40,23 @@ mcp = FastMCP(
         "Block types include: core/paragraph, core/heading, core/image, "
         "core/list, core/quote, core/code, core/columns, core/group, "
         "core/buttons, core/spacer, core/separator, and more."
+    ),
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "localhost",
+            "127.0.0.1",
+            "mcp-server",
+            "mcp-server:8000",
+            "wp-ai-mcp",
+            "wp-ai-mcp:8000",
+        ],
+        allowed_origins=[
+            "http://localhost:3000",
+            "http://localhost:4500",
+            "http://web:3000",
+            "http://wp-ai-web:3000",
+        ],
     ),
 )
 
