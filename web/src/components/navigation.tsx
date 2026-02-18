@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
+import { Notifications } from "./notifications";
 import { Button } from "./ui/button";
 import { Home, Users, UserCircle, Mail } from "lucide-react";
 
@@ -43,7 +44,10 @@ export function Navigation() {
               })}
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Notifications />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </nav>

@@ -602,6 +602,109 @@ class TestOrganizations:
 
 
 # =============================================================================
+# Activity Feed Tests
+# =============================================================================
+
+class TestActivityFeeds:
+    """Test activity feed functionality."""
+
+    def test_invite_creates_activity(self, base_url, auth_session, second_user):
+        """Test that sending an invite creates an activity."""
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Send invite
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "member"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 201
+
+        # Check user activities
+        activities_response = requests.get(
+            f"{base_url}/activities",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert activities_response.status_code == 200
+        activities = activities_response.json()
+
+        # Should have invite_sent activity
+        invite_activities = [a for a in activities if a["activity_type"] == "invite_sent"]
+        assert len(invite_activities) > 0
+        print("\n✅ Invite sent activity logged")
+
+    def test_accept_invite_creates_activity(self, base_url, auth_session, second_user):
+        """Test that accepting an invite creates activities."""
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Send and accept invite
+        invite_response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "member"},
+            timeout=TEST_TIMEOUT
+        )
+        invite = invite_response.json()
+
+        requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+
+        # Check second user's activities
+        activities_response = requests.get(
+            f"{base_url}/activities",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert activities_response.status_code == 200
+        activities = activities_response.json()
+
+        # Should have both invite_accepted and organization_joined
+        accepted_activities = [a for a in activities if a["activity_type"] == "invite_accepted"]
+        joined_activities = [a for a in activities if a["activity_type"] == "organization_joined"]
+
+        assert len(accepted_activities) > 0
+        assert len(joined_activities) > 0
+        print("\n✅ Invite acceptance activities logged")
+
+    def test_organization_activities(self, base_url, auth_session, second_user):
+        """Test GET /organizations/{id}/activities."""
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Get organization activities
+        response = requests.get(
+            f"{base_url}/organizations/{org['id']}/activities",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        activities = response.json()
+        assert isinstance(activities, list)
+        print("\n✅ Organization activities retrieved")
+
+    def test_activity_feed(self, base_url, auth_session):
+        """Test GET /activities/feed."""
+        response = requests.get(
+            f"{base_url}/activities/feed",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        activities = response.json()
+        assert isinstance(activities, list)
+
+        # Should include user's activities and their organizations' activities
+        print(f"\n✅ Activity feed retrieved: {len(activities)} activities")
+
+
+# =============================================================================
 # Invite Tests
 # =============================================================================
 

@@ -820,6 +820,71 @@ async def cancel_invite_endpoint(request):
         return JSONResponse({"error": "Failed to cancel invite"}, status_code=500)
 
 
+# Activity feed endpoints
+async def get_user_activities_endpoint(request):
+    """Get activities for a user."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.activity_manager import ActivityManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+
+        activities = await ActivityManager.get_user_activities(user["id"], limit, offset)
+        return JSONResponse(activities)
+    except Exception as e:
+        logger.error("Get user activities error: %s", e)
+        return JSONResponse({"error": "Failed to get activities"}, status_code=500)
+
+
+async def get_organization_activities_endpoint(request):
+    """Get activities for an organization."""
+    from wp_mcp.activity_manager import ActivityManager
+
+    try:
+        org_id = int(request.path_params.get("id"))
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+
+        activities = await ActivityManager.get_organization_activities(org_id, limit, offset)
+        return JSONResponse(activities)
+    except Exception as e:
+        logger.error("Get organization activities error: %s", e)
+        return JSONResponse({"error": "Failed to get activities"}, status_code=500)
+
+
+async def get_activity_feed_endpoint(request):
+    """Get activity feed for the current user."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.activity_manager import ActivityManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+
+        activities = await ActivityManager.get_feed(user["id"], limit, offset)
+        return JSONResponse(activities)
+    except Exception as e:
+        logger.error("Get activity feed error: %s", e)
+        return JSONResponse({"error": "Failed to get feed"}, status_code=500)
+
+
 # Connection management endpoints
 async def get_connections_endpoint(request):
     """Get user's WordPress connections."""
@@ -1428,6 +1493,10 @@ mcp._app.routes.extend(
         Route("/invites", get_user_invites_endpoint, methods=["GET"]),
         Route("/invites/accept", accept_invite_endpoint, methods=["POST"]),
         Route("/invites/reject", reject_invite_endpoint, methods=["POST"]),
+        # Activity feed routes
+        Route("/activities", get_user_activities_endpoint, methods=["GET"]),
+        Route("/activities/feed", get_activity_feed_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}/activities", get_organization_activities_endpoint, methods=["GET"]),
         # Connection routes
         Route("/connections", get_connections_endpoint, methods=["GET"]),
         Route("/connections", add_connection_endpoint, methods=["POST"]),

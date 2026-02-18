@@ -99,6 +99,16 @@ class InviteManager:
 
         logger.info(f"Invite created for {invitee_email} to org {org_id} by user {inviter_id}")
 
+        # Log activity
+        from wp_mcp.activity_manager import ActivityManager
+        org_info = await db.fetchone("SELECT name FROM wp_organizations WHERE id = %s", (org_id,))
+        await ActivityManager.log_activity(
+            inviter_id,
+            ActivityManager.INVITE_SENT,
+            org_id,
+            {"invitee_email": invitee_email, "role": role, "organization_name": org_info["name"] if org_info else None}
+        )
+
         return await InviteManager.get_invite(invite_id)
 
     @staticmethod
@@ -282,6 +292,22 @@ class InviteManager:
         )
 
         logger.info(f"User {user_id} accepted invite to org {invite['organization_id']}")
+
+        # Log activity
+        from wp_mcp.activity_manager import ActivityManager
+        await ActivityManager.log_activity(
+            user_id,
+            ActivityManager.INVITE_ACCEPTED,
+            invite["organization_id"],
+            {"role": invite["role"], "organization_name": invite["org_name"]}
+        )
+        # Also log join activity
+        await ActivityManager.log_activity(
+            user_id,
+            ActivityManager.ORGANIZATION_JOINED,
+            invite["organization_id"],
+            {"organization_name": invite["org_name"], "role": invite["role"]}
+        )
 
         # Return organization details
         from wp_mcp.organization_manager import OrganizationManager
