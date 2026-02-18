@@ -483,7 +483,20 @@ async def mcp_jsonrpc_endpoint(request):
             tool_name = params.get("name")
             tool_args = params.get("arguments", {})
 
-            logger.info(f"Calling tool: {tool_name} with args: {tool_args}")
+            # Extract connection context from request scope (set by auth middleware)
+            state = request.scope.get("state", {})
+            connection = state.get("connection")
+            user = state.get("user")
+
+            # Add connection context to tool args if available
+            if connection and user:
+                tool_args["context"] = {
+                    "connection_id": connection.get("id"),
+                    "user_id": user.get("id"),
+                }
+                logger.info(f"Calling tool: {tool_name} with connection_id={connection.get('id')}, user_id={user.get('id')}")
+            else:
+                logger.warning(f"Calling tool: {tool_name} without connection context")
 
             # Call the MCP tool directly
             result = await mcp.call_tool(tool_name, tool_args)

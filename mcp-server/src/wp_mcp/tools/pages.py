@@ -6,16 +6,17 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from wp_mcp.graphql.client import gql_client
+from wp_mcp.graphql.client import get_graphql_client
 from wp_mcp.graphql.queries import GET_PAGE, GET_PAGES
 from wp_mcp.graphql.mutations import CREATE_PAGE, UPDATE_PAGE
+from wp_mcp.context_helper import get_connection_info
 
 
 def register(mcp: FastMCP) -> None:
     """Register page-related tools with the MCP server."""
 
     @mcp.tool()
-    async def get_pages(per_page: int = 10) -> list[dict[str, Any]]:
+    async def get_pages(per_page: int = 10, context: dict | None = None) -> list[dict[str, Any]]:
         """List WordPress pages.
 
         Args:
@@ -24,15 +25,19 @@ def register(mcp: FastMCP) -> None:
         Returns:
             List of page objects with id, title, slug, status, date.
         """
-        data = await gql_client.query(
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        data = await client.query(
             GET_PAGES,
             variables={"first": min(per_page, 100)},
+            user_id=user_id,
         )
         pages = data.get("pages", {}).get("nodes", [])
         return [_format_page(p) for p in pages]
 
     @mcp.tool()
-    async def get_page(page_id: int) -> dict[str, Any]:
+    async def get_page(page_id: int, context: dict | None = None) -> dict[str, Any]:
         """Get a WordPress page by database ID.
 
         Args:
@@ -41,9 +46,13 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Page object with id, title, slug, status, content, date.
         """
-        data = await gql_client.query(
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        data = await client.query(
             GET_PAGE,
             variables={"id": str(page_id)},
+            user_id=user_id,
         )
         page = data.get("page")
         if not page:
@@ -55,6 +64,7 @@ def register(mcp: FastMCP) -> None:
         title: str,
         content: str = "",
         status: str = "draft",
+        context: dict | None = None,
     ) -> dict[str, Any]:
         """Create a new WordPress page.
 
@@ -66,12 +76,15 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The created page object.
         """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
         input_data: dict[str, Any] = {
             "title": title,
             "content": content,
             "status": status.upper(),
         }
-        data = await gql_client.mutate(
+        data = await client.mutate(
             CREATE_PAGE,
             variables={"input": input_data},
         )
@@ -86,6 +99,7 @@ def register(mcp: FastMCP) -> None:
         title: str | None = None,
         content: str | None = None,
         status: str | None = None,
+        context: dict | None = None,
     ) -> dict[str, Any]:
         """Update an existing WordPress page.
 
@@ -98,6 +112,9 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The updated page object.
         """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
         input_data: dict[str, Any] = {"id": str(page_id)}
         if title is not None:
             input_data["title"] = title
@@ -106,7 +123,7 @@ def register(mcp: FastMCP) -> None:
         if status is not None:
             input_data["status"] = status.upper()
 
-        data = await gql_client.mutate(
+        data = await client.mutate(
             UPDATE_PAGE,
             variables={"input": input_data},
         )

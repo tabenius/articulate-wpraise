@@ -6,9 +6,10 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from wp_mcp.graphql.client import gql_client  # TODO: Migrate to get_graphql_client()
+from wp_mcp.graphql.client import get_graphql_client
 from wp_mcp.graphql.queries import GET_POST, GET_POSTS
 from wp_mcp.graphql.mutations import CREATE_POST, UPDATE_POST, DELETE_POST
+from wp_mcp.context_helper import get_connection_info
 
 
 def register(mcp: FastMCP) -> None:
@@ -19,6 +20,7 @@ def register(mcp: FastMCP) -> None:
         status: str = "publish",
         per_page: int = 10,
         search: str | None = None,
+        context: dict | None = None,
     ) -> list[dict[str, Any]]:
         """List WordPress posts with optional filtering.
 
@@ -30,21 +32,25 @@ def register(mcp: FastMCP) -> None:
         Returns:
             List of post objects with id, title, slug, status, date, excerpt.
         """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
         where: dict[str, Any] = {}
         if status:
             where["status"] = status.upper()
         if search:
             where["search"] = search
 
-        data = await gql_client.query(
+        data = await client.query(
             GET_POSTS,
             variables={"first": min(per_page, 100), "where": where if where else None},
+            user_id=user_id,
         )
         posts = data.get("posts", {}).get("nodes", [])
         return [_format_post_summary(p) for p in posts]
 
     @mcp.tool()
-    async def get_post(post_id: int) -> dict[str, Any]:
+    async def get_post(post_id: int, context: dict | None = None) -> dict[str, Any]:
         """Get a single WordPress post by its database ID.
 
         Args:
@@ -53,9 +59,13 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Post object with id, title, slug, status, content, date.
         """
-        data = await gql_client.query(
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        data = await client.query(
             GET_POST,
             variables={"id": str(post_id)},
+            user_id=user_id,
         )
         post = data.get("post")
         if not post:
@@ -71,6 +81,7 @@ def register(mcp: FastMCP) -> None:
         category_ids: list[int] | None = None,
         tag_ids: list[int] | None = None,
         date: str | None = None,
+        context: dict | None = None,
     ) -> dict[str, Any]:
         """Create a new WordPress post.
 
@@ -86,6 +97,9 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The created post object with id, title, slug, status.
         """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
         input_data: dict[str, Any] = {
             "title": title,
             "content": content,
@@ -104,7 +118,7 @@ def register(mcp: FastMCP) -> None:
         if date is not None:
             input_data["date"] = date
 
-        data = await gql_client.mutate(
+        data = await client.mutate(
             CREATE_POST,
             variables={"input": input_data},
             invalidate_patterns=["gql:*post*"],
@@ -124,6 +138,7 @@ def register(mcp: FastMCP) -> None:
         category_ids: list[int] | None = None,
         tag_ids: list[int] | None = None,
         date: str | None = None,
+        context: dict | None = None,
     ) -> dict[str, Any]:
         """Update an existing WordPress post.
 
@@ -140,6 +155,9 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The updated post object.
         """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
         input_data: dict[str, Any] = {"id": str(post_id)}
         if title is not None:
             input_data["title"] = title
@@ -160,7 +178,7 @@ def register(mcp: FastMCP) -> None:
         if date is not None:
             input_data["date"] = date
 
-        data = await gql_client.mutate(
+        data = await client.mutate(
             UPDATE_POST,
             variables={"input": input_data},
             invalidate_patterns=["gql:*post*"],
@@ -171,7 +189,7 @@ def register(mcp: FastMCP) -> None:
         return _format_post(post)
 
     @mcp.tool()
-    async def delete_post(post_id: int) -> dict[str, Any]:
+    async def delete_post(post_id: int, context: dict | None = None) -> dict[str, Any]:
         """Delete a WordPress post by its database ID.
 
         Args:
@@ -180,7 +198,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Confirmation with deleted post title and id.
         """
-        data = await gql_client.mutate(
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        data = await client.mutate(
             DELETE_POST,
             variables={"input": {"id": str(post_id)}},
             invalidate_patterns=["gql:*post*"],
