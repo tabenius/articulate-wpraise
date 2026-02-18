@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Trash2, Crown, Shield, Eye, Users as UsersIcon } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -56,10 +57,18 @@ export default function OrganizationDetailPage() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
+  const [roleChangeDialog, setRoleChangeDialog] = useState<{
+    open: boolean;
+    memberId: number;
+    memberName: string;
+    currentRole: string;
+    newRole: string;
+  } | null>(null);
 
   useEffect(() => {
     loadOrganization();
@@ -86,10 +95,27 @@ export default function OrganizationDetailPage() {
 
   async function loadMembers() {
     try {
-      const response = await fetch(`http://localhost:8000/organizations/${orgId}/members`);
+      const sessionId = localStorage.getItem("session_id");
+      const response = await fetch(`http://localhost:8000/organizations/${orgId}/members`, {
+        headers: sessionId ? { "X-Session-ID": sessionId } : {},
+      });
       if (!response.ok) throw new Error("Failed to load members");
       const data = await response.json();
       setMembers(data);
+
+      // Find current user's role
+      if (sessionId) {
+        const profileResponse = await fetch("http://localhost:8000/profile", {
+          headers: { "X-Session-ID": sessionId },
+        });
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json();
+          const currentMember = data.find((m: Member) => m.user_id === profile.id);
+          if (currentMember) {
+            setCurrentUserRole(currentMember.role);
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to load members:", error);
     }
@@ -222,6 +248,56 @@ export default function OrganizationDetailPage() {
     }
   }
 
+  function handleRoleChangeRequest(memberId: number, memberName: string, currentRole: string, newRole: string) {
+    if (newRole === currentRole) return;
+
+    setRoleChangeDialog({
+      open: true,
+      memberId,
+      memberName,
+      currentRole,
+      newRole,
+    });
+  }
+
+  async function handleChangeRole() {
+    if (!roleChangeDialog) return;
+
+    try {
+      const sessionId = localStorage.getItem("session_id");
+      const response = await fetch(
+        `http://localhost:8000/organizations/${orgId}/members/${roleChangeDialog.memberId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-ID": sessionId || "",
+          },
+          body: JSON.stringify({ role: roleChangeDialog.newRole }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to change role");
+      }
+
+      toast({
+        title: "Role changed",
+        description: `${roleChangeDialog.memberName}'s role changed to ${roleChangeDialog.newRole}`,
+      });
+
+      setRoleChangeDialog(null);
+      loadMembers();
+    } catch (error) {
+      toast({
+        title: "Failed to change role",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+
   function getRoleIcon(role: string) {
     switch (role) {
       case "owner":
@@ -337,14 +413,51 @@ export default function OrganizationDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Badge variant={member.role === "owner" ? "default" : "secondary"}>
-                      <span className="flex items-center gap-1">
-                        {getRoleIcon(member.role)}
-                        {member.role}
-                      </span>
-                    </Badge>
+                    {/* Role selector for non-owners (if current user is owner/admin) */}
+                    {member.role !== "owner" && (currentUserRole === "owner" || currentUserRole === "admin") ? (
+                      <Select
+                        value={member.role}
+                        onValueChange={(newRole) => handleRoleChangeRequest(member.user_id, member.name, member.role, newRole)}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <div className="flex items-center gap-2">
+                            {getRoleIcon(member.role)}
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currentUserRole === "owner" && (
+                            <SelectItem value="admin">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                admin
+                              </div>
+                            </SelectItem>
+                          )}
+                          <SelectItem value="member">
+                            <div className="flex items-center gap-2">
+                              <UsersIcon className="h-4 w-4" />
+                              member
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="viewer">
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-4 w-4" />
+                              viewer
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={member.role === "owner" ? "default" : "secondary"}>
+                        <span className="flex items-center gap-1">
+                          {getRoleIcon(member.role)}
+                          {member.role}
+                        </span>
+                      </Badge>
+                    )}
 
-                    {member.role !== "owner" && (
+                    {member.role !== "owner" && (currentUserRole === "owner" || currentUserRole === "admin") && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -451,6 +564,29 @@ export default function OrganizationDetailPage() {
               <Button type="submit">Send Invite</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Change Confirmation Dialog */}
+      <Dialog
+        open={roleChangeDialog?.open || false}
+        onOpenChange={(open) => !open && setRoleChangeDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Member Role</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to change {roleChangeDialog?.memberName}'s role from{" "}
+              <strong>{roleChangeDialog?.currentRole}</strong> to{" "}
+              <strong>{roleChangeDialog?.newRole}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setRoleChangeDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleChangeRole}>Confirm</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

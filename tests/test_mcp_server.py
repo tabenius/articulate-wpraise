@@ -408,6 +408,96 @@ class TestOrganizations:
         assert len(data) >= 1
         assert data[0]["role"] == "owner"
 
+    def test_change_member_role(self, base_url, auth_session, second_user):
+        """Test PUT /organizations/{id}/members/{member_id} to change role."""
+        # Create organization
+        org = self.test_create_organization(base_url, auth_session)
+
+        # Create invite for second user
+        invite_response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "member"},
+            timeout=TEST_TIMEOUT
+        )
+        assert invite_response.status_code == 201
+        invite = invite_response.json()
+
+        # Accept invite as second user
+        requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+
+        # Get members to find second user's member ID
+        members_response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        members = members_response.json()
+        second_member = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        assert second_member["role"] == "member"
+
+        # Change role to admin (owner can do this)
+        response = requests.put(
+            f"{base_url}/organizations/{org['id']}/members/{second_member['user_id']}",
+            headers=auth_session["headers"],
+            json={"role": "admin"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        print(f"\n✅ Role changed from member to admin")
+
+        # Verify role change
+        members_response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        members = members_response.json()
+        updated_member = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        assert updated_member["role"] == "admin"
+
+    def test_change_role_permissions(self, base_url, auth_session, second_user):
+        """Test that only owners/admins can change roles."""
+        # Create organization
+        org = self.test_create_organization(base_url, auth_session)
+
+        # Create and accept invite as member
+        invite_response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "viewer"},
+            timeout=TEST_TIMEOUT
+        )
+        invite = invite_response.json()
+
+        requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+
+        # Get owner's member ID
+        members_response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        members = members_response.json()
+        owner_member = next(m for m in members if m["role"] == "owner")
+
+        # Try to change owner's role as viewer (should fail)
+        response = requests.put(
+            f"{base_url}/organizations/{org['id']}/members/{owner_member['user_id']}",
+            headers=second_user["headers"],
+            json={"role": "viewer"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code in [403, 400]
+        print("\n✅ Viewer cannot change roles")
+
 
 # =============================================================================
 # Invite Tests
