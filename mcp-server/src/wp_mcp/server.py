@@ -14,7 +14,8 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
-from starlette.routing import Route
+from starlette.routing import Route, Mount
+from starlette.staticfiles import StaticFiles
 
 from wp_mcp.config import config
 from wp_mcp.logging_config import configure_logging
@@ -306,6 +307,427 @@ async def me_endpoint(request):
         return JSONResponse({"error": "Failed to get user"}, status_code=500)
 
 
+# Profile management endpoints
+async def get_profile_endpoint(request):
+    """Get user profile."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.profile_manager import ProfileManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        profile = await ProfileManager.get_profile(user["id"])
+        return JSONResponse(profile)
+    except Exception as e:
+        logger.error("Get profile error: %s", e)
+        return JSONResponse({"error": "Failed to get profile"}, status_code=500)
+
+
+async def update_profile_endpoint(request):
+    """Update user profile."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.profile_manager import ProfileManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        profile = await ProfileManager.update_profile(
+            user_id=user["id"],
+            username=data.get("username"),
+            name=data.get("name"),
+            avatar=data.get("avatar"),
+            banner=data.get("banner"),
+            bio=data.get("bio"),
+        )
+        return JSONResponse(profile)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Update profile error: %s", e)
+        return JSONResponse({"error": "Failed to update profile"}, status_code=500)
+
+
+async def get_profile_by_username_endpoint(request):
+    """Get user profile by username (public)."""
+    from wp_mcp.profile_manager import ProfileManager
+
+    try:
+        username = request.path_params.get("username")
+        profile = await ProfileManager.get_profile_by_username(username)
+        if not profile:
+            return JSONResponse({"error": "User not found"}, status_code=404)
+        return JSONResponse(profile)
+    except Exception as e:
+        logger.error("Get profile by username error: %s", e)
+        return JSONResponse({"error": "Failed to get profile"}, status_code=500)
+
+
+# Organization management endpoints
+async def create_organization_endpoint(request):
+    """Create a new organization."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        org = await OrganizationManager.create_organization(
+            owner_id=user["id"],
+            name=data.get("name"),
+            slug=data.get("slug"),
+            avatar=data.get("avatar"),
+            banner=data.get("banner"),
+            bio=data.get("bio"),
+        )
+        return JSONResponse(org, status_code=201)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Create organization error: %s", e)
+        return JSONResponse({"error": "Failed to create organization"}, status_code=500)
+
+
+async def get_organizations_endpoint(request):
+    """Get user's organizations."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        orgs = await OrganizationManager.get_organizations_for_user(user["id"])
+        return JSONResponse(orgs)
+    except Exception as e:
+        logger.error("Get organizations error: %s", e)
+        return JSONResponse({"error": "Failed to get organizations"}, status_code=500)
+
+
+async def get_organization_endpoint(request):
+    """Get organization details."""
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        org_id = int(request.path_params.get("id"))
+        org = await OrganizationManager.get_organization(org_id)
+        if not org:
+            return JSONResponse({"error": "Organization not found"}, status_code=404)
+        return JSONResponse(org)
+    except Exception as e:
+        logger.error("Get organization error: %s", e)
+        return JSONResponse({"error": "Failed to get organization"}, status_code=500)
+
+
+async def update_organization_endpoint(request):
+    """Update organization."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        data = await request.json()
+
+        org = await OrganizationManager.update_organization(
+            org_id=org_id,
+            user_id=user["id"],
+            name=data.get("name"),
+            avatar=data.get("avatar"),
+            banner=data.get("banner"),
+            bio=data.get("bio"),
+        )
+        return JSONResponse(org)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Update organization error: %s", e)
+        return JSONResponse({"error": "Failed to update organization"}, status_code=500)
+
+
+async def delete_organization_endpoint(request):
+    """Delete organization."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        await OrganizationManager.delete_organization(org_id, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Delete organization error: %s", e)
+        return JSONResponse({"error": "Failed to delete organization"}, status_code=500)
+
+
+async def get_organization_members_endpoint(request):
+    """Get organization members."""
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        org_id = int(request.path_params.get("id"))
+        members = await OrganizationManager.get_members(org_id)
+        return JSONResponse(members)
+    except Exception as e:
+        logger.error("Get members error: %s", e)
+        return JSONResponse({"error": "Failed to get members"}, status_code=500)
+
+
+async def update_member_role_endpoint(request):
+    """Update member role."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        member_id = int(request.path_params.get("member_id"))
+        data = await request.json()
+
+        await OrganizationManager.update_member_role(
+            org_id=org_id,
+            target_user_id=member_id,
+            new_role=data.get("role"),
+            requester_user_id=user["id"],
+        )
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Update member role error: %s", e)
+        return JSONResponse({"error": "Failed to update role"}, status_code=500)
+
+
+async def remove_member_endpoint(request):
+    """Remove member from organization."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        member_id = int(request.path_params.get("member_id"))
+
+        await OrganizationManager.remove_member(
+            org_id=org_id,
+            target_user_id=member_id,
+            requester_user_id=user["id"],
+        )
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Remove member error: %s", e)
+        return JSONResponse({"error": "Failed to remove member"}, status_code=500)
+
+
+# Organization invite endpoints
+async def create_invite_endpoint(request):
+    """Create organization invite."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        data = await request.json()
+
+        invite = await InviteManager.create_invite(
+            org_id=org_id,
+            inviter_id=user["id"],
+            invitee_email=data.get("email"),
+            role=data.get("role", "member"),
+        )
+        return JSONResponse(invite, status_code=201)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Create invite error: %s", e)
+        return JSONResponse({"error": "Failed to create invite"}, status_code=500)
+
+
+async def get_organization_invites_endpoint(request):
+    """Get organization invites."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        invites = await InviteManager.get_invites_for_organization(org_id, user["id"])
+        return JSONResponse(invites)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Get invites error: %s", e)
+        return JSONResponse({"error": "Failed to get invites"}, status_code=500)
+
+
+async def get_user_invites_endpoint(request):
+    """Get current user's pending invites."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        invites = await InviteManager.get_invites_for_user(user["email"])
+        return JSONResponse(invites)
+    except Exception as e:
+        logger.error("Get user invites error: %s", e)
+        return JSONResponse({"error": "Failed to get invites"}, status_code=500)
+
+
+async def accept_invite_endpoint(request):
+    """Accept organization invite."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        token = data.get("token")
+
+        org = await InviteManager.accept_invite(token, user["id"])
+        return JSONResponse(org)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Accept invite error: %s", e)
+        return JSONResponse({"error": "Failed to accept invite"}, status_code=500)
+
+
+async def reject_invite_endpoint(request):
+    """Reject organization invite."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        token = data.get("token")
+
+        await InviteManager.reject_invite(token, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Reject invite error: %s", e)
+        return JSONResponse({"error": "Failed to reject invite"}, status_code=500)
+
+
+async def cancel_invite_endpoint(request):
+    """Cancel organization invite."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.invite_manager import InviteManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        invite_id = int(request.path_params.get("invite_id"))
+        await InviteManager.cancel_invite(invite_id, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Cancel invite error: %s", e)
+        return JSONResponse({"error": "Failed to cancel invite"}, status_code=500)
+
+
 # Connection management endpoints
 async def get_connections_endpoint(request):
     """Get user's WordPress connections."""
@@ -440,6 +862,79 @@ async def activate_connection_endpoint(request):
     except Exception as e:
         logger.error("Activate connection error: %s", e)
         return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
+
+
+async def upload_file_endpoint(request):
+    """Upload avatar or banner image."""
+    import os
+    import uuid
+    from pathlib import Path
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        # Get form data
+        form = await request.form()
+        file = form.get("file")
+        upload_type = form.get("type", "avatar")  # avatar or banner
+
+        if not file:
+            return JSONResponse({"error": "No file provided"}, status_code=400)
+
+        # Validate file type
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".avif"}
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in allowed_extensions:
+            return JSONResponse(
+                {"error": f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"},
+                status_code=400
+            )
+
+        # Validate file size (max 5MB)
+        content = await file.read()
+        max_size = 5 * 1024 * 1024  # 5MB
+        if len(content) > max_size:
+            return JSONResponse(
+                {"error": "File too large. Maximum size is 5MB"},
+                status_code=400
+            )
+
+        # Create uploads directory if it doesn't exist
+        uploads_dir = Path(__file__).parent.parent.parent / "uploads" / upload_type
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate unique filename
+        unique_filename = f"{user['id']}_{uuid.uuid4().hex}{file_ext}"
+        file_path = uploads_dir / unique_filename
+
+        # Save file
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        # Return URL (adjust based on your deployment)
+        file_url = f"/uploads/{upload_type}/{unique_filename}"
+
+        logger.info(f"File uploaded: {file_url} by user {user['id']}")
+
+        return JSONResponse({
+            "success": True,
+            "url": file_url,
+            "filename": unique_filename
+        })
+
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
+        return JSONResponse(
+            {"error": "Upload failed", "details": str(e)},
+            status_code=500
+        )
 
 
 async def setup_remote_wordpress_endpoint(request):
@@ -695,6 +1190,13 @@ async def mcp_jsonrpc_endpoint(request):
             status_code=500
         )
 
+# Create uploads directory if it doesn't exist
+from pathlib import Path
+uploads_dir = Path(__file__).parent.parent.parent / "uploads"
+uploads_dir.mkdir(exist_ok=True)
+(uploads_dir / "avatar").mkdir(exist_ok=True)
+(uploads_dir / "banner").mkdir(exist_ok=True)
+
 # Add all routes including the custom MCP JSON-RPC endpoint
 mcp._app.routes.extend(
     [
@@ -709,6 +1211,26 @@ mcp._app.routes.extend(
         Route("/login", login_endpoint, methods=["POST"]),
         Route("/logout", logout_endpoint, methods=["POST"]),
         Route("/me", me_endpoint, methods=["GET"]),
+        # Profile routes
+        Route("/profile", get_profile_endpoint, methods=["GET"]),
+        Route("/profile", update_profile_endpoint, methods=["PUT"]),
+        Route("/profile/{username}", get_profile_by_username_endpoint, methods=["GET"]),
+        # Organization routes
+        Route("/organizations", get_organizations_endpoint, methods=["GET"]),
+        Route("/organizations", create_organization_endpoint, methods=["POST"]),
+        Route("/organizations/{id:int}", get_organization_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}", update_organization_endpoint, methods=["PUT"]),
+        Route("/organizations/{id:int}", delete_organization_endpoint, methods=["DELETE"]),
+        Route("/organizations/{id:int}/members", get_organization_members_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}/members/{member_id:int}", update_member_role_endpoint, methods=["PUT"]),
+        Route("/organizations/{id:int}/members/{member_id:int}", remove_member_endpoint, methods=["DELETE"]),
+        # Organization invite routes
+        Route("/organizations/{id:int}/invites", create_invite_endpoint, methods=["POST"]),
+        Route("/organizations/{id:int}/invites", get_organization_invites_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}/invites/{invite_id:int}", cancel_invite_endpoint, methods=["DELETE"]),
+        Route("/invites", get_user_invites_endpoint, methods=["GET"]),
+        Route("/invites/accept", accept_invite_endpoint, methods=["POST"]),
+        Route("/invites/reject", reject_invite_endpoint, methods=["POST"]),
         # Connection routes
         Route("/connections", get_connections_endpoint, methods=["GET"]),
         Route("/connections", add_connection_endpoint, methods=["POST"]),
@@ -716,9 +1238,13 @@ mcp._app.routes.extend(
         Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
         Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
         Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
+        # Upload route
+        Route("/upload", upload_file_endpoint, methods=["POST"]),
         # Audit logs routes (require authentication)
         Route("/audit/logs", audit_logs_endpoint, methods=["GET"]),
         Route("/audit/summary", audit_summary_endpoint, methods=["GET"]),
+        # Static files
+        Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),
     ]
 )
 
