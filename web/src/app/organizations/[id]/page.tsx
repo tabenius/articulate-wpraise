@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Trash2, Crown, Shield, Eye, Users as UsersIcon } from "lucide-react";
+import { ArrowLeft, Mail, Trash2, Crown, Shield, Eye, Users as UsersIcon, Settings } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -420,10 +420,20 @@ export default function OrganizationDetailPage() {
                   <CardTitle className="text-2xl">{organization.name}</CardTitle>
                   <CardDescription>@{organization.slug}</CardDescription>
                 </div>
-                <Button onClick={() => setIsInviteDialogOpen(true)}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Invite Members
-                </Button>
+                <div className="flex gap-2">
+                  {currentUserRole === "owner" && (
+                    <Link href={`/organizations/${orgId}/settings`}>
+                      <Button variant="outline">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Button>
+                    </Link>
+                  )}
+                  <Button onClick={() => setIsInviteDialogOpen(true)}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Invite Members
+                  </Button>
+                </div>
               </div>
               {organization.bio && (
                 <p className="mt-3 text-gray-600">{organization.bio}</p>
