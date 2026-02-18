@@ -68,6 +68,126 @@ class UserManager:
         }
 
     @staticmethod
+    async def delete_user(user_id: int, password: str) -> bool:
+        """Delete user account with safeguards.
+
+        Args:
+            user_id: User ID to delete
+            password: User's password for confirmation
+
+        Returns:
+            True if deleted successfully
+
+        Raises:
+            ValueError: If validation fails or user cannot be deleted
+            RuntimeError: If deletion fails
+        """
+        if not user_id or user_id <= 0:
+            raise ValueError("Invalid user ID")
+
+        if not password:
+            raise ValueError("Password confirmation required")
+
+        # Get user
+        user = await db.fetchone(
+            "SELECT id, email, password_hash FROM wp_users_auth WHERE id = %s",
+            (user_id,),
+        )
+
+        if not user:
+            raise ValueError("User not found")
+
+        # Verify password
+        if not bcrypt.checkpw(
+            password.encode("utf-8"), user["password_hash"].encode("utf-8")
+        ):
+            logger.warning("User deletion failed: invalid password (user %d)", user_id)
+            raise ValueError("Invalid password")
+
+        # Check if user is sole owner of any organizations
+        sole_owner_orgs = await db.fetchall(
+            """
+            SELECT o.id, o.name
+            FROM wp_organizations o
+            WHERE o.owner_id = %s
+            AND NOT EXISTS (
+                SELECT 1 FROM wp_organization_members m
+                WHERE m.organization_id = o.id
+                AND m.user_id != %s
+                AND m.role IN ('owner', 'admin')
+            )
+            """,
+            (user_id, user_id),
+        )
+
+        if sole_owner_orgs:
+            org_names = ", ".join([org["name"] for org in sole_owner_orgs])
+            raise ValueError(
+                f"Cannot delete account: You are the sole owner of organizations: {org_names}. "
+                "Please transfer ownership or delete these organizations first."
+            )
+
+        # Begin transaction-like deletion (manual since we're using autocommit)
+        try:
+            # Delete user sessions (will cascade via FK)
+            rows = await db.execute(
+                "DELETE FROM wp_sessions WHERE user_id = %s",
+                (user_id,),
+            )
+            logger.info(f"Deleted {rows} sessions for user {user_id}")
+
+            # Delete organization memberships (will cascade via FK)
+            rows = await db.execute(
+                "DELETE FROM wp_organization_members WHERE user_id = %s",
+                (user_id,),
+            )
+            logger.info(f"Deleted {rows} organization memberships for user {user_id}")
+
+            # Delete pending invites created by user
+            rows = await db.execute(
+                "DELETE FROM wp_organization_invites WHERE inviter_id = %s AND status = 'pending'",
+                (user_id,),
+            )
+            logger.info(f"Deleted {rows} pending invites created by user {user_id}")
+
+            # Nullify invitee_id in invites (FK is SET NULL)
+            rows = await db.execute(
+                "UPDATE wp_organization_invites SET invitee_id = NULL WHERE invitee_id = %s",
+                (user_id,),
+            )
+            logger.info(f"Nullified {rows} invite references for user {user_id}")
+
+            # Delete WordPress connections (will cascade via FK)
+            rows = await db.execute(
+                "DELETE FROM wp_wordpress_connections WHERE user_id = %s",
+                (user_id,),
+            )
+            logger.info(f"Deleted {rows} WordPress connections for user {user_id}")
+
+            # Delete audit logs (if they exist and reference the user)
+            rows = await db.execute(
+                "UPDATE wp_audit_log SET user_id = NULL WHERE user_id = %s",
+                (user_id,),
+            )
+            logger.info(f"Nullified {rows} audit log references for user {user_id}")
+
+            # Finally, delete the user
+            rows = await db.execute(
+                "DELETE FROM wp_users_auth WHERE id = %s",
+                (user_id,),
+            )
+
+            if rows == 0:
+                raise RuntimeError("User deletion failed: no rows affected")
+
+            logger.info(f"User {user_id} ({user['email']}) deleted successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"User deletion failed for user {user_id}: {e}")
+            raise RuntimeError(f"Failed to delete user: {str(e)}")
+
+    @staticmethod
     async def authenticate(email: str, password: str) -> Optional[dict]:
         """Authenticate user and create session.
 

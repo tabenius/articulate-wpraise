@@ -81,14 +81,24 @@ class WordPressRemoteSetup:
 
         return exit_code, output, error
 
-    def find_wordpress_path(self) -> Optional[str]:
-        """Find WordPress installation path."""
-        print("🔍 Searching for WordPress installation...")
+    def find_all_wordpress_installations(self) -> list[str]:
+        """Find all WordPress installations on server.
+
+        Returns:
+            List of WordPress installation paths
+        """
+        print("🔍 Searching for WordPress installations...")
+
+        if not self.ssh_client:
+            return []
+
+        found_installations = []
 
         # Common WordPress paths
         common_paths = [
             "/var/www/html",
             "/var/www/wordpress",
+            "/var/www",
             "/usr/share/nginx/html",
             "/home/*/public_html",
             "/opt/wordpress",
@@ -96,31 +106,91 @@ class WordPressRemoteSetup:
 
         for path in common_paths:
             try:
-                exit_code, _, _ = self.execute_command(
-                    f"test -f {path}/wp-config.php",
-                    check_error=False
-                )
-                if exit_code == 0:
-                    print(f"✅ Found WordPress at {path}")
-                    return path
-            except:
+                # Handle wildcard paths
+                if '*' in path:
+                    _, output, _ = self.execute_command(
+                        f"find {path.rsplit('/*', 1)[0]} -maxdepth 2 -name wp-config.php 2>/dev/null | head -5",
+                        check_error=False
+                    )
+                    if output:
+                        for line in output.strip().split('\n'):
+                            if line:
+                                wp_dir = line.rsplit('/', 1)[0]
+                                if wp_dir not in found_installations:
+                                    found_installations.append(wp_dir)
+                else:
+                    exit_code, _, _ = self.execute_command(
+                        f"test -f {path}/wp-config.php",
+                        check_error=False
+                    )
+                    if exit_code == 0 and path not in found_installations:
+                        found_installations.append(path)
+            except Exception as e:
+                logger.debug(f"Error checking path {path}: {e}")
                 continue
 
-        # Try wp-cli if available
+        # Also try comprehensive search (defensive: limit results)
         try:
             _, output, _ = self.execute_command(
-                "wp --path=/var/www/html eval 'echo ABSPATH;'",
+                "find /var/www /home /opt -maxdepth 4 -name wp-config.php 2>/dev/null | head -10",
                 check_error=False
             )
             if output:
-                path = output.strip().rstrip('/')
-                print(f"✅ Found WordPress at {path} (via WP-CLI)")
-                return path
-        except:
-            pass
+                for line in output.strip().split('\n'):
+                    if line:
+                        wp_dir = line.rsplit('/', 1)[0]
+                        if wp_dir not in found_installations:
+                            found_installations.append(wp_dir)
+        except Exception as e:
+            logger.debug(f"Error in comprehensive search: {e}")
 
-        print("❌ Could not find WordPress installation")
-        return None
+        if found_installations:
+            print(f"✅ Found {len(found_installations)} WordPress installation(s)")
+            for path in found_installations:
+                print(f"   - {path}")
+        else:
+            print("❌ No WordPress installations found")
+
+        return found_installations
+
+    def find_wordpress_path(self, specified_path: Optional[str] = None) -> Optional[str]:
+        """Find WordPress installation path.
+
+        Args:
+            specified_path: Optional specific path to WordPress installation
+
+        Returns:
+            WordPress path or None
+        """
+        # Defensive: validate specified path
+        if specified_path:
+            # Sanitize path (basic security check)
+            if not specified_path.startswith('/'):
+                print(f"❌ Invalid path: must be absolute path")
+                return None
+
+            # Verify specified path has WordPress
+            try:
+                exit_code, _, _ = self.execute_command(
+                    f"test -f {specified_path}/wp-config.php",
+                    check_error=False
+                )
+                if exit_code == 0:
+                    print(f"✅ WordPress found at specified path: {specified_path}")
+                    return specified_path
+                else:
+                    print(f"❌ No WordPress found at {specified_path}")
+                    return None
+            except Exception as e:
+                print(f"❌ Error verifying path {specified_path}: {e}")
+                return None
+        else:
+            # Search for installations
+            installations = self.find_all_wordpress_installations()
+            if len(installations) > 0:
+                # Return first found installation
+                return installations[0]
+            return None
 
     def check_wp_cli(self) -> bool:
         """Check if WP-CLI is installed."""
@@ -278,8 +348,43 @@ define('JWT_AUTH_CORS_ENABLE', true);
             print(f"⚠️  JWT configuration warning: {e}")
             return False
 
-    def setup(self) -> Optional[dict]:
-        """Run complete WordPress setup for MCP integration."""
+    def discover_installations(self) -> Optional[dict]:
+        """Discover WordPress installations on remote server.
+
+        Returns:
+            Dict with list of found installations
+        """
+        print("\n🔍 Discovering WordPress Installations\n")
+
+        if not self.connect():
+            return None
+
+        try:
+            installations = self.find_all_wordpress_installations()
+
+            return {
+                "installations": installations,
+                "count": len(installations)
+            }
+
+        except Exception as e:
+            print(f"\n❌ Discovery failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+        finally:
+            self.disconnect()
+
+    def setup(self, wp_path: Optional[str] = None) -> Optional[dict]:
+        """Run complete WordPress setup for MCP integration.
+
+        Args:
+            wp_path: Optional WordPress installation path
+
+        Returns:
+            Connection info dict or None
+        """
         print("\n🚀 Starting WordPress Remote Setup for WP-AI MCP Integration\n")
 
         if not self.connect():
@@ -292,11 +397,17 @@ define('JWT_AUTH_CORS_ENABLE', true);
                 print("   Install it: https://wp-cli.org/")
                 return None
 
-            # Find WordPress
-            wp_path = self.find_wordpress_path()
-            if not wp_path:
+            # Find WordPress (use specified path or search)
+            if wp_path:
+                found_wp_path = self.find_wordpress_path(wp_path)
+            else:
+                found_wp_path = self.find_wordpress_path()
+
+            if not found_wp_path:
                 print("\n❌ Could not locate WordPress installation")
                 return None
+
+            wp_path = found_wp_path
 
             # Install required plugins
             required_plugins = [
@@ -365,6 +476,8 @@ def main():
     parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
     parser.add_argument("--key", help="Path to SSH private key file")
     parser.add_argument("--password", help="SSH password (not recommended, use --key instead)")
+    parser.add_argument("--wp-path", help="WordPress installation directory path")
+    parser.add_argument("--discover", action="store_true", help="Only discover WordPress installations (don't setup)")
     parser.add_argument("--username", default="mcp-api-user", help="WordPress username to create")
     parser.add_argument("--output", help="Save connection info to JSON file")
 
@@ -374,7 +487,7 @@ def main():
         print("❌ Error: Must provide either --key or --password")
         sys.exit(1)
 
-    # Setup WordPress
+    # Create setup instance
     setup = WordPressRemoteSetup(
         host=args.host,
         user=args.user,
@@ -383,7 +496,20 @@ def main():
         password=args.password
     )
 
-    connection_info = setup.setup()
+    # Run discover mode or full setup
+    if args.discover:
+        result = setup.discover_installations()
+        if result:
+            print(f"\n✅ Found {result['count']} WordPress installation(s)")
+            if args.output:
+                output_path = Path(args.output)
+                output_path.write_text(json.dumps(result, indent=2))
+                print(f"💾 Discovery results saved to: {output_path}")
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    else:
+        connection_info = setup.setup(wp_path=args.wp_path)
 
     if connection_info:
         # Save to file if requested

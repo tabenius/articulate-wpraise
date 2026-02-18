@@ -375,6 +375,50 @@ async def get_profile_by_username_endpoint(request):
         return JSONResponse({"error": "Failed to get profile"}, status_code=500)
 
 
+async def delete_user_account_endpoint(request):
+    """Delete user's own account (requires password confirmation)."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        password = data.get("password")
+
+        if not password:
+            return JSONResponse(
+                {"error": "Password confirmation required"},
+                status_code=400
+            )
+
+        # Delete user account
+        await UserManager.delete_user(user["id"], password)
+
+        logger.info(f"User account deleted: {user['email']} (ID: {user['id']})")
+
+        return JSONResponse({
+            "success": True,
+            "message": "Account deleted successfully"
+        })
+
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except RuntimeError as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    except Exception as e:
+        logger.error("Delete user account error: %s", e)
+        return JSONResponse(
+            {"error": "Failed to delete account"},
+            status_code=500
+        )
+
+
 # Organization management endpoints
 async def create_organization_endpoint(request):
     """Create a new organization."""
@@ -961,8 +1005,11 @@ async def setup_remote_wordpress_endpoint(request):
         port = data.get("port", 22)
         ssh_key = data.get("ssh_key")  # SSH private key content
         ssh_password = data.get("ssh_password")
+        wp_path = data.get("wp_path")  # Optional WordPress directory path
+        discover_only = data.get("discover", False)  # Discovery mode
         auto_create = data.get("auto_create", False)  # Auto-create connection
 
+        # Defensive: validate inputs
         if not host or not ssh_user:
             return JSONResponse(
                 {"error": "host and user are required"},
@@ -975,6 +1022,21 @@ async def setup_remote_wordpress_endpoint(request):
                 status_code=400
             )
 
+        # Defensive: validate port
+        if not isinstance(port, int) or port < 1 or port > 65535:
+            return JSONResponse(
+                {"error": "Invalid port number"},
+                status_code=400
+            )
+
+        # Defensive: sanitize wp_path if provided
+        if wp_path:
+            if not isinstance(wp_path, str) or not wp_path.startswith('/'):
+                return JSONResponse(
+                    {"error": "Invalid wp_path: must be absolute path"},
+                    status_code=400
+                )
+
         # Find the setup script
         script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "setup-remote-wordpress.py"
         if not script_path.exists():
@@ -985,6 +1047,14 @@ async def setup_remote_wordpress_endpoint(request):
 
         # Prepare command
         cmd = ["python3", str(script_path), "--host", host, "--user", ssh_user, "--port", str(port)]
+
+        # Add discovery flag if requested
+        if discover_only:
+            cmd.append("--discover")
+
+        # Add wp_path if provided
+        if wp_path and not discover_only:
+            cmd.extend(["--wp-path", wp_path])
 
         # Handle SSH key (write to temp file)
         key_file = None
@@ -1023,31 +1093,41 @@ async def setup_remote_wordpress_endpoint(request):
                 status_code=500
             )
 
-        # Parse output to extract connection info
+        # Parse output
         output = stdout.decode()
         logger.info(f"Remote setup output: {output}")
 
-        # Extract JSON from output (look for the connection details section)
+        # Extract JSON from output
         try:
             # Find the JSON block in output
-            json_start = output.find('{"name":')
-            if json_start == -1:
-                json_start = output.find('{')
+            json_start = output.find('{')
             json_end = output.rfind('}') + 1
 
             if json_start >= 0 and json_end > json_start:
-                connection_info = json.loads(output[json_start:json_end])
+                result = json.loads(output[json_start:json_end])
             else:
                 return JSONResponse(
-                    {"error": "Failed to parse setup output"},
+                    {"error": "Failed to parse output"},
                     status_code=500
                 )
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse connection info: {e}")
+            logger.error(f"Failed to parse output: {e}")
             return JSONResponse(
-                {"error": "Failed to parse connection info", "output": output},
+                {"error": "Failed to parse output", "details": output},
                 status_code=500
             )
+
+        # Handle discovery mode
+        if discover_only:
+            return JSONResponse({
+                "success": True,
+                "discover": True,
+                "installations": result.get("installations", []),
+                "count": result.get("count", 0)
+            })
+
+        # Handle setup mode
+        connection_info = result
 
         # Auto-create connection if requested
         connection = None
@@ -1214,6 +1294,7 @@ mcp._app.routes.extend(
         # Profile routes
         Route("/profile", get_profile_endpoint, methods=["GET"]),
         Route("/profile", update_profile_endpoint, methods=["PUT"]),
+        Route("/profile", delete_user_account_endpoint, methods=["DELETE"]),
         Route("/profile/{username}", get_profile_by_username_endpoint, methods=["GET"]),
         # Organization routes
         Route("/organizations", get_organizations_endpoint, methods=["GET"]),
