@@ -2,3 +2,4 @@ pytest>=7.4.0
 requests>=2.31.0
 pytest-timeout>=2.1.0
 pytest-xdist>=3.3.0  # For parallel test execution
+Pillow>=10.0.0  # For image compression tests

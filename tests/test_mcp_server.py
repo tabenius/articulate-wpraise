@@ -404,6 +404,217 @@ class TestInvites:
         assert "id" in data  # Organization data
 
 
+class TestImageCompression:
+    """Test image compression features."""
+
+    @staticmethod
+    def create_test_image(format="PNG", size=(100, 100), color=(255, 0, 0)):
+        """Create a test image in memory."""
+        from PIL import Image
+        img = Image.new("RGB", size, color)
+        buffer = io.BytesIO()
+        img.save(buffer, format=format)
+        buffer.seek(0)
+        return buffer
+
+    def test_upload_with_compression_webp(self, base_url, auth_session):
+        """Test POST /upload with WebP compression."""
+        headers = auth_session["headers"].copy()
+
+        # Create test image
+        test_image = self.create_test_image(format="PNG", size=(200, 200))
+
+        files = {"file": ("test.png", test_image, "image/png")}
+        data = {
+            "type": "avatar",
+            "compress": "true",
+            "format": "webp",
+            "quality": "85"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        assert "url" in result
+        assert "metadata" in result
+        assert result["metadata"]["format"] == "webp"
+        assert result["metadata"]["quality"] == 85
+        print(f"\n✅ WebP compression: {result['metadata']['compression_ratio']:.1f}% reduction")
+
+    def test_upload_with_compression_avif(self, base_url, auth_session):
+        """Test POST /upload with AVIF compression."""
+        headers = auth_session["headers"].copy()
+
+        test_image = self.create_test_image(format="PNG", size=(200, 200))
+
+        files = {"file": ("test.png", test_image, "image/png")}
+        data = {
+            "type": "avatar",
+            "compress": "true",
+            "format": "avif",
+            "quality": "80"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        assert result["metadata"]["format"] == "avif"
+        assert result["metadata"]["quality"] == 80
+        print(f"\n✅ AVIF compression: {result['metadata']['compression_ratio']:.1f}% reduction")
+
+    def test_upload_with_resize(self, base_url, auth_session):
+        """Test POST /upload with resizing."""
+        headers = auth_session["headers"].copy()
+
+        # Create large image
+        test_image = self.create_test_image(format="PNG", size=(1000, 1000))
+
+        files = {"file": ("test.png", test_image, "image/png")}
+        data = {
+            "type": "avatar",
+            "compress": "true",
+            "format": "webp",
+            "max_width": "512",
+            "max_height": "512"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        assert result["metadata"]["dimensions"]["width"] <= 512
+        assert result["metadata"]["dimensions"]["height"] <= 512
+        print(f"\n✅ Image resized: {result['metadata']['dimensions']['width']}x{result['metadata']['dimensions']['height']}")
+
+    def test_upload_without_compression(self, base_url, auth_session):
+        """Test POST /upload without compression."""
+        headers = auth_session["headers"].copy()
+
+        test_image = self.create_test_image(format="PNG", size=(100, 100))
+
+        files = {"file": ("test.png", test_image, "image/png")}
+        data = {"type": "avatar", "compress": "false"}
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        # No metadata when not compressing
+        assert "metadata" not in result or result["metadata"] is None
+        print("\n✅ Upload without compression successful")
+
+    def test_upload_invalid_format(self, base_url, auth_session):
+        """Test POST /upload with invalid format."""
+        headers = auth_session["headers"].copy()
+
+        test_image = self.create_test_image(format="PNG")
+
+        files = {"file": ("test.png", test_image, "image/png")}
+        data = {
+            "type": "avatar",
+            "compress": "true",
+            "format": "invalid_format"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        # Should either reject or use default format
+        assert response.status_code in [200, 400]
+        print("\n✅ Invalid format handling tested")
+
+    def test_image_compressor_class(self):
+        """Test ImageCompressor class methods directly."""
+        from wp_mcp.image_compressor import ImageCompressor
+
+        # Check availability
+        assert ImageCompressor.is_available()
+
+        # Create test image data
+        test_image = self.create_test_image(format="PNG", size=(200, 200))
+        image_data = test_image.getvalue()
+
+        # Test compression
+        compressed_data, metadata = ImageCompressor.compress_image(
+            image_data,
+            output_format="webp",
+            quality=85,
+            max_width=100,
+            max_height=100
+        )
+
+        assert len(compressed_data) > 0
+        assert metadata["format"] == "webp"
+        assert metadata["quality"] == 85
+        assert metadata["dimensions"]["width"] <= 100
+        assert metadata["dimensions"]["height"] <= 100
+        assert metadata["compression_ratio"] > 0
+        print(f"\n✅ ImageCompressor class: {metadata['compression_ratio']:.1f}% reduction")
+
+    def test_image_info(self):
+        """Test get_image_info method."""
+        from wp_mcp.image_compressor import ImageCompressor
+
+        test_image = self.create_test_image(format="PNG", size=(150, 200))
+        image_data = test_image.getvalue()
+
+        info = ImageCompressor.get_image_info(image_data)
+
+        assert info["format"] == "PNG"
+        assert info["width"] == 150
+        assert info["height"] == 200
+        assert info["size"] > 0
+        print(f"\n✅ Image info: {info['width']}x{info['height']}, {info['format']}, {info['size']} bytes")
+
+    def test_compression_formats(self):
+        """Test all supported compression formats."""
+        from wp_mcp.image_compressor import ImageCompressor
+
+        test_image = self.create_test_image(format="PNG", size=(100, 100))
+        image_data = test_image.getvalue()
+
+        formats = ["webp", "avif", "jpeg", "png"]
+
+        for fmt in formats:
+            compressed_data, metadata = ImageCompressor.compress_image(
+                image_data,
+                output_format=fmt
+            )
+            assert len(compressed_data) > 0
+            assert metadata["format"] == fmt
+            print(f"✅ {fmt.upper()}: {metadata['compression_ratio']:.1f}% reduction")
+
+
 # =============================================================================
 # Cleanup
 # =============================================================================
