@@ -443,9 +443,9 @@ async def activate_connection_endpoint(request):
 
 
 # Get the FastMCP app with MCP routes already configured
-# FastMCP creates the app via streamable_http_app() which includes /mcp route
-mcp._app = mcp.streamable_http_app()
-logger.info("Got FastMCP streamable HTTP app")
+# Use sse_app() which provides /sse and /messages endpoints for Server-Sent Events
+mcp._app = mcp.sse_app()
+logger.info("Got FastMCP SSE app with /sse and /messages endpoints")
 
 # Add health check routes BEFORE wrapping with middleware
 mcp._app.routes.extend(
