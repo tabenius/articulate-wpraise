@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Check } from "lucide-react";
+import { Plus, Trash2, Check, Server } from "lucide-react";
+import { RemoteSetupDialog } from "@/components/connections/remote-setup-dialog";
 
 export default function ConnectionsPage() {
   const { connections, activeConnection, addConnection, deleteConnection, activateConnection, isLoading } = useConnections();
   const { toast } = useToast();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isRemoteSetupOpen, setIsRemoteSetupOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     wp_url: "",
@@ -103,13 +105,22 @@ export default function ConnectionsPage() {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Connection
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsRemoteSetupOpen(true)}
+          >
+            <Server className="mr-2 h-4 w-4" />
+            Setup Remote
+          </Button>
+
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Connection
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add WordPress Connection</DialogTitle>
@@ -257,6 +268,19 @@ export default function ConnectionsPage() {
           ))}
         </div>
       )}
+
+      <RemoteSetupDialog
+        open={isRemoteSetupOpen}
+        onOpenChange={setIsRemoteSetupOpen}
+        onSuccess={(connection) => {
+          toast({
+            title: "Remote WordPress setup complete",
+            description: `Successfully configured ${connection.name}`,
+          });
+          // Refresh connections list
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

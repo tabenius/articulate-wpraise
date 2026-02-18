@@ -442,6 +442,152 @@ async def activate_connection_endpoint(request):
         return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
 
 
+async def setup_remote_wordpress_endpoint(request):
+    """Setup remote WordPress via SSH and optionally create connection."""
+    import asyncio
+    import json
+    import tempfile
+    from pathlib import Path
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        host = data.get("host")
+        ssh_user = data.get("user")
+        port = data.get("port", 22)
+        ssh_key = data.get("ssh_key")  # SSH private key content
+        ssh_password = data.get("ssh_password")
+        auto_create = data.get("auto_create", False)  # Auto-create connection
+
+        if not host or not ssh_user:
+            return JSONResponse(
+                {"error": "host and user are required"},
+                status_code=400
+            )
+
+        if not ssh_key and not ssh_password:
+            return JSONResponse(
+                {"error": "Either ssh_key or ssh_password is required"},
+                status_code=400
+            )
+
+        # Find the setup script
+        script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "setup-remote-wordpress.py"
+        if not script_path.exists():
+            return JSONResponse(
+                {"error": "Setup script not found"},
+                status_code=500
+            )
+
+        # Prepare command
+        cmd = ["python3", str(script_path), "--host", host, "--user", ssh_user, "--port", str(port)]
+
+        # Handle SSH key (write to temp file)
+        key_file = None
+        if ssh_key:
+            key_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.pem')
+            key_file.write(ssh_key)
+            key_file.close()
+            # Set proper permissions for SSH key
+            Path(key_file.name).chmod(0o600)
+            cmd.extend(["--key", key_file.name])
+        else:
+            cmd.extend(["--password", ssh_password])
+
+        # Run setup script
+        logger.info(f"Running remote WordPress setup for {host}")
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await process.communicate()
+
+        # Clean up temp key file
+        if key_file:
+            try:
+                Path(key_file.name).unlink()
+            except:
+                pass
+
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Setup failed"
+            logger.error(f"Remote setup failed: {error_msg}")
+            return JSONResponse(
+                {"error": "Remote setup failed", "details": error_msg},
+                status_code=500
+            )
+
+        # Parse output to extract connection info
+        output = stdout.decode()
+        logger.info(f"Remote setup output: {output}")
+
+        # Extract JSON from output (look for the connection details section)
+        try:
+            # Find the JSON block in output
+            json_start = output.find('{"name":')
+            if json_start == -1:
+                json_start = output.find('{')
+            json_end = output.rfind('}') + 1
+
+            if json_start >= 0 and json_end > json_start:
+                connection_info = json.loads(output[json_start:json_end])
+            else:
+                return JSONResponse(
+                    {"error": "Failed to parse setup output"},
+                    status_code=500
+                )
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse connection info: {e}")
+            return JSONResponse(
+                {"error": "Failed to parse connection info", "output": output},
+                status_code=500
+            )
+
+        # Auto-create connection if requested
+        connection = None
+        if auto_create:
+            try:
+                connection = await connection_manager.add_connection(
+                    user_id=user["id"],
+                    name=connection_info.get("name"),
+                    wp_url=connection_info.get("wp_url"),
+                    wp_graphql_endpoint=connection_info.get("wp_graphql_endpoint"),
+                    wp_user=connection_info.get("wp_user"),
+                    wp_app_password=connection_info.get("wp_app_password"),
+                )
+                logger.info(f"Auto-created connection {connection['id']} for user {user['id']}")
+            except Exception as e:
+                logger.error(f"Failed to auto-create connection: {e}")
+                # Don't fail the whole request if connection creation fails
+
+        return JSONResponse({
+            "success": True,
+            "connection_info": connection_info,
+            "connection": connection,
+            "output": output
+        }, status_code=201)
+
+    except Exception as e:
+        logger.error(f"Remote WordPress setup error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"error": "Setup failed", "details": str(e)},
+            status_code=500
+        )
+
+
 # Create a simple Starlette app instead of using FastMCP's transport
 # We'll handle JSON-RPC directly and call FastMCP tools
 from starlette.applications import Starlette
@@ -569,6 +715,7 @@ mcp._app.routes.extend(
         Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
         Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
         Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
+        Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
         # Audit logs routes (require authentication)
         Route("/audit/logs", audit_logs_endpoint, methods=["GET"]),
         Route("/audit/summary", audit_summary_endpoint, methods=["GET"]),
