@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.utilities.context import GlobalContext
 
-from wp_mcp.graphql.client import get_graphql_client
+from wp_mcp.graphql.client import gql_client  # TODO: Migrate to get_graphql_client()
 from wp_mcp.graphql.queries import GET_POST, GET_POSTS
 from wp_mcp.graphql.mutations import CREATE_POST, UPDATE_POST, DELETE_POST
 
