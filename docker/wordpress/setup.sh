@@ -322,6 +322,29 @@ install_custom_plugins() {
   return 0
 }
 
+install_must_use_plugins() {
+  log_section "Installing Must-Use Plugins"
+
+  if [ ! -d "/tmp/wp-ai-mu-plugins" ]; then
+    log_warning "No must-use plugins found"
+    return 0
+  fi
+
+  local mu_plugin_count=$(find /tmp/wp-ai-mu-plugins -maxdepth 1 -type f -name "*.php" | wc -l)
+  if [ $mu_plugin_count -eq 0 ]; then
+    log_warning "Must-use plugins directory is empty"
+    return 0
+  fi
+
+  log_info "Copying $mu_plugin_count must-use plugin(s)..."
+  mkdir -p "$WORDPRESS_PATH/wp-content/mu-plugins"
+  cp -r /tmp/wp-ai-mu-plugins/* "$WORDPRESS_PATH/wp-content/mu-plugins/"
+
+  log_success "Must-use plugins installed (auto-activated)"
+
+  return 0
+}
+
 # =============================================================================
 # Authentication Setup
 # =============================================================================
@@ -539,6 +562,7 @@ main() {
   install_wpgraphql || exit 1
   install_wpgraphql_content_blocks || exit 1
   configure_wpgraphql || exit 1
+  install_must_use_plugins || exit 1
   install_custom_plugins || exit 1
   create_application_password || exit 1
   update_mcp_connection || true  # Don't fail setup if this fails

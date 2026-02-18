@@ -24,3 +24,6 @@ RUN chmod +x /usr/local/migrations/*.sh
 # Copy custom plugins to a temporary location
 # (will be moved during setup since /var/www/html is a volume)
 COPY plugins /tmp/wp-ai-plugins/
+
+# Copy must-use plugins (these enable core functionality)
+COPY mu-plugins /tmp/wp-ai-mu-plugins/
