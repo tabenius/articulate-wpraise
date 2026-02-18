@@ -329,34 +329,53 @@ install_custom_plugins() {
 create_application_password() {
   log_section "Creating Application Password"
 
-  # Check if application password already exists
-  local existing=$(wp user application-password list 1 --field=name --path="$WORDPRESS_PATH" --allow-root 2>/dev/null | grep "wp-ai-mcp" || echo "")
+  # Check if application password already exists for admin user (ID 1)
+  local existing=$(wp user application-password list 1 --field=name --path="$WORDPRESS_PATH" --allow-root 2>/dev/null | grep "WP-AI MCP Server" || echo "")
 
   if [ -n "$existing" ]; then
-    log_info "Application password 'wp-ai-mcp' already exists"
-    log_warning "To create a new password, delete the existing one first:"
-    log_warning "  wp user application-password delete 1 wp-ai-mcp --path=$WORDPRESS_PATH --allow-root"
+    log_info "Application password 'WP-AI MCP Server' already exists for admin user"
+    log_info "Will update MCP connection with existing password"
+  else
+    log_info "Generating new application password for admin user..."
+    local app_pass=$(wp user application-password create 1 "WP-AI MCP Server" --porcelain --path="$WORDPRESS_PATH" --allow-root 2>/dev/null)
+
+    if [ -n "$app_pass" ]; then
+      echo ""
+      echo -e "${GREEN}=========================================${NC}"
+      echo -e "${GREEN}  Application Password Created${NC}"
+      echo -e "${GREEN}=========================================${NC}"
+      echo -e "${YELLOW}  Username: admin${NC}"
+      echo -e "${YELLOW}  Password: $app_pass${NC}"
+      echo -e "${GREEN}=========================================${NC}"
+      echo ""
+      log_success "Application password created"
+    else
+      log_error "Failed to create application password"
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+update_mcp_connection() {
+  log_section "Updating MCP Connection"
+
+  # Check if update script exists
+  if [ ! -f "/usr/local/bin/update-mcp-connection.sh" ]; then
+    log_warning "MCP connection update script not found"
+    log_warning "Skipping MCP connection update - you may need to update credentials manually"
     return 0
   fi
 
-  log_info "Generating new application password..."
-  local app_pass=$(wp user application-password create 1 "wp-ai-mcp" --porcelain --path="$WORDPRESS_PATH" --allow-root 2>/dev/null)
+  log_info "Running MCP connection update..."
+  bash /usr/local/bin/update-mcp-connection.sh
 
-  if [ -n "$app_pass" ]; then
-    echo ""
-    echo -e "${GREEN}=========================================${NC}"
-    echo -e "${GREEN}  Application Password Created${NC}"
-    echo -e "${GREEN}=========================================${NC}"
-    echo -e "${YELLOW}  Password: $app_pass${NC}"
-    echo -e "${GREEN}=========================================${NC}"
-    echo -e "Add this to your environment files:"
-    echo -e "  ${BLUE}WP_APP_PASSWORD=$app_pass${NC}"
-    echo -e "${GREEN}=========================================${NC}"
-    echo ""
-    log_success "Application password created"
+  if [ $? -eq 0 ]; then
+    log_success "MCP connection updated successfully"
   else
-    log_error "Failed to create application password"
-    return 1
+    log_warning "MCP connection update had issues, check logs above"
+    log_warning "You may need to update the connection manually in the web UI"
   fi
 
   return 0
@@ -522,6 +541,7 @@ main() {
   configure_wpgraphql || exit 1
   install_custom_plugins || exit 1
   create_application_password || exit 1
+  update_mcp_connection || true  # Don't fail setup if this fails
   create_sample_content || exit 1
   run_migrations || exit 1
 

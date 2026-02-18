@@ -10,9 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends default-mysql-c
 # Copy PHP upload configuration
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
-# Copy setup script
+# Copy setup scripts
 COPY setup.sh /usr/local/bin/wp-setup.sh
-RUN chmod +x /usr/local/bin/wp-setup.sh
+COPY update-mcp-connection.sh /usr/local/bin/update-mcp-connection.sh
+RUN chmod +x /usr/local/bin/wp-setup.sh /usr/local/bin/update-mcp-connection.sh
 
 # Copy migration system
 COPY run-migrations.sh /usr/local/bin/run-migrations.sh
