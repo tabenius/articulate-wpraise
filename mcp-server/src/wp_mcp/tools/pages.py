@@ -135,10 +135,16 @@ def register(mcp: FastMCP) -> None:
 
 def _format_page(page: dict[str, Any]) -> dict[str, Any]:
     """Format a page object for consistent output."""
+    # Generate slug from title if WordPress doesn't provide one (drafts)
+    slug = page.get("slug")
+    if not slug:
+        title = page.get("title", "")
+        slug = title.lower().replace(" ", "-").replace("_", "-") if title else f"page-{page.get('databaseId', '')}"
+
     return {
         "id": page.get("databaseId"),
         "title": page.get("title", ""),
-        "slug": page.get("slug", ""),
+        "slug": slug,
         "status": page.get("status", "").lower(),
         "content": page.get("content", ""),
         "date": page.get("date", ""),
