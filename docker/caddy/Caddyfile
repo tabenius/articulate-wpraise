@@ -31,7 +31,7 @@ ragbaz.xyz {
         path /wp-admin* /wp-login.php*
     }
     handle @wpadmin {
-        reverse_proxy localhost:8080 {
+        reverse_proxy wordpress:80 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -44,7 +44,7 @@ ragbaz.xyz {
         path /wp-content/* /wp-includes/*
     }
     handle @wpcontent {
-        reverse_proxy localhost:8080 {
+        reverse_proxy wordpress:80 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -59,7 +59,7 @@ ragbaz.xyz {
         path /docs*
     }
     handle @docs {
-        reverse_proxy localhost:8091 {
+        reverse_proxy docs:80 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -72,7 +72,7 @@ ragbaz.xyz {
         path /graphql*
     }
     handle @graphql {
-        reverse_proxy localhost:8080 {
+        reverse_proxy wordpress:80 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -91,7 +91,7 @@ ragbaz.xyz {
         # Strip /api/mcp prefix
         uri strip_prefix /api/mcp
 
-        reverse_proxy localhost:8000 {
+        reverse_proxy mcp-server:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -104,7 +104,7 @@ ragbaz.xyz {
 
     # Next.js frontend (default)
     handle {
-        reverse_proxy localhost:3000 {
+        reverse_proxy web:3000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}

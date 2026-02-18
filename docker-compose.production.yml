@@ -213,9 +213,9 @@ services:
       - mcp-server
       - docs
     ports:
-      - "80:80"      # HTTP
-      - "443:443"    # HTTPS
-      - "443:443/udp"  # HTTP/3
+      - "4555:80"    # HTTP (HAProxy uses port 80, so Caddy uses 4555)
+      - "4556:443"   # HTTPS (HAProxy uses 443, so Caddy uses 4556)
+      - "4556:443/udp"  # HTTP/3
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
