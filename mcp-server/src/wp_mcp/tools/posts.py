@@ -208,7 +208,7 @@ def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
     }
 
     # Add featured image if present
-    featured_image = post.get("featuredImage", {}).get("node")
+    featured_image = (post.get("featuredImage") or {}).get("node")
     if featured_image:
         details = featured_image.get("mediaDetails", {}) or {}
         result["featuredImage"] = {
@@ -236,7 +236,7 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
     }
 
     # Add featured image if present
-    featured_image = post.get("featuredImage", {}).get("node")
+    featured_image = (post.get("featuredImage") or {}).get("node")
     if featured_image:
         details = featured_image.get("mediaDetails", {}) or {}
         result["featuredImage"] = {
@@ -248,7 +248,7 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
         }
 
     # Add categories if present
-    categories = post.get("categories", {}).get("nodes", [])
+    categories = (post.get("categories") or {}).get("nodes", [])
     if categories:
         result["categories"] = [
             {
@@ -260,7 +260,7 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
         ]
 
     # Add tags if present
-    tags = post.get("tags", {}).get("nodes", [])
+    tags = (post.get("tags") or {}).get("nodes", [])
     if tags:
         result["tags"] = [
             {
