@@ -20,7 +20,7 @@ from starlette.staticfiles import StaticFiles
 from wp_mcp.config import config
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
-from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies, revisions
+from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies, revisions, image_tools
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -69,6 +69,7 @@ media.register(mcp)
 search.register(mcp)
 taxonomies.register(mcp)
 revisions.register(mcp)
+image_tools.register(mcp)
 
 logger.info("WordPress MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
@@ -909,11 +910,11 @@ async def activate_connection_endpoint(request):
 
 
 async def upload_file_endpoint(request):
-    """Upload avatar or banner image."""
-    import os
+    """Upload avatar or banner image with optional compression."""
     import uuid
     from pathlib import Path
     from wp_mcp.user_manager import UserManager
+    from wp_mcp.image_compressor import ImageCompressor
 
     try:
         session_id = request.headers.get("X-Session-ID")
@@ -929,6 +930,13 @@ async def upload_file_endpoint(request):
         file = form.get("file")
         upload_type = form.get("type", "avatar")  # avatar or banner
 
+        # Compression options (optional)
+        compress = form.get("compress", "true").lower() == "true"  # Default: compress
+        output_format = form.get("format")  # webp, avif, jpeg, png
+        quality = form.get("quality")  # 1-100
+        max_width = form.get("max_width")
+        max_height = form.get("max_height")
+
         if not file:
             return JSONResponse({"error": "No file provided"}, status_code=400)
 
@@ -941,12 +949,64 @@ async def upload_file_endpoint(request):
                 status_code=400
             )
 
-        # Validate file size (max 5MB)
+        # Read file content
         content = await file.read()
-        max_size = 5 * 1024 * 1024  # 5MB
+
+        # Validate file size (max 10MB before compression)
+        max_size = 10 * 1024 * 1024  # 10MB
         if len(content) > max_size:
             return JSONResponse(
-                {"error": "File too large. Maximum size is 5MB"},
+                {"error": "File too large. Maximum size is 10MB"},
+                status_code=400
+            )
+
+        compression_metadata = None
+
+        # Compress image if requested
+        if compress and ImageCompressor.is_available():
+            try:
+                # Parse numeric parameters
+                quality_int = int(quality) if quality else None
+                max_width_int = int(max_width) if max_width else None
+                max_height_int = int(max_height) if max_height else None
+
+                # Apply sane defaults based on upload type
+                if not output_format:
+                    output_format = "webp"  # Default to WebP
+
+                if not quality_int:
+                    quality_int = 85  # Default quality
+
+                if upload_type == "avatar" and not max_width_int:
+                    max_width_int = 512  # Max 512px for avatars
+
+                if upload_type == "banner" and not max_width_int:
+                    max_width_int = 2048  # Max 2048px for banners
+
+                content, compression_metadata = ImageCompressor.compress_image(
+                    content,
+                    output_format=output_format,
+                    quality=quality_int,
+                    max_width=max_width_int,
+                    max_height=max_height_int,
+                    preserve_exif=False,  # Strip EXIF for privacy
+                    auto_orient=True,
+                )
+
+                # Update file extension based on output format
+                if output_format:
+                    file_ext = f".{output_format.lower()}"
+
+                logger.info(f"Image compressed: {compression_metadata}")
+
+            except Exception as e:
+                logger.warning(f"Compression failed, using original: {e}")
+                # Continue with original file if compression fails
+
+        # Validate final size
+        if len(content) > 5 * 1024 * 1024:
+            return JSONResponse(
+                {"error": "File too large after compression. Maximum size is 5MB"},
                 status_code=400
             )
 
@@ -962,17 +1022,25 @@ async def upload_file_endpoint(request):
         with open(file_path, "wb") as f:
             f.write(content)
 
-        # Return URL (adjust based on your deployment)
+        # Return URL
         file_url = f"/uploads/{upload_type}/{unique_filename}"
 
         logger.info(f"File uploaded: {file_url} by user {user['id']}")
 
-        return JSONResponse({
+        response_data = {
             "success": True,
             "url": file_url,
-            "filename": unique_filename
-        })
+            "filename": unique_filename,
+            "size": len(content),
+        }
 
+        if compression_metadata:
+            response_data["compression"] = compression_metadata
+
+        return JSONResponse(response_data)
+
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
         logger.error(f"File upload error: {e}")
         return JSONResponse(
