@@ -374,3 +374,89 @@ class OrganizationManager:
             f"User {target_user_id} removed from org {org_id} by {requester_user_id}"
         )
         return True
+
+    @staticmethod
+    async def transfer_ownership(
+        org_id: int,
+        current_owner_id: int,
+        new_owner_id: int,
+        password: str,
+    ) -> bool:
+        """Transfer organization ownership to another admin.
+
+        Args:
+            org_id: Organization ID
+            current_owner_id: Current owner user ID
+            new_owner_id: New owner user ID (must be an existing admin)
+            password: Current owner's password for confirmation
+
+        Returns:
+            True if successful
+
+        Raises:
+            ValueError: If validation fails or unauthorized
+        """
+        # Verify current owner
+        org = await db.fetchone(
+            "SELECT owner_id FROM wp_organizations WHERE id = %s",
+            (org_id,),
+        )
+        if not org or org["owner_id"] != current_owner_id:
+            raise ValueError("Only the owner can transfer ownership")
+
+        # Verify password
+        import bcrypt
+        user = await db.fetchone(
+            "SELECT password_hash FROM wp_users_auth WHERE id = %s",
+            (current_owner_id,),
+        )
+        if not user:
+            raise ValueError("User not found")
+
+        if not bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+            raise ValueError("Invalid password")
+
+        # Verify new owner is an admin
+        new_owner_member = await db.fetchone(
+            """
+            SELECT role FROM wp_organization_members
+            WHERE organization_id = %s AND user_id = %s
+            """,
+            (org_id, new_owner_id),
+        )
+        if not new_owner_member:
+            raise ValueError("New owner must be a member of the organization")
+        if new_owner_member["role"] not in ["admin", "owner"]:
+            raise ValueError("New owner must be an admin")
+
+        # Perform transfer in transaction
+        # 1. Update organization owner_id
+        await db.execute(
+            "UPDATE wp_organizations SET owner_id = %s WHERE id = %s",
+            (new_owner_id, org_id),
+        )
+
+        # 2. Change current owner to admin
+        await db.execute(
+            """
+            UPDATE wp_organization_members
+            SET role = 'admin'
+            WHERE organization_id = %s AND user_id = %s
+            """,
+            (org_id, current_owner_id),
+        )
+
+        # 3. Change new owner to owner role
+        await db.execute(
+            """
+            UPDATE wp_organization_members
+            SET role = 'owner'
+            WHERE organization_id = %s AND user_id = %s
+            """,
+            (org_id, new_owner_id),
+        )
+
+        logger.info(
+            f"Ownership of org {org_id} transferred from {current_owner_id} to {new_owner_id}"
+        )
+        return True

@@ -556,6 +556,42 @@ async def delete_organization_endpoint(request):
         return JSONResponse({"error": "Failed to delete organization"}, status_code=500)
 
 
+async def transfer_organization_ownership_endpoint(request):
+    """Transfer organization ownership to another admin."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        data = await request.json()
+
+        new_owner_id = data.get("new_owner_id")
+        password = data.get("password")
+
+        if not new_owner_id or not password:
+            return JSONResponse(
+                {"error": "new_owner_id and password are required"}, status_code=400
+            )
+
+        await OrganizationManager.transfer_ownership(
+            org_id, user["id"], new_owner_id, password
+        )
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Transfer ownership error: %s", e)
+        return JSONResponse({"error": "Failed to transfer ownership"}, status_code=500)
+
+
 async def get_organization_members_endpoint(request):
     """Get organization members."""
     from wp_mcp.organization_manager import OrganizationManager
@@ -1381,6 +1417,7 @@ mcp._app.routes.extend(
         Route("/organizations/{id:int}", get_organization_endpoint, methods=["GET"]),
         Route("/organizations/{id:int}", update_organization_endpoint, methods=["PUT"]),
         Route("/organizations/{id:int}", delete_organization_endpoint, methods=["DELETE"]),
+        Route("/organizations/{id:int}/transfer", transfer_organization_ownership_endpoint, methods=["POST"]),
         Route("/organizations/{id:int}/members", get_organization_members_endpoint, methods=["GET"]),
         Route("/organizations/{id:int}/members/{member_id:int}", update_member_role_endpoint, methods=["PUT"]),
         Route("/organizations/{id:int}/members/{member_id:int}", remove_member_endpoint, methods=["DELETE"]),

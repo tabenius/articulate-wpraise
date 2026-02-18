@@ -498,6 +498,108 @@ class TestOrganizations:
         assert response.status_code in [403, 400]
         print("\n✅ Viewer cannot change roles")
 
+    def test_transfer_ownership(self, base_url, auth_session, second_user):
+        """Test POST /organizations/{id}/transfer to transfer ownership."""
+        # Create organization
+        org = self.test_create_organization(base_url, auth_session)
+
+        # Invite second user as admin
+        invite_response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "admin"},
+            timeout=TEST_TIMEOUT
+        )
+        invite = invite_response.json()
+
+        # Accept invite
+        requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+
+        # Transfer ownership to second user
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/transfer",
+            headers=auth_session["headers"],
+            json={
+                "new_owner_id": second_user["user"]["id"],
+                "password": auth_session["user"]["password"],
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        print("\n✅ Ownership transferred successfully")
+
+        # Verify organization owner changed
+        org_response = requests.get(
+            f"{base_url}/organizations/{org['id']}",
+            timeout=TEST_TIMEOUT
+        )
+        updated_org = org_response.json()
+        assert updated_org["owner_id"] == second_user["user"]["id"]
+
+        # Verify old owner is now admin
+        members_response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        members = members_response.json()
+        old_owner = next(m for m in members if m["user_id"] == auth_session["user"]["id"])
+        assert old_owner["role"] == "admin"
+
+        # Verify new owner has owner role
+        new_owner = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        assert new_owner["role"] == "owner"
+        print("✅ Roles updated correctly after transfer")
+
+    def test_transfer_ownership_validation(self, base_url, auth_session, second_user):
+        """Test ownership transfer validation."""
+        org = self.test_create_organization(base_url, auth_session)
+
+        # Try to transfer to non-admin (should fail)
+        invite_response = requests.post(
+            f"{base_url}/organizations/{org['id']}/invites",
+            headers=auth_session["headers"],
+            json={"email": second_user["user"]["email"], "role": "member"},
+            timeout=TEST_TIMEOUT
+        )
+        invite = invite_response.json()
+
+        requests.post(
+            f"{base_url}/invites/accept",
+            headers=second_user["headers"],
+            json={"token": invite["token"]},
+            timeout=TEST_TIMEOUT
+        )
+
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/transfer",
+            headers=auth_session["headers"],
+            json={
+                "new_owner_id": second_user["user"]["id"],
+                "password": auth_session["user"]["password"],
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 400
+        print("\n✅ Cannot transfer to non-admin")
+
+        # Try with wrong password (should fail)
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/transfer",
+            headers=auth_session["headers"],
+            json={
+                "new_owner_id": second_user["user"]["id"],
+                "password": "wrong_password",
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 400
+        print("✅ Wrong password rejected")
+
 
 # =============================================================================
 # Invite Tests

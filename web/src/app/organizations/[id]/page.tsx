@@ -69,6 +69,12 @@ export default function OrganizationDetailPage() {
     currentRole: string;
     newRole: string;
   } | null>(null);
+  const [transferDialog, setTransferDialog] = useState<{
+    open: boolean;
+    newOwnerId: number;
+    newOwnerName: string;
+  } | null>(null);
+  const [transferPassword, setTransferPassword] = useState("");
 
   useEffect(() => {
     loadOrganization();
@@ -298,6 +304,58 @@ export default function OrganizationDetailPage() {
     }
   }
 
+  function handleTransferRequest(newOwnerId: number, newOwnerName: string) {
+    setTransferDialog({
+      open: true,
+      newOwnerId,
+      newOwnerName,
+    });
+    setTransferPassword("");
+  }
+
+  async function handleTransferOwnership() {
+    if (!transferDialog) return;
+
+    try {
+      const sessionId = localStorage.getItem("session_id");
+      const response = await fetch(
+        `http://localhost:8000/organizations/${orgId}/transfer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-ID": sessionId || "",
+          },
+          body: JSON.stringify({
+            new_owner_id: transferDialog.newOwnerId,
+            password: transferPassword,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to transfer ownership");
+      }
+
+      toast({
+        title: "Ownership transferred",
+        description: `${transferDialog.newOwnerName} is now the owner of this organization`,
+      });
+
+      setTransferDialog(null);
+      setTransferPassword("");
+      loadOrganization();
+      loadMembers();
+    } catch (error) {
+      toast({
+        title: "Failed to transfer ownership",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+
   function getRoleIcon(role: string) {
     switch (role) {
       case "owner":
@@ -457,6 +515,18 @@ export default function OrganizationDetailPage() {
                       </Badge>
                     )}
 
+                    {/* Transfer ownership button (owner only, for admins) */}
+                    {currentUserRole === "owner" && member.role === "admin" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTransferRequest(member.user_id, member.name)}
+                      >
+                        <Crown className="h-4 w-4 mr-2" />
+                        Transfer Ownership
+                      </Button>
+                    )}
+
                     {member.role !== "owner" && (currentUserRole === "owner" || currentUserRole === "admin") && (
                       <Button
                         variant="ghost"
@@ -586,6 +656,66 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button onClick={handleChangeRole}>Confirm</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Ownership Dialog */}
+      <Dialog
+        open={transferDialog?.open || false}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTransferDialog(null);
+            setTransferPassword("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer Organization Ownership</DialogTitle>
+            <DialogDescription>
+              Transfer ownership of this organization to{" "}
+              <strong>{transferDialog?.newOwnerName}</strong>. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>Warning:</strong> After transferring ownership, you will become an admin.
+                The new owner will have full control of the organization.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transfer-password">Confirm with your password</Label>
+              <Input
+                id="transfer-password"
+                type="password"
+                placeholder="Enter your password"
+                value={transferPassword}
+                onChange={(e) => setTransferPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTransferDialog(null);
+                  setTransferPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleTransferOwnership}
+                disabled={!transferPassword}
+                variant="default"
+              >
+                <Crown className="mr-2 h-4 w-4" />
+                Transfer Ownership
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
