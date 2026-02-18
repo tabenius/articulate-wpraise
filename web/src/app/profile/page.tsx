@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/profile/image-upload";
-import { Edit2, Save, X, Trash2 } from "lucide-react";
+import { Edit2, Save, X, Trash2, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Profile {
@@ -19,6 +20,7 @@ interface Profile {
   avatar: string | null;
   banner: string | null;
   bio: string | null;
+  visibility: string;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +40,7 @@ export default function ProfilePage() {
     avatar: "",
     banner: "",
     bio: "",
+    visibility: "public",
   });
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export default function ProfilePage() {
         avatar: data.avatar || "",
         banner: data.banner || "",
         bio: data.bio || "",
+        visibility: data.visibility || "public",
       });
     } catch (error) {
       toast({
@@ -288,6 +292,30 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
+                <Label>Profile Visibility</Label>
+                <Tabs
+                  value={formData.visibility}
+                  onValueChange={(value) => setFormData({ ...formData, visibility: value })}
+                >
+                  <TabsList className="grid grid-cols-2 w-full max-w-md">
+                    <TabsTrigger value="public">
+                      <Eye className="mr-2 h-4 w-4" />
+                      Public
+                    </TabsTrigger>
+                    <TabsTrigger value="private">
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      Private
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <p className="text-xs text-gray-500">
+                  {formData.visibility === "public"
+                    ? "Your profile can be viewed by anyone"
+                    : "Only you can view your profile"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Email</Label>
                 <Input value={profile.email} disabled />
                 <p className="text-xs text-gray-500">Email cannot be changed</p>
@@ -322,6 +350,23 @@ export default function ProfilePage() {
                 <Label>Bio</Label>
                 <p className="text-gray-700 whitespace-pre-wrap">
                   {profile.bio || <span className="text-gray-400 italic">No bio yet</span>}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Profile Visibility</Label>
+                <p className="text-gray-700 flex items-center gap-2">
+                  {profile.visibility === "public" ? (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      Public
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-4 w-4" />
+                      Private
+                    </>
+                  )}
                 </p>
               </div>
 

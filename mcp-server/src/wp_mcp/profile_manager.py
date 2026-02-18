@@ -26,7 +26,7 @@ class ProfileManager:
         """
         profile = await db.fetchone(
             """
-            SELECT id, email, username, name, avatar, banner, bio, created_at, updated_at
+            SELECT id, email, username, name, avatar, banner, bio, visibility, created_at, updated_at
             FROM wp_users_auth
             WHERE id = %s
             """,
@@ -42,6 +42,7 @@ class ProfileManager:
         avatar: Optional[str] = None,
         banner: Optional[str] = None,
         bio: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> dict:
         """Update user profile.
 
@@ -52,6 +53,7 @@ class ProfileManager:
             avatar: Avatar URL
             banner: Banner URL
             bio: Bio text (max 500 chars)
+            visibility: Profile visibility (public, private)
 
         Returns:
             Updated profile dict
@@ -83,6 +85,12 @@ class ProfileManager:
         if bio is not None and len(bio) > 500:
             raise ValueError("Bio cannot exceed 500 characters")
 
+        # Validate visibility
+        if visibility is not None:
+            valid_visibility = ["public", "private"]
+            if visibility not in valid_visibility:
+                raise ValueError(f"Visibility must be one of: {', '.join(valid_visibility)}")
+
         # Build update query dynamically
         updates = []
         params = []
@@ -102,6 +110,9 @@ class ProfileManager:
         if bio is not None:
             updates.append("bio = %s")
             params.append(bio)
+        if visibility is not None:
+            updates.append("visibility = %s")
+            params.append(visibility)
 
         if not updates:
             # Nothing to update, just return current profile
@@ -117,21 +128,72 @@ class ProfileManager:
         return await ProfileManager.get_profile(user_id)
 
     @staticmethod
-    async def get_profile_by_username(username: str) -> Optional[dict]:
+    async def get_profile_by_username(
+        username: str,
+        requesting_user_id: Optional[int] = None
+    ) -> Optional[dict]:
         """Get user profile by username.
 
         Args:
             username: Username
+            requesting_user_id: ID of user requesting the profile (for visibility check)
 
         Returns:
-            Profile dict or None
+            Profile dict or None (if not found or not visible)
         """
         profile = await db.fetchone(
             """
-            SELECT id, email, username, name, avatar, banner, bio, created_at
+            SELECT id, email, username, name, avatar, banner, bio, visibility, created_at
             FROM wp_users_auth
             WHERE username = %s
             """,
             (username,),
         )
+
+        if not profile:
+            return None
+
+        # Check visibility
+        if not await ProfileManager.is_profile_visible(
+            profile["id"],
+            requesting_user_id
+        ):
+            return None
+
         return profile
+
+    @staticmethod
+    async def is_profile_visible(
+        profile_user_id: int,
+        requesting_user_id: Optional[int] = None
+    ) -> bool:
+        """Check if a profile is visible to the requesting user.
+
+        Args:
+            profile_user_id: ID of the profile owner
+            requesting_user_id: ID of user requesting access (None for anonymous)
+
+        Returns:
+            True if profile is visible, False otherwise
+        """
+        # Get profile visibility
+        result = await db.fetchone(
+            "SELECT visibility FROM wp_users_auth WHERE id = %s",
+            (profile_user_id,),
+        )
+
+        if not result:
+            return False
+
+        visibility = result.get("visibility", "public")
+
+        # Own profile is always visible
+        if requesting_user_id == profile_user_id:
+            return True
+
+        # Public profiles are visible to everyone
+        if visibility == "public":
+            return True
+
+        # Private profiles are only visible to the owner
+        return False

@@ -352,6 +352,7 @@ async def update_profile_endpoint(request):
             avatar=data.get("avatar"),
             banner=data.get("banner"),
             bio=data.get("bio"),
+            visibility=data.get("visibility"),
         )
         return JSONResponse(profile)
     except ValueError as e:
@@ -362,14 +363,24 @@ async def update_profile_endpoint(request):
 
 
 async def get_profile_by_username_endpoint(request):
-    """Get user profile by username (public)."""
+    """Get user profile by username (respects visibility settings)."""
     from wp_mcp.profile_manager import ProfileManager
 
     try:
         username = request.path_params.get("username")
-        profile = await ProfileManager.get_profile_by_username(username)
+
+        # Get requesting user ID from session if available
+        session_id = request.headers.get("x-session-id")
+        requesting_user_id = None
+        if session_id:
+            from wp_mcp.user_manager import UserManager
+            user = await UserManager.get_user_by_session(session_id)
+            if user:
+                requesting_user_id = user["id"]
+
+        profile = await ProfileManager.get_profile_by_username(username, requesting_user_id)
         if not profile:
-            return JSONResponse({"error": "User not found"}, status_code=404)
+            return JSONResponse({"error": "User not found or profile is private"}, status_code=404)
         return JSONResponse(profile)
     except Exception as e:
         logger.error("Get profile by username error: %s", e)

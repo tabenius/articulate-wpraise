@@ -252,6 +252,72 @@ class TestProfile:
         data = response.json()
         assert data["username"] == username
 
+    def test_profile_visibility_public(self, base_url, auth_session, second_user):
+        """Test public profile visibility."""
+        # Set main user's profile to public
+        response = requests.put(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            json={"visibility": "public", "username": "public_user_test"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+
+        # Second user should be able to view it
+        response = requests.get(
+            f"{base_url}/profile/public_user_test",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "public_user_test"
+        assert data["visibility"] == "public"
+        print("\n✅ Public profile visible to other users")
+
+    def test_profile_visibility_private(self, base_url, auth_session, second_user):
+        """Test private profile visibility."""
+        # Set main user's profile to private
+        response = requests.put(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            json={"visibility": "private", "username": "private_user_test"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+
+        # Second user should NOT be able to view it
+        response = requests.get(
+            f"{base_url}/profile/private_user_test",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 404
+        print("\n✅ Private profile not visible to other users")
+
+        # But the owner should still be able to view it
+        response = requests.get(
+            f"{base_url}/profile/private_user_test",
+            headers=auth_session["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "private_user_test"
+        assert data["visibility"] == "private"
+        print("✅ Private profile visible to owner")
+
+    def test_profile_visibility_invalid(self, base_url, auth_session):
+        """Test invalid visibility value."""
+        response = requests.put(
+            f"{base_url}/profile",
+            headers=auth_session["headers"],
+            json={"visibility": "invalid_value"},
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 400
+        print("\n✅ Invalid visibility value rejected")
+
 
 # =============================================================================
 # Organization Tests
