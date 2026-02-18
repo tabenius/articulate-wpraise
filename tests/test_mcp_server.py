@@ -705,6 +705,98 @@ class TestActivityFeeds:
 
 
 # =============================================================================
+# Organization Search & Discovery Tests
+# =============================================================================
+
+class TestOrganizationDiscovery:
+    """Test organization search and discovery."""
+
+    def test_search_organizations(self, base_url, auth_session):
+        """Test GET /organizations/search."""
+        # Create an organization
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Search for all organizations
+        response = requests.get(
+            f"{base_url}/organizations/search",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        orgs = response.json()
+        assert isinstance(orgs, list)
+        assert len(orgs) > 0
+        print(f"\n✅ Found {len(orgs)} organizations")
+
+    def test_search_with_query(self, base_url, auth_session):
+        """Test search with query parameter."""
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Search by name
+        response = requests.get(
+            f"{base_url}/organizations/search?q=Test",
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        orgs = response.json()
+        assert isinstance(orgs, list)
+
+        # Should find the test organization
+        test_orgs = [o for o in orgs if "Test" in o["name"]]
+        assert len(test_orgs) > 0
+        print("\n✅ Search by query works")
+
+    def test_join_public_organization(self, base_url, auth_session, second_user):
+        """Test POST /organizations/{id}/join."""
+        # Create organization
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Join as second user
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/join",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == org["id"]
+        print("\n✅ Joined public organization")
+
+        # Verify membership
+        members_response = requests.get(
+            f"{base_url}/organizations/{org['id']}/members",
+            timeout=TEST_TIMEOUT
+        )
+        members = members_response.json()
+        member_ids = [m["user_id"] for m in members]
+        assert second_user["user"]["id"] in member_ids
+        print("✅ Membership verified")
+
+    def test_cannot_join_twice(self, base_url, auth_session, second_user):
+        """Test that user cannot join the same organization twice."""
+        org_test = TestOrganizations()
+        org = org_test.test_create_organization(base_url, auth_session)
+
+        # Join first time
+        requests.post(
+            f"{base_url}/organizations/{org['id']}/join",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+
+        # Try to join again
+        response = requests.post(
+            f"{base_url}/organizations/{org['id']}/join",
+            headers=second_user["headers"],
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 400
+        print("\n✅ Cannot join organization twice")
+
+
+# =============================================================================
 # Invite Tests
 # =============================================================================
 

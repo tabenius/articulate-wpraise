@@ -592,6 +592,52 @@ async def transfer_organization_ownership_endpoint(request):
         return JSONResponse({"error": "Failed to transfer ownership"}, status_code=500)
 
 
+async def search_organizations_endpoint(request):
+    """Search for public organizations."""
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        query = request.query_params.get("q")
+        visibility = request.query_params.get("visibility", "public")
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+
+        orgs = await OrganizationManager.search_organizations(
+            query=query,
+            visibility=visibility,
+            limit=limit,
+            offset=offset
+        )
+        return JSONResponse(orgs)
+    except Exception as e:
+        logger.error("Search organizations error: %s", e)
+        return JSONResponse({"error": "Failed to search organizations"}, status_code=500)
+
+
+async def join_organization_endpoint(request):
+    """Join a public organization."""
+    from wp_mcp.user_manager import UserManager
+    from wp_mcp.organization_manager import OrganizationManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        org_id = int(request.path_params.get("id"))
+        org = await OrganizationManager.request_to_join(org_id, user["id"])
+        return JSONResponse(org)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Join organization error: %s", e)
+        return JSONResponse({"error": "Failed to join organization"}, status_code=500)
+
+
 async def get_organization_members_endpoint(request):
     """Get organization members."""
     from wp_mcp.organization_manager import OrganizationManager
@@ -1483,6 +1529,8 @@ mcp._app.routes.extend(
         Route("/organizations/{id:int}", update_organization_endpoint, methods=["PUT"]),
         Route("/organizations/{id:int}", delete_organization_endpoint, methods=["DELETE"]),
         Route("/organizations/{id:int}/transfer", transfer_organization_ownership_endpoint, methods=["POST"]),
+        Route("/organizations/search", search_organizations_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}/join", join_organization_endpoint, methods=["POST"]),
         Route("/organizations/{id:int}/members", get_organization_members_endpoint, methods=["GET"]),
         Route("/organizations/{id:int}/members/{member_id:int}", update_member_role_endpoint, methods=["PUT"]),
         Route("/organizations/{id:int}/members/{member_id:int}", remove_member_endpoint, methods=["DELETE"]),

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/profile/image-upload";
-import { Plus, Users, Settings, Mail, Trash2 } from "lucide-react";
+import { Plus, Users, Settings, Mail, Trash2, Search } from "lucide-react";
 import Link from "next/link";
 
 interface Organization {
@@ -140,13 +140,21 @@ export default function OrganizationsPage() {
           </p>
         </div>
 
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Organization
+        <div className="flex gap-2">
+          <Link href="/organizations/discover">
+            <Button variant="outline">
+              <Search className="mr-2 h-4 w-4" />
+              Discover
             </Button>
-          </DialogTrigger>
+          </Link>
+
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Organization
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Organization</DialogTitle>

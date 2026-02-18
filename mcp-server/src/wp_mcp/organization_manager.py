@@ -460,3 +460,138 @@ class OrganizationManager:
             f"Ownership of org {org_id} transferred from {current_owner_id} to {new_owner_id}"
         )
         return True
+
+    @staticmethod
+    async def search_organizations(
+        query: Optional[str] = None,
+        visibility: str = "public",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Search for organizations.
+
+        Args:
+            query: Search query (matches name or slug)
+            visibility: Filter by visibility (public/private/all)
+            limit: Maximum results to return
+            offset: Results to skip
+
+        Returns:
+            List of organization dicts with member count
+        """
+        conditions = []
+        params = []
+
+        # Visibility filter
+        if visibility != "all":
+            conditions.append("o.visibility = %s")
+            params.append(visibility)
+
+        # Search query
+        if query:
+            conditions.append("(o.name LIKE %s OR o.slug LIKE %s)")
+            search_term = f"%{query}%"
+            params.extend([search_term, search_term])
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        # Get organizations with member count
+        orgs = await db.fetchall(
+            f"""
+            SELECT
+                o.id,
+                o.name,
+                o.slug,
+                o.owner_id,
+                o.avatar,
+                o.banner,
+                o.bio,
+                o.visibility,
+                o.created_at,
+                COUNT(DISTINCT m.user_id) as member_count
+            FROM wp_organizations o
+            LEFT JOIN wp_organization_members m ON m.organization_id = o.id
+            {where_clause}
+            GROUP BY o.id
+            ORDER BY o.created_at DESC
+            LIMIT %s OFFSET %s
+            """,
+            tuple(params + [limit, offset]),
+        )
+
+        return orgs
+
+    @staticmethod
+    async def request_to_join(org_id: int, user_id: int) -> dict:
+        """Request to join a public organization.
+
+        Args:
+            org_id: Organization ID
+            user_id: User requesting to join
+
+        Returns:
+            Created invite dict
+
+        Raises:
+            ValueError: If validation fails
+        """
+        # Check if organization is public
+        org = await db.fetchone(
+            "SELECT visibility, owner_id FROM wp_organizations WHERE id = %s",
+            (org_id,),
+        )
+        if not org:
+            raise ValueError("Organization not found")
+
+        if org["visibility"] != "public":
+            raise ValueError("This organization is private")
+
+        # Check if already a member
+        existing = await db.fetchone(
+            """
+            SELECT id FROM wp_organization_members
+            WHERE organization_id = %s AND user_id = %s
+            """,
+            (org_id, user_id),
+        )
+        if existing:
+            raise ValueError("Already a member of this organization")
+
+        # Check if already has a pending invite/request
+        user = await db.fetchone(
+            "SELECT email FROM wp_users_auth WHERE id = %s",
+            (user_id,),
+        )
+        existing_invite = await db.fetchone(
+            """
+            SELECT id FROM wp_organization_invites
+            WHERE organization_id = %s AND invitee_email = %s AND status = 'pending'
+            """,
+            (org_id, user["email"]),
+        )
+        if existing_invite:
+            raise ValueError("Already have a pending request")
+
+        # Create invite/request (sent to owner, but can be auto-accepted for public orgs)
+        # For now, auto-accept join requests for public orgs
+        await db.insert(
+            """
+            INSERT INTO wp_organization_members (organization_id, user_id, role)
+            VALUES (%s, %s, 'member')
+            """,
+            (org_id, user_id),
+        )
+
+        logger.info(f"User {user_id} joined public org {org_id}")
+
+        # Log activity
+        from wp_mcp.activity_manager import ActivityManager
+        org_info = await db.fetchone("SELECT name FROM wp_organizations WHERE id = %s", (org_id,))
+        await ActivityManager.log_activity(
+            user_id,
+            ActivityManager.ORGANIZATION_JOINED,
+            org_id,
+            {"organization_name": org_info["name"] if org_info else None}
+        )
+
+        return await OrganizationManager.get_organization(org_id)
