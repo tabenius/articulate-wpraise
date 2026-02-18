@@ -17,6 +17,109 @@ class WP_AI_Auth {
     public function __construct() {
         $this->secret_key = AUTH_KEY;
         $this->register_rest_routes();
+        $this->register_admin_customizations();
+    }
+
+    public function register_admin_customizations() {
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_styles']);
+    }
+
+    public function enqueue_admin_styles() {
+        wp_add_inline_style('common', $this->get_admin_custom_css());
+    }
+
+    private function get_admin_custom_css() {
+        return "
+            /* Fix WordPress admin menu opacity */
+            #adminmenuback,
+            #adminmenuwrap,
+            #adminmenu,
+            #adminmenu .wp-submenu {
+                background-color: #23282d !important;
+                opacity: 1 !important;
+            }
+
+            #adminmenu .wp-submenu {
+                background-color: #32373c !important;
+            }
+
+            /* Ensure menu text is readable */
+            #adminmenu a {
+                color: #eee !important;
+            }
+
+            #adminmenu .wp-submenu a {
+                color: #b4b9be !important;
+            }
+
+            /* Responsive zoom support - scale UI elements properly */
+            @media (min-width: 1200px) {
+                body {
+                    font-size: 13px;
+                }
+
+                #wpcontent,
+                #wpfooter {
+                    margin-left: 160px;
+                }
+
+                #adminmenuback,
+                #adminmenuwrap,
+                #adminmenu {
+                    width: 160px;
+                }
+
+                /* Adjust content area for better fit */
+                .wrap {
+                    margin: 10px 20px 0 2px;
+                }
+            }
+
+            /* Better responsive behavior at different zoom levels */
+            @media (max-width: 1600px) {
+                .wp-list-table {
+                    font-size: 12px;
+                }
+
+                .wrap h1 {
+                    font-size: 1.8em;
+                }
+            }
+
+            @media (max-width: 1400px) {
+                .wp-list-table {
+                    font-size: 11px;
+                }
+
+                input[type='text'],
+                input[type='email'],
+                input[type='url'],
+                input[type='password'],
+                textarea,
+                select {
+                    font-size: 13px;
+                    padding: 3px 5px;
+                }
+            }
+
+            /* Ensure tables don't overflow at 90% zoom */
+            .wp-list-table {
+                max-width: 100%;
+                overflow-x: auto;
+            }
+
+            /* Better column sizing */
+            .wp-list-table th,
+            .wp-list-table td {
+                padding: 8px 10px;
+            }
+
+            /* Scrollable table wrapper for narrow screens */
+            .tablenav {
+                clear: both;
+                margin: 6px 0 4px;
+            }
+        ";
     }
 
     public function register_rest_routes() {
