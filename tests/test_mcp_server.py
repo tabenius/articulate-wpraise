@@ -641,6 +641,40 @@ class TestImageCompression:
         assert result["success"] is True
         print(f"\n✅ Large file upload successful: {result['metadata']['compression_ratio']:.1f}% reduction")
 
+    def test_cropped_image_upload(self, base_url, auth_session):
+        """Test upload of a cropped (square) image."""
+        from PIL import Image
+
+        headers = auth_session["headers"].copy()
+
+        # Create a cropped square image (simulate client-side cropping)
+        img = Image.new("RGB", (300, 300), (0, 128, 255))
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        files = {"file": ("cropped.png", buffer, "image/png")}
+        data = {
+            "type": "avatar",
+            "compress": "true",
+            "format": "webp",
+            "quality": "85"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        assert result["metadata"]["dimensions"]["width"] <= 512
+        assert result["metadata"]["dimensions"]["height"] <= 512
+        print(f"\n✅ Cropped image upload: {result['metadata']['dimensions']['width']}x{result['metadata']['dimensions']['height']}")
+
 
 # =============================================================================
 # Cleanup

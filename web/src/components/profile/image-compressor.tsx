@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, X, Maximize2 } from "lucide-react";
+import { Upload, Download, X, Maximize2, Crop as CropIcon } from "lucide-react";
+import { ImageCropper } from "./image-cropper";
 
 interface ImageCompressorProps {
   onCompressed: (file: File, metadata: CompressionMetadata) => void;
@@ -27,6 +28,8 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [compressedUrl, setCompressedUrl] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [croppedUrl, setCroppedUrl] = useState<string | null>(null);
 
   // Compression settings
   const [format, setFormat] = useState<"webp" | "avif" | "jpeg" | "png">("webp");
@@ -69,6 +72,19 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
     img.src = url;
   };
 
+  const handleCropComplete = (blob: Blob, url: string) => {
+    setCroppedUrl(url);
+    setShowCropper(false);
+
+    // Update original file to use cropped version
+    const croppedFile = new File([blob], `cropped-${originalFile?.name || "image.png"}`, {
+      type: blob.type,
+    });
+    setOriginalFile(croppedFile);
+    setOriginalUrl(url);
+    setOriginalSize(blob.size);
+  };
+
   const compressImage = async () => {
     if (!originalFile || !canvasRef.current) return;
 
@@ -76,7 +92,8 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
 
     try {
       const img = new Image();
-      img.src = originalUrl!;
+      // Use cropped image if available, otherwise use original
+      img.src = croppedUrl || originalUrl!;
 
       await new Promise((resolve) => {
         img.onload = resolve;
@@ -293,6 +310,15 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
             </CardContent>
           </Card>
 
+          {/* Cropper */}
+          {showCropper && originalUrl && (
+            <ImageCropper
+              imageSrc={originalUrl}
+              type={type}
+              onCropComplete={handleCropComplete}
+            />
+          )}
+
           {/* Actions */}
           <div className="flex gap-2">
             <Button
@@ -301,6 +327,8 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
                 setOriginalFile(null);
                 setOriginalUrl(null);
                 setCompressedUrl(null);
+                setCroppedUrl(null);
+                setShowCropper(false);
                 if (fileInputRef.current) {
                   fileInputRef.current.value = "";
                 }
@@ -308,6 +336,13 @@ export function ImageCompressor({ onCompressed, type }: ImageCompressorProps) {
             >
               <X className="mr-2 h-4 w-4" />
               Clear
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowCropper(!showCropper)}
+            >
+              <CropIcon className="mr-2 h-4 w-4" />
+              {showCropper ? "Cancel Crop" : "Crop Image"}
             </Button>
             <Button
               variant="outline"
