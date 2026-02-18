@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,8 +15,11 @@ interface ImageUploadProps {
 
 export function ImageUpload({ currentImage, onImageChange, type, label }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const { toast } = useToast();
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,43 +54,96 @@ export function ImageUpload({ currentImage, onImageChange, type, label }: ImageU
     };
     reader.readAsDataURL(file);
 
-    // Upload file
+    // Upload file with progress tracking
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", type);
+    setUploadProgress(0);
+    setUploadSpeed(0);
 
-      const sessionId = localStorage.getItem("session_id");
-      const response = await fetch("http://localhost:8000/upload", {
-        method: "POST",
-        headers: {
-          "X-Session-ID": sessionId || "",
-        },
-        body: formData,
-      });
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", type);
 
-      if (!response.ok) {
-        throw new Error("Upload failed");
+    const sessionId = localStorage.getItem("session_id");
+    const xhr = new XMLHttpRequest();
+    uploadXhrRef.current = xhr;
+
+    let startTime = Date.now();
+    let lastLoaded = 0;
+
+    // Track upload progress
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = (e.loaded / e.total) * 100;
+        setUploadProgress(percentComplete);
+
+        // Calculate upload speed (bytes per second)
+        const elapsed = (Date.now() - startTime) / 1000;
+        const bytesPerSecond = e.loaded / elapsed;
+        setUploadSpeed(bytesPerSecond);
       }
+    });
 
-      const data = await response.json();
-      onImageChange(`http://localhost:8000${data.url}`);
+    // Handle completion
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          onImageChange(`http://localhost:8000${data.url}`);
 
-      toast({
-        title: "Upload successful",
-        description: `${label} updated`,
-      });
-    } catch (error) {
+          toast({
+            title: "Upload successful",
+            description: `${label} updated`,
+          });
+        } catch (error) {
+          toast({
+            title: "Upload failed",
+            description: "Invalid response from server",
+            variant: "destructive",
+          });
+          setPreview(currentImage || null);
+        }
+      } else {
+        toast({
+          title: "Upload failed",
+          description: `Server error: ${xhr.status}`,
+          variant: "destructive",
+        });
+        setPreview(currentImage || null);
+      }
+      setUploading(false);
+      setUploadProgress(0);
+      setUploadSpeed(0);
+    });
+
+    // Handle errors
+    xhr.addEventListener("error", () => {
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: "Network error occurred",
         variant: "destructive",
       });
       setPreview(currentImage || null);
-    } finally {
       setUploading(false);
-    }
+      setUploadProgress(0);
+      setUploadSpeed(0);
+    });
+
+    // Handle abort
+    xhr.addEventListener("abort", () => {
+      toast({
+        title: "Upload cancelled",
+        description: "Upload was cancelled",
+      });
+      setPreview(currentImage || null);
+      setUploading(false);
+      setUploadProgress(0);
+      setUploadSpeed(0);
+    });
+
+    // Send request
+    xhr.open("POST", "http://localhost:8000/upload");
+    xhr.setRequestHeader("X-Session-ID", sessionId || "");
+    xhr.send(formData);
   };
 
   const handleRemove = () => {
@@ -95,6 +152,21 @@ export function ImageUpload({ currentImage, onImageChange, type, label }: ImageU
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const handleCancelUpload = () => {
+    if (uploadXhrRef.current) {
+      uploadXhrRef.current.abort();
+      uploadXhrRef.current = null;
+    }
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 B/s";
+    const k = 1024;
+    const sizes = ["B/s", "KB/s", "MB/s"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
 
   return (
@@ -147,7 +219,24 @@ export function ImageUpload({ currentImage, onImageChange, type, label }: ImageU
       />
 
       {uploading && (
-        <p className="text-sm text-gray-500">Uploading...</p>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Uploading...</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCancelUpload}
+            >
+              Cancel
+            </Button>
+          </div>
+          <Progress value={uploadProgress} className="w-full" />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>{uploadProgress.toFixed(1)}%</span>
+            <span>{formatBytes(uploadSpeed)}</span>
+          </div>
+        </div>
       )}
     </div>
   );

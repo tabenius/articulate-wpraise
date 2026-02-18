@@ -614,6 +614,33 @@ class TestImageCompression:
             assert metadata["format"] == fmt
             print(f"✅ {fmt.upper()}: {metadata['compression_ratio']:.1f}% reduction")
 
+    def test_large_file_upload(self, base_url, auth_session):
+        """Test upload with larger file to verify progress handling."""
+        headers = auth_session["headers"].copy()
+
+        # Create larger test image (500x500)
+        test_image = self.create_test_image(format="PNG", size=(500, 500))
+
+        files = {"file": ("large_test.png", test_image, "image/png")}
+        data = {
+            "type": "banner",
+            "compress": "true",
+            "format": "webp",
+            "quality": "85"
+        }
+
+        response = requests.post(
+            f"{base_url}/upload",
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        print(f"\n✅ Large file upload successful: {result['metadata']['compression_ratio']:.1f}% reduction")
+
 
 # =============================================================================
 # Cleanup
