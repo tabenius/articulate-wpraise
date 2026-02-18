@@ -17,7 +17,7 @@ export interface Term {
 export interface Post {
   id: number;
   title: string;
-  slug: string;
+  slug: string | null;
   status: string;
   content?: string;
   date: string;
@@ -32,7 +32,7 @@ export interface Post {
 export interface PostSummary {
   id: number;
   title: string;
-  slug: string;
+  slug: string | null;
   status: string;
   date: string;
   modified?: string;

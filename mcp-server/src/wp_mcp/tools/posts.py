@@ -217,10 +217,16 @@ def register(mcp: FastMCP) -> None:
 
 def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
     """Format a post for the summary list."""
+    # Generate slug from title if WordPress doesn't provide one (drafts)
+    slug = post.get("slug")
+    if not slug:
+        title = post.get("title", "")
+        slug = title.lower().replace(" ", "-").replace("_", "-") if title else f"post-{post.get('databaseId', '')}"
+
     result = {
         "id": post.get("databaseId"),
         "title": post.get("title", ""),
-        "slug": post.get("slug", ""),
+        "slug": slug,
         "status": post.get("status", "").lower(),
         "date": post.get("date", ""),
         "modified": post.get("modified", ""),
@@ -245,10 +251,16 @@ def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
 
 def _format_post(post: dict[str, Any]) -> dict[str, Any]:
     """Format a full post object."""
+    # Generate slug from title if WordPress doesn't provide one (drafts)
+    slug = post.get("slug")
+    if not slug:
+        title = post.get("title", "")
+        slug = title.lower().replace(" ", "-").replace("_", "-") if title else f"post-{post.get('databaseId', '')}"
+
     result = {
         "id": post.get("databaseId"),
         "title": post.get("title", ""),
-        "slug": post.get("slug", ""),
+        "slug": slug,
         "status": post.get("status", "").lower(),
         "content": post.get("content", ""),
         "date": post.get("date", ""),

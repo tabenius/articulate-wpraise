@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get("status") || "publish";
+    const status = searchParams.get("status") || "any";
     const search = searchParams.get("search") || undefined;
     const perPage = parseInt(searchParams.get("per_page") || "20", 10);
 
