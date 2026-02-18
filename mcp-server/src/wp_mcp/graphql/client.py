@@ -15,9 +15,19 @@ logger = logging.getLogger(__name__)
 class GraphQLClient:
     """Async client for communicating with the WPGraphQL endpoint with Redis caching."""
 
-    def __init__(self) -> None:
-        self._endpoint = config.wp_graphql_endpoint
-        self._auth = config.wp_auth
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        auth: tuple[str, str] | None = None
+    ) -> None:
+        """Initialize GraphQL client with connection-specific credentials.
+
+        Args:
+            endpoint: GraphQL endpoint URL. If None, uses config default.
+            auth: (username, password) tuple. If None, uses config default.
+        """
+        self._endpoint = endpoint or config.wp_graphql_endpoint
+        self._auth = auth or config.wp_auth
         self._cache = None
 
     def _get_cache_key(
@@ -189,5 +199,37 @@ class GraphQLError(Exception):
         self.errors = errors or []
 
 
-# Singleton client instance
+# Legacy singleton client instance (uses environment variables)
+# DEPRECATED: Use get_graphql_client() instead for multi-tenancy support
 gql_client = GraphQLClient()
+
+
+async def get_graphql_client(connection_id: int, user_id: int) -> GraphQLClient:
+    """Get GraphQL client for a specific user connection.
+
+    This function retrieves the connection from the database and creates
+    a GraphQL client with the connection-specific credentials.
+
+    Args:
+        connection_id: ID of the WordPress connection
+        user_id: ID of the user who owns the connection
+
+    Returns:
+        GraphQLClient configured for the specified connection
+
+    Raises:
+        ValueError: If connection not found or user doesn't have access
+    """
+    from wp_mcp.connection_manager import connection_manager
+
+    # Get connection from database (includes decrypted credentials)
+    connection = await connection_manager.get_connection(connection_id, user_id)
+
+    if not connection:
+        raise ValueError(f"Connection {connection_id} not found for user {user_id}")
+
+    # Create client with connection-specific credentials
+    return GraphQLClient(
+        endpoint=connection["wp_graphql_endpoint"],
+        auth=(connection["wp_user"], connection["wp_app_password"])
+    )

@@ -490,10 +490,37 @@ async def mcp_jsonrpc_endpoint(request):
 
             logger.info(f"Tool result: {result}")
 
+            # Extract the actual data from MCP result format
+            # result is a ToolCallResult with content array and metadata
+            if hasattr(result, 'content') and result.content:
+                # Extract text from first TextContent
+                text_content = result.content[0]
+                if hasattr(text_content, 'text'):
+                    # Try to parse as JSON, otherwise return as string
+                    try:
+                        import json as json_lib
+                        data = json_lib.loads(text_content.text)
+                        return StarletteJSONResponse({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": text_content.text}]
+                            }
+                        })
+                    except:
+                        return StarletteJSONResponse({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": text_content.text}]
+                            }
+                        })
+
+            # Fallback: return as-is (shouldn't happen)
             return StarletteJSONResponse({
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": result
+                "result": {"content": [{"type": "text", "text": str(result)}]}
             })
 
         else:
