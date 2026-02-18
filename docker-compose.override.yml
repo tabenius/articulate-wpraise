@@ -1,0 +1,7 @@
+# This file ensures docker-compose uses production configuration by default
+# Run: docker compose up -d
+# To use development config: docker compose -f docker-compose.yml up -d
+
+# Include all production services
+include:
+  - docker-compose.production.yml
