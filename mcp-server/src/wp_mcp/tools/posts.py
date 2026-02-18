@@ -204,7 +204,7 @@ def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
         "date": post.get("date", ""),
         "modified": post.get("modified", ""),
         "excerpt": post.get("excerpt", ""),
-        "author": post.get("author", {}).get("node", {}).get("name", ""),
+        "author": (post.get("author") or {}).get("node", {}).get("name", ""),
     }
 
     # Add featured image if present
@@ -232,7 +232,7 @@ def _format_post(post: dict[str, Any]) -> dict[str, Any]:
         "content": post.get("content", ""),
         "date": post.get("date", ""),
         "modified": post.get("modified", ""),
-        "author": post.get("author", {}).get("node", {}).get("name", ""),
+        "author": (post.get("author") or {}).get("node", {}).get("name", ""),
     }
 
     # Add featured image if present
