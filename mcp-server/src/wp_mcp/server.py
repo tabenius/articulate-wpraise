@@ -442,14 +442,77 @@ async def activate_connection_endpoint(request):
         return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
 
 
-# Get the FastMCP app with MCP routes already configured
-# Use streamable_http_app() which provides /mcp endpoint for JSON-RPC over HTTP
-mcp._app = mcp.streamable_http_app()
-logger.info("Got FastMCP streamable HTTP app with /mcp endpoint for JSON-RPC")
+# Create a simple Starlette app instead of using FastMCP's transport
+# We'll handle JSON-RPC directly and call FastMCP tools
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse as StarletteJSONResponse
 
-# Add health check routes BEFORE wrapping with middleware
+mcp._app = Starlette()
+logger.info("Created Starlette app for custom JSON-RPC handling")
+
+
+# Custom JSON-RPC endpoint for MCP tool calls
+async def mcp_jsonrpc_endpoint(request):
+    """Handle JSON-RPC requests for MCP tools"""
+    try:
+        body = await request.json()
+        logger.info(f"MCP JSON-RPC request: {body}")
+
+        # Validate JSON-RPC format
+        if body.get("jsonrpc") != "2.0":
+            return StarletteJSONResponse(
+                {"jsonrpc": "2.0", "id": body.get("id"), "error": {"code": -32600, "message": "Invalid JSON-RPC version"}},
+                status_code=400
+            )
+
+        method = body.get("method")
+        params = body.get("params", {})
+        request_id = body.get("id")
+
+        if method == "tools/list":
+            # List available tools
+            tools = await mcp.list_tools()
+            return StarletteJSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {"tools": tools}
+            })
+
+        elif method == "tools/call":
+            # Call a tool
+            tool_name = params.get("name")
+            tool_args = params.get("arguments", {})
+
+            logger.info(f"Calling tool: {tool_name} with args: {tool_args}")
+
+            # Call the MCP tool directly
+            result = await mcp.call_tool(tool_name, tool_args)
+
+            logger.info(f"Tool result: {result}")
+
+            return StarletteJSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": result
+            })
+
+        else:
+            return StarletteJSONResponse(
+                {"jsonrpc": "2.0", "id": request_id, "error": {"code": -32601, "message": f"Method not found: {method}"}},
+                status_code=404
+            )
+
+    except Exception as e:
+        logger.error(f"MCP JSON-RPC error: {e}", exc_info=True)
+        return StarletteJSONResponse(
+            {"jsonrpc": "2.0", "id": body.get("id") if 'body' in locals() else None, "error": {"code": -32603, "message": str(e)}},
+            status_code=500
+        )
+
+# Add all routes including the custom MCP JSON-RPC endpoint
 mcp._app.routes.extend(
     [
+        Route("/mcp", mcp_jsonrpc_endpoint, methods=["POST"]),
         Route("/health", health_endpoint),
         Route("/health/ready", health_ready_endpoint),
         Route("/health/live", health_endpoint),
