@@ -5,14 +5,28 @@ Manages isolated WordPress instances per user/organization.
 Each tenant can have their own WordPress site with separate database.
 """
 
+import os
 import uuid
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from cryptography.fernet import Fernet
-from wp_mcp.database import get_connection
+import pymysql
 
 logger = logging.getLogger(__name__)
+
+
+def get_connection():
+    """Get synchronous database connection for tenant management"""
+    return pymysql.connect(
+        host=os.getenv("MYSQL_HOST", "mariadb"),
+        port=int(os.getenv("MYSQL_PORT", "3306")),
+        user=os.getenv("MYSQL_USER", "wpuser"),
+        password=os.getenv("MYSQL_PASSWORD", "wppassword"),
+        database=os.getenv("MYSQL_DATABASE", "wordpress"),
+        charset="utf8mb4",
+        autocommit=False,
+    )
 
 
 class TenantManager:
@@ -140,7 +154,7 @@ class TenantManager:
     def get_tenant(self, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Get tenant by ID"""
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
 
         try:
             cursor.execute(
@@ -164,7 +178,7 @@ class TenantManager:
     def get_user_tenants(self, user_id: int) -> List[Dict[str, Any]]:
         """Get all tenants accessible by a user"""
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
 
         try:
             cursor.execute(
@@ -285,7 +299,7 @@ class TenantManager:
     def get_tenant_usage(self, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Get current usage stats for a tenant"""
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
 
         try:
             cursor.execute(
