@@ -423,12 +423,10 @@ async def activate_connection_endpoint(request):
         return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
 
 
-# Add custom routes to the FastMCP app
-# Get or create the app attribute
-if not hasattr(mcp, "_app"):
-    # FastMCP might not have _app yet, try to get/create it
-    mcp._app = Starlette()
-    logger.info("Created Starlette app for FastMCP")
+# Get the FastMCP app with MCP routes already configured
+# FastMCP creates the app via streamable_http_app() which includes /mcp route
+mcp._app = mcp.streamable_http_app()
+logger.info("Got FastMCP streamable HTTP app")
 
 # Add health check routes BEFORE wrapping with middleware
 mcp._app.routes.extend(
