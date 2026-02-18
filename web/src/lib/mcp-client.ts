@@ -38,7 +38,7 @@ export async function callMCPTool(
     Object.assign(headers, authHeaders);
   }
 
-  const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+  const response = await fetch(`${MCP_SERVER_URL}/message`, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -139,7 +139,7 @@ async function parseSSEResponse(response: Response): Promise<unknown> {
 export async function listMCPTools(): Promise<
   Array<{ name: string; description: string; inputSchema: unknown }>
 > {
-  const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+  const response = await fetch(`${MCP_SERVER_URL}/message`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
