@@ -1,24 +1,18 @@
 # Caddy configuration for WP-AI production deployment
-# Caddy automatically handles HTTPS with Let's Encrypt!
+# Running behind HAProxy - HAProxy handles SSL termination
+# Caddy serves HTTP only (no automatic HTTPS redirects)
 #
 # Usage:
 # 1. Install Caddy: https://caddyserver.com/docs/install
 # 2. Replace ragbaz.xyz with your actual domain
 # 3. Run: caddy run --config /path/to/Caddyfile
 
-# Your domain - replace with actual domain
-ragbaz.xyz {
-    # Automatic HTTPS with Let's Encrypt
-    # Caddy handles this automatically!
+# Listen on HTTP only - HAProxy handles SSL termination
+http://ragbaz.xyz {
+    # HAProxy handles HTTPS
+    # Caddy just routes requests to backend services
 
-    # Security headers
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
+    # Security headers handled by HAProxy
 
     # Logging
     log {
@@ -117,7 +111,4 @@ ragbaz.xyz {
     }
 }
 
-# Optional: www subdomain redirect
-www.ragbaz.xyz {
-    redir https://ragbaz.xyz{uri} permanent
-}
+# www subdomain redirect handled by HAProxy
