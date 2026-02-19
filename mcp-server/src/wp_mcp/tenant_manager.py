@@ -8,7 +8,7 @@ Each tenant can have their own WordPress site with separate database.
 import os
 import uuid
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from datetime import datetime
 from cryptography.fernet import Fernet
 import pymysql
@@ -170,7 +170,7 @@ class TenantManager:
             )
 
             tenant = cursor.fetchone()
-            return tenant
+            return cast(Optional[Dict[str, Any]], tenant)
 
         finally:
             cursor.close()
@@ -194,7 +194,7 @@ class TenantManager:
             )
 
             tenants = cursor.fetchall()
-            return tenants
+            return cast(List[Dict[str, Any]], tenants)
 
         finally:
             cursor.close()
@@ -222,7 +222,7 @@ class TenantManager:
             affected = cursor.rowcount > 0
             if affected:
                 logger.info(f"Updated tenant {tenant_id} status to {status}")
-            return affected
+            return cast(bool, affected)
 
         except Exception as e:
             conn.rollback()
@@ -287,7 +287,7 @@ class TenantManager:
             affected = cursor.rowcount > 0
             if affected:
                 logger.info(f"Removed user {user_id} from tenant {tenant_id}")
-            return affected
+            return cast(bool, affected)
 
         except Exception as e:
             conn.rollback()
@@ -312,7 +312,7 @@ class TenantManager:
             )
 
             usage = cursor.fetchone()
-            return usage
+            return cast(Optional[Dict[str, Any]], usage)
 
         finally:
             cursor.close()
@@ -336,7 +336,7 @@ class TenantManager:
             )
 
             conn.commit()
-            return cursor.rowcount > 0
+            return cast(bool, cursor.rowcount > 0)
 
         except Exception as e:
             conn.rollback()
