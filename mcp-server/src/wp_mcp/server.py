@@ -494,7 +494,7 @@ async def get_organization_endpoint(request):
         org = await OrganizationManager.get_organization(org_id)
         if not org:
             return JSONResponse({"error": "Organization not found"}, status_code=404)
-        return JSONResponse(org)
+        return JSONResponse(sanitize_for_json(org))
     except Exception as e:
         logger.error("Get organization error: %s", e)
         return JSONResponse({"error": "Failed to get organization"}, status_code=500)
@@ -525,7 +525,7 @@ async def update_organization_endpoint(request):
             banner=data.get("banner"),
             bio=data.get("bio"),
         )
-        return JSONResponse(org)
+        return JSONResponse(sanitize_for_json(org))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -631,7 +631,7 @@ async def join_organization_endpoint(request):
 
         org_id = int(request.path_params.get("id"))
         org = await OrganizationManager.request_to_join(org_id, user["id"])
-        return JSONResponse(org)
+        return JSONResponse(sanitize_for_json(org))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -738,7 +738,7 @@ async def create_invite_endpoint(request):
             invitee_email=data.get("email"),
             role=data.get("role", "member"),
         )
-        return JSONResponse(invite, status_code=201)
+        return JSONResponse(sanitize_for_json(invite), status_code=201)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -809,7 +809,7 @@ async def accept_invite_endpoint(request):
         token = data.get("token")
 
         org = await InviteManager.accept_invite(token, user["id"])
-        return JSONResponse(org)
+        return JSONResponse(sanitize_for_json(org))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -977,7 +977,7 @@ async def add_connection_endpoint(request):
             wp_user=data.get("wp_user"),
             wp_app_password=data.get("wp_app_password"),
         )
-        return JSONResponse(connection, status_code=201)
+        return JSONResponse(sanitize_for_json(connection), status_code=201)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
