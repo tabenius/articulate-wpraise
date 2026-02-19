@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Awaitable, Callable
 
 from starlette.requests import Request
@@ -18,6 +19,9 @@ from wp_mcp.middleware.rate_limit import (
 from wp_mcp.user_manager import UserManager
 
 logger = logging.getLogger(__name__)
+
+# Check if testing mode is enabled (disable rate limiting for tests)
+TESTING_MODE = os.getenv("TESTING_MODE", "false").lower() == "true"
 
 
 class AuthMiddleware:
@@ -45,8 +49,8 @@ class AuthMiddleware:
 
         # Skip authentication for health, metrics, and public auth endpoints
         if path.startswith(("/health", "/metrics", "/register", "/login")) or path == "/me":
-            # Still apply rate limiting to auth endpoints
-            if path in ["/register", "/login"]:
+            # Still apply rate limiting to auth endpoints (unless in testing mode)
+            if path in ["/register", "/login"] and not TESTING_MODE:
                 try:
                     # Use IP address as identifier for unauthenticated endpoints
                     client = scope.get("client")
@@ -115,36 +119,37 @@ class AuthMiddleware:
             await response(scope, receive, send)
             return
 
-        # Apply rate limiting based on user ID
-        user_identifier = f"user:{user['id']}"
+        # Apply rate limiting based on user ID (unless in testing mode)
+        if not TESTING_MODE:
+            user_identifier = f"user:{user['id']}"
 
-        try:
-            if path.startswith("/mcp"):
-                # Rate limit MCP tool calls (100 per minute)
-                await tool_rate_limiter.check_rate_limit(user_identifier)
-            else:
-                # Rate limit connection management endpoints (10 per minute)
-                await ai_chat_rate_limiter.check_rate_limit(user_identifier)
-        except RateLimitExceeded as e:
-            # Log rate limit violation for authenticated user
-            await AuditLog.log_rate_limit_event(
-                user_id=user["id"],
-                endpoint=path,
-                ip_address=client_ip,
-                limit=e.limit if hasattr(e, "limit") else None,
-                retry_after=e.retry_after,
-            )
+            try:
+                if path.startswith("/mcp"):
+                    # Rate limit MCP tool calls (100 per minute)
+                    await tool_rate_limiter.check_rate_limit(user_identifier)
+                else:
+                    # Rate limit connection management endpoints (10 per minute)
+                    await ai_chat_rate_limiter.check_rate_limit(user_identifier)
+            except RateLimitExceeded as e:
+                # Log rate limit violation for authenticated user
+                await AuditLog.log_rate_limit_event(
+                    user_id=user["id"],
+                    endpoint=path,
+                    ip_address=client_ip,
+                    limit=e.limit if hasattr(e, "limit") else None,
+                    retry_after=e.retry_after,
+                )
 
-            response = JSONResponse(
-                {
-                    "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
-                    "retry_after": e.retry_after,
-                },
-                status_code=429,
-                headers={"Retry-After": str(e.retry_after)},
-            )
-            await response(scope, receive, send)
-            return
+                response = JSONResponse(
+                    {
+                        "error": f"Rate limit exceeded. Try again in {e.retry_after} seconds.",
+                        "retry_after": e.retry_after,
+                    },
+                    status_code=429,
+                    headers={"Retry-After": str(e.retry_after)},
+                )
+                await response(scope, receive, send)
+                return
 
         # For MCP tool endpoints, validate active WordPress connection
         if path.startswith("/mcp"):
