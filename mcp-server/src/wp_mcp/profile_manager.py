@@ -92,8 +92,8 @@ class ProfileManager:
                 raise ValueError(f"Visibility must be one of: {', '.join(valid_visibility)}")
 
         # Build update query dynamically
-        updates = []
-        params = []
+        updates: list[str] = []
+        params: list[str | int] = []
 
         if username is not None:
             updates.append("username = %s")
@@ -116,7 +116,9 @@ class ProfileManager:
 
         if not updates:
             # Nothing to update, just return current profile
-            return await ProfileManager.get_profile(user_id)
+            profile = await ProfileManager.get_profile(user_id)
+            assert profile is not None, "Profile should exist"
+            return profile
 
         params.append(user_id)
         query = f"UPDATE wp_users_auth SET {', '.join(updates)} WHERE id = %s"
@@ -125,7 +127,9 @@ class ProfileManager:
         logger.info(f"Profile updated for user {user_id}")
 
         # Return updated profile
-        return await ProfileManager.get_profile(user_id)
+        profile = await ProfileManager.get_profile(user_id)
+        assert profile is not None, "Profile should exist after update"
+        return profile
 
     @staticmethod
     async def get_profile_by_username(

@@ -85,7 +85,9 @@ class OrganizationManager:
 
         logger.info(f"Organization created: {name} (ID: {org_id}) by user {owner_id}")
 
-        return await OrganizationManager.get_organization(org_id)
+        org = await OrganizationManager.get_organization(org_id)
+        assert org is not None, "Organization should exist after creation"
+        return org
 
     @staticmethod
     async def get_organization(org_id: int) -> Optional[dict]:
@@ -178,8 +180,8 @@ class OrganizationManager:
             raise ValueError("Bio cannot exceed 500 characters")
 
         # Build update query
-        updates = []
-        params = []
+        updates: list[str] = []
+        params: list[str | int] = []
 
         if name is not None:
             updates.append("name = %s")
@@ -195,7 +197,9 @@ class OrganizationManager:
             params.append(bio)
 
         if not updates:
-            return await OrganizationManager.get_organization(org_id)
+            org = await OrganizationManager.get_organization(org_id)
+            assert org is not None, "Organization should exist"
+            return org
 
         params.append(org_id)
         query = f"UPDATE wp_organizations SET {', '.join(updates)} WHERE id = %s"
@@ -203,7 +207,9 @@ class OrganizationManager:
         await db.execute(query, tuple(params))
         logger.info(f"Organization {org_id} updated by user {user_id}")
 
-        return await OrganizationManager.get_organization(org_id)
+        org = await OrganizationManager.get_organization(org_id)
+        assert org is not None, "Organization should exist after update"
+        return org
 
     @staticmethod
     async def delete_organization(org_id: int, user_id: int) -> bool:
@@ -562,6 +568,7 @@ class OrganizationManager:
             "SELECT email FROM wp_users_auth WHERE id = %s",
             (user_id,),
         )
+        assert user is not None, "User should exist"
         existing_invite = await db.fetchone(
             """
             SELECT id FROM wp_organization_invites
@@ -594,4 +601,6 @@ class OrganizationManager:
             {"organization_name": org_info["name"] if org_info else None}
         )
 
-        return await OrganizationManager.get_organization(org_id)
+        org_result = await OrganizationManager.get_organization(org_id)
+        assert org_result is not None, "Organization should exist after join"
+        return org_result

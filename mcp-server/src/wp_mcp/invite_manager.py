@@ -109,7 +109,9 @@ class InviteManager:
             {"invitee_email": invitee_email, "role": role, "organization_name": org_info["name"] if org_info else None}
         )
 
-        return await InviteManager.get_invite(invite_id)
+        invite = await InviteManager.get_invite(invite_id)
+        assert invite is not None, "Invite should exist after creation"
+        return invite
 
     @staticmethod
     async def get_invite(invite_id: int) -> Optional[dict]:
@@ -322,7 +324,9 @@ class InviteManager:
 
         # Return organization details
         from wp_mcp.organization_manager import OrganizationManager
-        return await OrganizationManager.get_organization(invite["organization_id"])
+        org = await OrganizationManager.get_organization(invite["organization_id"])
+        assert org is not None, "Organization should exist"
+        return org
 
     @staticmethod
     async def reject_invite(token: str, user_id: int) -> bool:
