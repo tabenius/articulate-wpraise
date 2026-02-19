@@ -62,7 +62,7 @@ async def create_tenant(
         return {"error": "Multi-tenancy not configured (missing ENCRYPTION_KEY)"}
 
     # Get current user from context
-    from wp_mcp.middleware import get_current_user
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]  # type: ignore[attr-defined]
 
     user = get_current_user()
     if not user:
@@ -110,7 +110,7 @@ async def list_my_tenants() -> dict:
     if not tenant_manager:
         return {"error": "Multi-tenancy not configured"}
 
-    from wp_mcp.middleware import get_current_user
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
     user = get_current_user()
     if not user:
@@ -144,7 +144,7 @@ async def get_tenant_details(tenant_id: str) -> dict:
     if not tenant_manager:
         return {"error": "Multi-tenancy not configured"}
 
-    from wp_mcp.middleware import get_current_user
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
     user = get_current_user()
     if not user:
@@ -184,7 +184,7 @@ async def update_tenant_status(tenant_id: str, status: str) -> dict:
     if not tenant_manager:
         return {"error": "Multi-tenancy not configured"}
 
-    from wp_mcp.middleware import get_current_user
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
     user = get_current_user()
     if not user:
@@ -227,8 +227,8 @@ async def add_user_to_tenant(
     if not tenant_manager:
         return {"error": "Multi-tenancy not configured"}
 
-    from wp_mcp.middleware import get_current_user
-    from wp_mcp.database import get_connection
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]
+    from wp_mcp.database import get_connection  # type: ignore[attr-defined]
 
     current_user = get_current_user()
     if not current_user:
@@ -276,8 +276,8 @@ async def remove_user_from_tenant(tenant_id: str, user_email: str) -> dict:
     if not tenant_manager:
         return {"error": "Multi-tenancy not configured"}
 
-    from wp_mcp.middleware import get_current_user
-    from wp_mcp.database import get_connection
+    from wp_mcp.middleware import get_current_user  # type: ignore[attr-defined]
+    from wp_mcp.database import get_connection  # type: ignore[attr-defined]
 
     current_user = get_current_user()
     if not current_user:

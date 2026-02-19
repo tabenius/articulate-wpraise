@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -1302,27 +1303,27 @@ async def setup_remote_wordpress_endpoint(request):
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse as StarletteJSONResponse
 
-mcp._app = Starlette()
+mcp._app = Starlette()  # type: ignore[attr-defined]
 logger.info("Created Starlette app for custom JSON-RPC handling")
 
 
 # Exception handlers for clean error responses
-@mcp._app.exception_handler(APIException)
+@mcp._app.exception_handler(APIException)  # type: ignore[attr-defined]
 async def api_exception_handler(request, exc: APIException):
     """Handle custom API exceptions."""
-    response_data = {"error": exc.message}
+    response_data: dict[str, Any] = {"error": exc.message}
     if exc.details:
         response_data["details"] = exc.details
     return StarletteJSONResponse(response_data, status_code=exc.status_code)
 
 
-@mcp._app.exception_handler(ValueError)
+@mcp._app.exception_handler(ValueError)  # type: ignore[attr-defined]
 async def value_error_handler(request, exc: ValueError):
     """Handle ValueError as 400 Bad Request."""
     return StarletteJSONResponse({"error": str(exc)}, status_code=400)
 
 
-@mcp._app.exception_handler(Exception)
+@mcp._app.exception_handler(Exception)  # type: ignore[attr-defined]
 async def generic_exception_handler(request, exc: Exception):
     """Handle unexpected exceptions."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
@@ -1438,7 +1439,7 @@ uploads_dir.mkdir(exist_ok=True)
 (uploads_dir / "banner").mkdir(exist_ok=True)
 
 # Add all routes including the custom MCP JSON-RPC endpoint
-mcp._app.routes.extend(
+mcp._app.routes.extend(  # type: ignore[attr-defined]
     [
         Route("/mcp", mcp_jsonrpc_endpoint, methods=["POST"]),
         Route("/health", health_endpoint),
@@ -1498,12 +1499,12 @@ mcp._app.routes.extend(
 
 # NOW wrap app with middleware AFTER routes are added
 # Keep a reference to the bare Starlette app for event registration
-bare_starlette_app = mcp._app
+bare_starlette_app = mcp._app  # type: ignore[attr-defined]
 
 # Order: Logging wraps Auth (outer to inner: Logging -> Auth -> App)
-mcp._app = AuthMiddleware(mcp._app)
+mcp._app = AuthMiddleware(mcp._app)  # type: ignore[attr-defined]
 logger.info("Authentication middleware enabled")
-mcp._app = RequestLoggingMiddleware(mcp._app)
+mcp._app = RequestLoggingMiddleware(mcp._app)  # type: ignore[attr-defined]
 logger.info("Request logging middleware enabled")
 
 # Register startup event on the bare Starlette app (before middleware wrapping)
@@ -1545,7 +1546,7 @@ def main() -> None:
 
         # Startup event is already registered on the underlying Starlette app
         uvicorn.run(
-            wrapped_app,
+            wrapped_app,  # type: ignore[arg-type]
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
@@ -1559,7 +1560,7 @@ def main() -> None:
 
         # Startup event is already registered on the underlying Starlette app
         uvicorn.run(
-            wrapped_app,
+            wrapped_app,  # type: ignore[arg-type]
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",

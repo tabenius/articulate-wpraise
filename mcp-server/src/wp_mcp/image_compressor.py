@@ -10,8 +10,8 @@ from typing import Optional, Tuple
 try:
     from PIL import Image, ImageOps
 except ImportError:
-    Image = None
-    ImageOps = None
+    Image = None  # type: ignore[assignment]
+    ImageOps = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class ImageCompressor:
 
             # Auto-orient based on EXIF
             if auto_orient:
-                image = ImageOps.exif_transpose(image)
+                image = ImageOps.exif_transpose(image)  # type: ignore[assignment]
 
             # Convert format if needed
             target_format = (output_format or original_format or "PNG").upper()
@@ -105,16 +105,16 @@ class ImageCompressor:
                 # Create white background
                 background = Image.new("RGB", image.size, (255, 255, 255))
                 if image.mode == "P":
-                    image = image.convert("RGBA")
+                    image = image.convert("RGBA")  # type: ignore[assignment]
                 background.paste(image, mask=image.split()[-1] if image.mode == "RGBA" else None)
-                image = background
+                image = background  # type: ignore[assignment]
             elif image.mode not in ("RGB", "RGBA", "L"):
                 # Convert other modes to RGB
-                image = image.convert("RGB")
+                image = image.convert("RGB")  # type: ignore[assignment]
 
             # Resize if needed
             if max_width or max_height:
-                image = ImageCompressor._resize_image(image, max_width, max_height)
+                image = ImageCompressor._resize_image(image, max_width, max_height)  # type: ignore[assignment]
 
             # Get format-specific settings
             save_kwargs = ImageCompressor.FORMAT_DEFAULTS.get(
