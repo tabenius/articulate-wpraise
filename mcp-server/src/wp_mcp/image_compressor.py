@@ -140,12 +140,12 @@ class ImageCompressor:
 
             metadata = {
                 "original_format": original_format,
-                "output_format": target_format,
+                "format": target_format.lower(),  # Use "format" for API consistency
                 "original_size": original_size,
                 "compressed_size": compressed_size,
                 "compression_ratio": round(compression_ratio, 2),
-                "original_dimensions": original_dimensions,
-                "output_dimensions": image.size,
+                "dimensions": {"width": image.size[0], "height": image.size[1]},
+                "original_dimensions": {"width": original_dimensions[0], "height": original_dimensions[1]},
                 "quality": save_kwargs.get("quality"),
                 "resized": original_dimensions != image.size,
             }

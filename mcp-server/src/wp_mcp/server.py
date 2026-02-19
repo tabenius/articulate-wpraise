@@ -1076,6 +1076,7 @@ async def upload_file_endpoint(request):
     from wp_mcp.image_compressor import ImageCompressor
 
     try:
+        logger.info("Upload request received")
         session_id = request.headers.get("X-Session-ID")
         if not session_id:
             return JSONResponse({"error": "Session required"}, status_code=401)
@@ -1085,9 +1086,11 @@ async def upload_file_endpoint(request):
             return JSONResponse({"error": "Invalid session"}, status_code=401)
 
         # Get form data
+        logger.info(f"Getting form data for user {user['id']}")
         form = await request.form()
         file = form.get("file")
         upload_type = form.get("type", "avatar")  # avatar or banner
+        logger.info(f"Form data: file={'present' if file else 'missing'}, type={upload_type}")
 
         # Compression options (optional)
         compress = form.get("compress", "true").lower() == "true"  # Default: compress
@@ -1194,14 +1197,15 @@ async def upload_file_endpoint(request):
         }
 
         if compression_metadata:
-            response_data["compression"] = compression_metadata
+            response_data["metadata"] = compression_metadata
 
         return JSONResponse(response_data)
 
     except ValueError as e:
+        logger.warning(f"Upload validation error: {e}")
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
-        logger.error(f"File upload error: {e}")
+        logger.error(f"File upload error: {e}", exc_info=True)
         return JSONResponse(
             {"error": "Upload failed", "details": str(e)},
             status_code=500
