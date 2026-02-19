@@ -43,7 +43,18 @@ export function usePreview(postId: number | null, enabled: boolean = true) {
         });
 
         if (!response.ok) {
-          throw new Error(`Preview fetch failed: ${response.status}`);
+          // Try to extract error message from response body
+          let errorMessage = `Preview fetch failed: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch {
+            // If JSON parsing fails, use status text
+            errorMessage = `${response.status} ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();

@@ -29,7 +29,10 @@ export function EditorPanel() {
 
   // Calculate word count and reading time
   const wordCount = blocks.reduce((count, block) => {
-    const content = (block.attributes.content as string) || "";
+    // Only count blocks that have text content (paragraph, heading, quote, code, list)
+    const content = block.attributes.content || block.attributes.value || block.attributes.values;
+    if (typeof content !== "string") return count;
+
     const text = content.replace(/<[^>]*>/g, ""); // Strip HTML tags
     const words = text.trim().split(/\s+/).filter(Boolean);
     return count + words.length;

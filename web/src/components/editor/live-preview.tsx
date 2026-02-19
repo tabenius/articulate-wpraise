@@ -81,7 +81,7 @@ export function LivePreview() {
           <iframe
             ref={iframeRef}
             className="w-full h-full border-0 bg-white"
-            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            sandbox="allow-same-origin allow-scripts allow-popups"
             title="WordPress Preview"
             style={{
               colorScheme: "light",
