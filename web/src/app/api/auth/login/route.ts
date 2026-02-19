@@ -30,9 +30,16 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     const cookieStore = await cookies();
+
+    // Always use secure cookies since we're behind HTTPS proxies (Cloudflare/HAProxy)
+    // The connection to Next.js is HTTP but the client connection is HTTPS
+    const isProxiedHttps =
+      request.headers.get("x-forwarded-proto") === "https" ||
+      process.env.NODE_ENV === "production";
+
     cookieStore.set("session", data.session_id, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProxiedHttps,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
       path: "/",

@@ -30,19 +30,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function checkAuth() {
     try {
-      // Try to get connections - if this succeeds, we're authenticated
-      const response = await fetch("/api/connections");
+      // Get current user from session
+      const response = await fetch("/api/auth/me");
       if (response.ok) {
-        // We're authenticated but don't have user info yet
-        // Could add a /api/auth/me endpoint to get user info
-        setIsLoading(false);
+        const data = await response.json();
+        setUser(data.user);
       } else {
         setUser(null);
-        setIsLoading(false);
       }
     } catch (error) {
       console.error("Auth check error:", error);
       setUser(null);
+    } finally {
       setIsLoading(false);
     }
   }
