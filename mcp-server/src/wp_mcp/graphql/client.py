@@ -156,6 +156,7 @@ class GraphQLClient:
 
         # Cache the result with user isolation
         if use_cache and result:
+            assert self._cache is not None  # Ensured by use_cache block above
             cache_key = self._get_cache_key(query, variables, user_id)
             ttl = self._extract_cache_ttl(query)
             await self._cache.set(cache_key, result, ttl=ttl)
