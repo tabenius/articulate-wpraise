@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 import httpx
+import base64
+import re
 
 from mcp.server.fastmcp import FastMCP
 
@@ -57,10 +59,10 @@ def register(mcp: FastMCP) -> None:
         title: str = "",
         alt_text: str = "",
     ) -> dict[str, Any]:
-        """Upload a media file to WordPress from a URL.
+        """Upload a media file to WordPress from a URL or data URI.
 
         Args:
-            file_url: URL of the file to download and upload.
+            file_url: URL of the file to download and upload, or data URI (base64).
             title: Title for the media item (optional).
             alt_text: Alt text for the image (optional).
 
@@ -68,18 +70,42 @@ def register(mcp: FastMCP) -> None:
             Uploaded media object with id, url, and dimensions.
         """
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Download the file from the URL
-            try:
-                response = await client.get(file_url)
-                response.raise_for_status()
-                file_content = response.content
+            # Check if this is a data URL (base64 encoded)
+            data_url_match = re.match(r"data:([^;]+);base64,(.+)", file_url)
 
-                # Determine filename and content type
-                filename = file_url.split("/")[-1].split("?")[0] or "upload.jpg"
-                content_type = response.headers.get("content-type", "image/jpeg")
+            if data_url_match:
+                # Handle data URL (direct file upload)
+                try:
+                    content_type = data_url_match.group(1)
+                    base64_data = data_url_match.group(2)
+                    file_content = base64.b64decode(base64_data)
 
-            except Exception as e:
-                return {"error": f"Failed to download file: {str(e)}"}
+                    # Determine filename from content type
+                    ext_map = {
+                        "image/jpeg": ".jpg",
+                        "image/png": ".png",
+                        "image/gif": ".gif",
+                        "image/webp": ".webp",
+                        "image/svg+xml": ".svg",
+                    }
+                    ext = ext_map.get(content_type, ".jpg")
+                    filename = f"upload{ext}"
+
+                except Exception as e:
+                    return {"error": f"Failed to decode base64 data: {str(e)}"}
+            else:
+                # Download the file from the URL
+                try:
+                    response = await client.get(file_url)
+                    response.raise_for_status()
+                    file_content = response.content
+
+                    # Determine filename and content type
+                    filename = file_url.split("/")[-1].split("?")[0] or "upload.jpg"
+                    content_type = response.headers.get("content-type", "image/jpeg")
+
+                except Exception as e:
+                    return {"error": f"Failed to download file: {str(e)}"}
 
             # Upload to WordPress REST API
             try:
