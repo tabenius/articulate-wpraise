@@ -10,7 +10,7 @@ class APIException(Exception):
     Automatically converted to JSON error responses by exception handler.
     """
 
-    def __init__(self, message: str, status_code: int = 400, details: dict = None):
+    def __init__(self, message: str, status_code: int = 400, details: Optional[dict] = None):
         """Initialize API exception.
 
         Args:
@@ -48,7 +48,7 @@ class NotFoundError(APIException):
 class ValidationError(APIException):
     """Raised when input validation fails."""
 
-    def __init__(self, message: str, field: str = None):
+    def __init__(self, message: str, field: Optional[str] = None):
         details = {"field": field} if field else {}
         super().__init__(message, status_code=400, details=details)
 
