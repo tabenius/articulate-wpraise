@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 import redis.asyncio as redis
 
@@ -76,7 +76,7 @@ class CacheManager:
             value = await self.redis.get(key)
             if value:
                 logger.debug("Cache HIT: %s", key)
-                return json.loads(value)
+                return cast(dict[str, Any], json.loads(value))
             logger.debug("Cache MISS: %s", key)
             return None
         except Exception as e:
