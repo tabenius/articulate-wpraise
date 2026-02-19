@@ -7,12 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { ConnectionSwitcher } from "@/components/header/connection-switcher";
 import { UserMenu } from "@/components/header/user-menu";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Undo2,
   Redo2,
   Save,
   Settings,
   FileText,
   Keyboard,
+  Plus,
+  File,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -20,9 +28,11 @@ interface HeaderProps {
   onOpenPostList: () => void;
   onSave: () => void;
   onOpenShortcuts?: () => void;
+  onCreatePost?: () => void;
+  onCreatePage?: () => void;
 }
 
-export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts }: HeaderProps) {
+export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts, onCreatePost, onCreatePage }: HeaderProps) {
   const currentPost = usePostStore((s) => s.currentPost);
   const isDirty = useEditorStore((s) => s.isDirty);
   const undo = useEditorStore((s) => s.undo);
@@ -34,6 +44,29 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
     <header className="flex items-center justify-between h-14 px-4 border-b bg-background">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold tracking-tight">WP-AI</h1>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="default" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              New
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {onCreatePost && (
+              <DropdownMenuItem onClick={onCreatePost}>
+                <FileText className="h-4 w-4 mr-2" />
+                New Post
+              </DropdownMenuItem>
+            )}
+            {onCreatePage && (
+              <DropdownMenuItem onClick={onCreatePage}>
+                <File className="h-4 w-4 mr-2" />
+                New Page
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button variant="ghost" size="sm" onClick={onOpenPostList}>
           <FileText className="h-4 w-4 mr-2" />

@@ -108,6 +108,8 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost, onCrea
           onOpenPostList={handleOpenPostList}
           onSave={onSave}
           onOpenShortcuts={() => setShortcutsOpen(true)}
+          onCreatePost={onCreatePost}
+          onCreatePage={onCreatePage}
         />
 
         <div className="flex-1 overflow-hidden relative">
