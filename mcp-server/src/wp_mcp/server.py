@@ -19,6 +19,7 @@ from starlette.staticfiles import StaticFiles
 
 from wp_mcp.config import config
 from wp_mcp.decorators import require_auth, optional_auth
+from wp_mcp.exceptions import APIException, ValidationError, NotFoundError
 from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
@@ -316,13 +317,9 @@ async def get_profile_endpoint(request):
     """Get user profile."""
     from wp_mcp.profile_manager import ProfileManager
 
-    try:
-        user = request.state.user  # Injected by @require_auth
-        profile = await ProfileManager.get_profile(user["id"])
-        return JSONResponse(sanitize_for_json(profile))
-    except Exception as e:
-        logger.error("Get profile error: %s", e)
-        return JSONResponse({"error": "Failed to get profile"}, status_code=500)
+    user = request.state.user  # Injected by @require_auth
+    profile = await ProfileManager.get_profile(user["id"])
+    return JSONResponse(sanitize_for_json(profile))
 
 
 @require_auth
@@ -330,24 +327,19 @@ async def update_profile_endpoint(request):
     """Update user profile."""
     from wp_mcp.profile_manager import ProfileManager
 
-    try:
-        user = request.state.user  # Injected by @require_auth
-        data = await request.json()
-        profile = await ProfileManager.update_profile(
-            user_id=user["id"],
-            username=data.get("username"),
-            name=data.get("name"),
-            avatar=data.get("avatar"),
-            banner=data.get("banner"),
-            bio=data.get("bio"),
-            visibility=data.get("visibility"),
-        )
-        return JSONResponse(sanitize_for_json(profile))
-    except ValueError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-    except Exception as e:
-        logger.error("Update profile error: %s", e)
-        return JSONResponse({"error": "Failed to update profile"}, status_code=500)
+    user = request.state.user  # Injected by @require_auth
+    data = await request.json()
+    # ValueError is automatically caught by exception handler
+    profile = await ProfileManager.update_profile(
+        user_id=user["id"],
+        username=data.get("username"),
+        name=data.get("name"),
+        avatar=data.get("avatar"),
+        banner=data.get("banner"),
+        bio=data.get("bio"),
+        visibility=data.get("visibility"),
+    )
+    return JSONResponse(sanitize_for_json(profile))
 
 
 async def get_profile_by_username_endpoint(request):
@@ -1311,6 +1303,32 @@ from starlette.responses import JSONResponse as StarletteJSONResponse
 
 mcp._app = Starlette()
 logger.info("Created Starlette app for custom JSON-RPC handling")
+
+
+# Exception handlers for clean error responses
+@mcp._app.exception_handler(APIException)
+async def api_exception_handler(request, exc: APIException):
+    """Handle custom API exceptions."""
+    response_data = {"error": exc.message}
+    if exc.details:
+        response_data["details"] = exc.details
+    return StarletteJSONResponse(response_data, status_code=exc.status_code)
+
+
+@mcp._app.exception_handler(ValueError)
+async def value_error_handler(request, exc: ValueError):
+    """Handle ValueError as 400 Bad Request."""
+    return StarletteJSONResponse({"error": str(exc)}, status_code=400)
+
+
+@mcp._app.exception_handler(Exception)
+async def generic_exception_handler(request, exc: Exception):
+    """Handle unexpected exceptions."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return StarletteJSONResponse(
+        {"error": "Internal server error"},
+        status_code=500
+    )
 
 
 # Custom JSON-RPC endpoint for MCP tool calls
