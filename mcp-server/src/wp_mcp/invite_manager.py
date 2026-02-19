@@ -404,7 +404,7 @@ class InviteManager:
         return True
 
     @staticmethod
-    async def _mark_expired(invite_id: int):
+    async def _mark_expired(invite_id: int) -> None:
         """Mark an invite as expired."""
         await db.execute(
             "UPDATE wp_organization_invites SET status = 'expired' WHERE id = %s",

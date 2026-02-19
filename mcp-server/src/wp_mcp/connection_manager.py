@@ -337,8 +337,8 @@ class ConnectionManager:
             raise ValueError("Connection not found or unauthorized")
 
         # Build update query
-        updates = []
-        params = []
+        updates: list[str] = []
+        params: list[str | bytes | int] = []
 
         if name is not None:
             updates.append("name = %s")

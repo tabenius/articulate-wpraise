@@ -323,7 +323,7 @@ class UserManager:
         return None
 
     @staticmethod
-    async def cleanup_expired_sessions():
+    async def cleanup_expired_sessions() -> None:
         """Remove expired sessions from database."""
         result = await db.execute(
             "DELETE FROM wp_sessions WHERE expires_at < %s", (datetime.now(timezone.utc),)

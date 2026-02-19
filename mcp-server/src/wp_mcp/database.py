@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import aiomysql
 
@@ -84,7 +84,7 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(query, params)
-                return cursor.rowcount
+                return cast(int, cursor.rowcount)
 
     async def fetchone(self, query: str, params: tuple = ()) -> Optional[dict[str, Any]]:
         """Fetch a single row.
@@ -102,7 +102,7 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
                 await cursor.execute(query, params)
-                return await cursor.fetchone()
+                return cast(Optional[dict[str, Any]], await cursor.fetchone())
 
     async def fetchall(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
         """Fetch all rows.
@@ -120,7 +120,7 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
                 await cursor.execute(query, params)
-                return await cursor.fetchall()
+                return cast(list[dict[str, Any]], await cursor.fetchall())
 
     async def insert(self, query: str, params: tuple = ()) -> int:
         """Execute INSERT and return the last inserted ID.
@@ -138,7 +138,7 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(query, params)
-                return cursor.lastrowid
+                return cast(int, cursor.lastrowid)
 
 
 # Global database instance
