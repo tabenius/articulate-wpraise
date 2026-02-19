@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable
+from typing import Callable, cast
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -67,7 +67,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Process request
         try:
-            response = await call_next(request)
+            response = cast(Response, await call_next(request))
         except Exception as e:
             # Log exception and re-raise
             duration_ms = (time.time() - start_time) * 1000

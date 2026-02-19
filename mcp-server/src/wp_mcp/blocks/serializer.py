@@ -9,7 +9,7 @@ Converts Block objects or dicts to the WordPress block comment format:
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from wp_mcp.blocks.registry import is_container_block
 from wp_mcp.blocks.types import Block
@@ -209,7 +209,7 @@ def _gen_group(attrs: dict[str, Any]) -> str:
 
 
 def _gen_html(attrs: dict[str, Any]) -> str:
-    return attrs.get("content", "")
+    return cast(str, attrs.get("content", ""))
 
 
 def _gen_preformatted(attrs: dict[str, Any]) -> str:
