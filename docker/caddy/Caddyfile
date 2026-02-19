@@ -1,51 +1,41 @@
-# Caddy configuration for WP-AI production deployment
-# Running behind HAProxy - HAProxy handles SSL termination
-# Caddy serves HTTP only (no automatic HTTPS redirects)
+# Caddy configuration for WP-AI with split domains
+# Architecture: Cloudflare → HAProxy (SSL termination) → Caddy (HTTP) → Services
+# - app.ragbaz.xyz: Next.js web app + APIs
+# - my.ragbaz.xyz: WordPress backend
 #
-# Usage:
-# 1. Install Caddy: https://caddyserver.com/docs/install
-# 2. Replace ragbaz.xyz with your actual domain
-# 3. Run: caddy run --config /path/to/Caddyfile
+# Caddy listens on HTTP only - HAProxy handles HTTPS
 
-# Listen on HTTP only - HAProxy handles SSL termination
-http://ragbaz.xyz {
-    # HAProxy handles HTTPS
-    # Caddy just routes requests to backend services
-
-    # Security headers handled by HAProxy
+# Main web application - All frontend endpoints
+http://app.ragbaz.xyz {
+    # HAProxy forwards HTTP traffic after SSL termination
+    # Trust X-Forwarded-* headers from HAProxy
 
     # Logging
     log {
-        output file /var/log/caddy/wp-ai-access.log
+        output file /var/log/caddy/app-access.log {
+            roll_size 100MB
+            roll_keep 5
+        }
         format json
     }
 
-    # WordPress admin panel
-    @wpadmin {
-        path /wp-admin* /wp-login.php*
+    # MCP Server API (for internal app use)
+    @mcpapi {
+        path /api/mcp/*
     }
-    handle @wpadmin {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
+    handle @mcpapi {
+        # Strip /api/mcp prefix
+        uri strip_prefix /api/mcp
 
-    # WordPress static assets
-    @wpcontent {
-        path /wp-content/* /wp-includes/*
-    }
-    handle @wpcontent {
-        reverse_proxy wordpress:80 {
+        reverse_proxy mcp-server:8000 {
             header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+
+            # SSE support for streaming
+            flush_interval -1
         }
-        # Cache static assets
-        header Cache-Control "public, max-age=2592000"
     }
 
     # Documentation site
@@ -55,9 +45,101 @@ http://ragbaz.xyz {
     handle @docs {
         reverse_proxy docs:80 {
             header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+        }
+    }
+
+    # Health check endpoint
+    handle /health {
+        respond "OK" 200
+    }
+
+    # Next.js frontend (default - handles all other routes)
+    handle {
+        reverse_proxy web:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+
+            # WebSocket support for Next.js HMR (development)
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Connection {http.request.header.Connection}
+
+            # Health check
+            health_uri /api/health
+            health_interval 30s
+            health_timeout 5s
+        }
+    }
+}
+
+# WordPress backend - Full WordPress access
+http://my.ragbaz.xyz {
+    # HAProxy forwards HTTP traffic after SSL termination
+
+    # Logging
+    log {
+        output file /var/log/caddy/wp-access.log {
+            roll_size 100MB
+            roll_keep 5
+        }
+        format json
+    }
+
+    # Block xmlrpc.php (common attack vector)
+    @xmlrpc {
+        path /xmlrpc.php
+    }
+    handle @xmlrpc {
+        respond 403
+    }
+
+    # WordPress login
+    @wplogin {
+        path /wp-login.php
+    }
+    handle @wplogin {
+        reverse_proxy wordpress:80 {
+            header_up Host {host}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+        }
+    }
+
+    # WordPress admin panel
+    @wpadmin {
+        path /wp-admin/*
+    }
+    handle @wpadmin {
+        reverse_proxy wordpress:80 {
+            header_up Host {host}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+        }
+    }
+
+    # WordPress REST API
+    @wpapi {
+        path /wp-json/*
+    }
+    handle @wpapi {
+        reverse_proxy wordpress:80 {
+            header_up Host {host}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+
+            # Enable CORS for API access
+            @origin header Origin *
+            header @origin Access-Control-Allow-Origin "{http.request.header.Origin}"
+            header @origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            header @origin Access-Control-Allow-Headers "Authorization, Content-Type"
+            header @origin Access-Control-Allow-Credentials "true"
         }
     }
 
@@ -68,47 +150,42 @@ http://ragbaz.xyz {
     handle @graphql {
         reverse_proxy wordpress:80 {
             header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
 
-            # Disable buffering for streaming responses
+            # Disable buffering for streaming
             flush_interval -1
         }
     }
 
-    # MCP Server API
-    @mcpapi {
-        path /api/mcp/*
+    # Static assets - aggressive caching
+    @static {
+        path /wp-content/* /wp-includes/*
+        not path /wp-content/uploads/wpcf7_uploads/*
     }
-    handle @mcpapi {
-        # Strip /api/mcp prefix
-        uri strip_prefix /api/mcp
-
-        reverse_proxy mcp-server:8000 {
+    handle @static {
+        reverse_proxy wordpress:80 {
             header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+        }
 
-            # SSE support for streaming
-            flush_interval -1
+        # Cache headers (HAProxy/Cloudflare will respect these)
+        header {
+            Cache-Control "public, max-age=31536000, immutable"
+            X-Content-Type-Options "nosniff"
         }
     }
 
-    # Next.js frontend (default)
+    # WordPress frontend (default)
     handle {
-        reverse_proxy web:3000 {
+        reverse_proxy wordpress:80 {
             header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-
-            # WebSocket support for Next.js HMR
-            header_up Upgrade {http.request.header.Upgrade}
-            header_up Connection {http.request.header.Connection}
+            header_up X-Real-IP {header.X-Real-IP}
+            header_up X-Forwarded-For {header.X-Forwarded-For}
+            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
         }
     }
 }
-
-# www subdomain redirect handled by HAProxy
