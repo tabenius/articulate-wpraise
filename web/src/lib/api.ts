@@ -37,6 +37,13 @@ export async function createPost(title: string): Promise<Post> {
   });
 }
 
+export async function createPage(title: string): Promise<Post> {
+  return fetchJSON<Post>("/posts", {
+    method: "POST",
+    body: JSON.stringify({ title, status: "draft", type: "page" }),
+  });
+}
+
 export async function updatePost(
   id: number,
   data: Partial<Post>

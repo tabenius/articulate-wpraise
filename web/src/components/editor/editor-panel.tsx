@@ -10,6 +10,7 @@ import { LivePreview } from "./live-preview";
 import { PreviewControls } from "./preview-controls";
 import { DesignSystemPanel } from "./design-system-panel";
 import { RevisionTimeline } from "./revision-timeline";
+import { PostSettingsDialog } from "./post-settings-dialog";
 import { SplitView } from "@/components/layout/split-view";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
@@ -210,6 +211,7 @@ function EditorToolbar({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {currentPost && <PostSettingsDialog />}
         <DesignSystemPanel />
         <RevisionTimeline />
         {currentPost && (

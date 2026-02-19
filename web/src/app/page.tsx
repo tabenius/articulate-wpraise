@@ -7,7 +7,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useBlocks } from "@/hooks/use-blocks";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useSync } from "@/hooks/use-sync";
-import { fetchPosts, fetchPost, createPost } from "@/lib/api";
+import { fetchPosts, fetchPost, createPost, createPage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -128,7 +128,44 @@ export default function Home() {
     }
   }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast]);
 
+  const handleCreatePage = useCallback(async () => {
+    try {
+      setLoading(true);
+      const page = await createPage("Untitled Page");
+      setCurrentPost(page);
+      useEditorStore.getState().setBlocks([]);
+      await handleLoadPosts();
+      toast({
+        variant: "success",
+        title: "Page created",
+        description: "New page ready to edit",
+      });
+    } catch (error) {
+      console.error("Failed to create page:", error);
+      const errorMsg = error instanceof Error ? error.message : "Failed to create page";
+      setError(errorMsg);
+      toast({
+        variant: "destructive",
+        title: "Error creating page",
+        description: errorMsg,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast]);
+
   const handleSave = useCallback(async () => {
+    const currentPost = usePostStore.getState().currentPost;
+
+    if (!currentPost) {
+      toast({
+        variant: "destructive",
+        title: "No post loaded",
+        description: "Please create or load a post before saving",
+      });
+      return;
+    }
+
     try {
       await persistBlocks();
       toast({
@@ -152,6 +189,7 @@ export default function Home() {
       onLoadPosts={handleLoadPosts}
       onSave={handleSave}
       onCreatePost={handleCreatePost}
+      onCreatePage={handleCreatePage}
     />
   );
 }

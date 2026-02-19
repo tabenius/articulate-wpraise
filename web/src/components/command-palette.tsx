@@ -26,12 +26,14 @@ import {
   Quote,
   Code,
   Columns,
+  File,
 } from "lucide-react";
 
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreatePost?: () => void;
+  onCreatePage?: () => void;
   onSave?: () => void;
   onOpenSettings?: () => void;
   onOpenShortcuts?: () => void;
@@ -41,6 +43,7 @@ export function CommandPalette({
   open,
   onOpenChange,
   onCreatePost,
+  onCreatePage,
   onSave,
   onOpenSettings,
   onOpenShortcuts,
@@ -94,6 +97,12 @@ export function CommandPalette({
             <CommandItem onSelect={() => runCommand(onCreatePost)}>
               <Plus className="mr-2 h-4 w-4" />
               <span>Create New Post</span>
+            </CommandItem>
+          )}
+          {onCreatePage && (
+            <CommandItem onSelect={() => runCommand(onCreatePage)}>
+              <File className="mr-2 h-4 w-4" />
+              <span>Create New Page</span>
             </CommandItem>
           )}
           {onSave && currentPost && (

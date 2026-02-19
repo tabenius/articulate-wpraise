@@ -18,9 +18,10 @@ interface AppShellProps {
   onLoadPosts: () => void;
   onSave: () => void;
   onCreatePost: () => void;
+  onCreatePage: () => void;
 }
 
-export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppShellProps) {
+export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost, onCreatePage }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -166,6 +167,7 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
           onCreatePost={onCreatePost}
+          onCreatePage={onCreatePage}
           onSave={onSave}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
