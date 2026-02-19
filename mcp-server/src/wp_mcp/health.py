@@ -27,7 +27,7 @@ async def check_redis_health() -> dict[str, Any]:
 
         if cache.redis:
             # Test ping
-            await cache.redis.ping()
+            await cache.redis.ping()  # type: ignore[misc]
             # Get info
             info = await cache.redis.info()
             return {
@@ -65,7 +65,7 @@ async def check_wordpress_health() -> dict[str, Any]:
             graphql_response = await client.post(
                 config.wp_graphql_endpoint,
                 json={"query": "{ __typename }"},
-                auth=config.wp_auth,
+                auth=config.wp_auth,  # type: ignore[arg-type]
             )
             graphql_response.raise_for_status()
 

@@ -3,9 +3,12 @@
 import hashlib
 import json
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING, cast
 
 import httpx
+
+if TYPE_CHECKING:
+    from wp_mcp.cache import CacheManager
 
 from wp_mcp.config import config
 
@@ -28,7 +31,7 @@ class GraphQLClient:
         """
         self._endpoint = endpoint or config.wp_graphql_endpoint
         self._auth = auth or config.wp_auth
-        self._cache = None
+        self._cache: CacheManager | None = None
 
     def _get_cache_key(
         self, query: str, variables: dict[str, Any] | None = None, user_id: int | None = None
@@ -106,7 +109,7 @@ class GraphQLClient:
             response = await client.post(
                 self._endpoint,
                 json=payload,
-                auth=self._auth,
+                auth=self._auth,  # type: ignore[arg-type]
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()
@@ -117,7 +120,7 @@ class GraphQLClient:
             error_messages = [e.get("message", "Unknown error") for e in result["errors"]]
             raise GraphQLError("; ".join(error_messages), errors=result["errors"])
 
-        return result.get("data", {})
+        return cast(dict[str, Any], result.get("data", {}))
 
     async def query(
         self,
@@ -146,7 +149,7 @@ class GraphQLClient:
             cached_result = await self._cache.get(cache_key)
 
             if cached_result is not None:
-                return cached_result
+                return cast(dict[str, Any], cached_result)
 
         # Execute query
         result = await self.execute(query, variables)

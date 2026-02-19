@@ -48,7 +48,7 @@ class CacheManager:
                     socket_connect_timeout=5,
                 )
                 # Test connection
-                await self.redis.ping()
+                await self.redis.ping()  # type: ignore[misc]
                 logger.info("Connected to Redis at %s", config.redis_url)
             except Exception as e:
                 logger.error("Failed to connect to Redis: %s", e)
