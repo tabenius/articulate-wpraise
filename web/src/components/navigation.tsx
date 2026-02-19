@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { Notifications } from "./notifications";
 import { Button } from "./ui/button";
-import { Home, Users, UserCircle, Mail } from "lucide-react";
+import { Home, Users, UserCircle, Mail, BookOpen } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -42,6 +42,16 @@ export function Navigation() {
                   </Link>
                 );
               })}
+              <a href="http://localhost:8091" target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Docs
+                </Button>
+              </a>
             </div>
           </div>
           <div className="flex items-center gap-2">

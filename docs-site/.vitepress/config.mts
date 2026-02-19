@@ -23,9 +23,10 @@ export default defineConfig({
           text: 'Introduction',
           items: [
             { text: 'What is WP-AI?', link: '/' },
+            { text: 'Project Overview', link: '/project-overview' },
+            { text: 'Features', link: '/features' },
             { text: 'Getting Started', link: '/getting-started' },
-            { text: 'Architecture', link: '/architecture' },
-            { text: 'Features', link: '/features' }
+            { text: 'Architecture', link: '/architecture' }
           ]
         },
         {
