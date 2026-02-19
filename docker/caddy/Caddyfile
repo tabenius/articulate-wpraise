@@ -67,11 +67,6 @@ http://app.ragbaz.xyz {
             # WebSocket support for Next.js HMR (development)
             header_up Upgrade {http.request.header.Upgrade}
             header_up Connection {http.request.header.Connection}
-
-            # Health check
-            health_uri /api/health
-            health_interval 30s
-            health_timeout 5s
         }
     }
 }
