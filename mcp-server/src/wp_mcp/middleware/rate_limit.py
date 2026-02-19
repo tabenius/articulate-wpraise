@@ -58,6 +58,12 @@ class RateLimiter:
         Raises:
             RateLimitExceeded: If rate limit is exceeded
         """
+        if cache.redis is None:
+            await cache.connect()
+        if cache.redis is None:
+            # Redis unavailable, allow request (fail open)
+            return True, self.max_requests
+
         key = f"{self.identifier_prefix}:{identifier}"
 
         try:
@@ -89,12 +95,17 @@ class RateLimiter:
             logger.warning("Rate limit check failed, allowing request: %s", e)
             return True, self.max_requests
 
-    async def reset(self, identifier: str):
+    async def reset(self, identifier: str) -> None:
         """Reset rate limit for an identifier.
 
         Args:
             identifier: User/client identifier
         """
+        if cache.redis is None:
+            await cache.connect()
+        if cache.redis is None:
+            return
+
         key = f"{self.identifier_prefix}:{identifier}"
         try:
             await cache.redis.delete(key)
@@ -111,6 +122,16 @@ class RateLimiter:
         Returns:
             Dict with limit, remaining, reset_at
         """
+        if cache.redis is None:
+            await cache.connect()
+        if cache.redis is None:
+            return {
+                "limit": self.max_requests,
+                "remaining": self.max_requests,
+                "used": 0,
+                "reset_at": None,
+            }
+
         key = f"{self.identifier_prefix}:{identifier}"
         try:
             current_str = await cache.redis.get(key)
