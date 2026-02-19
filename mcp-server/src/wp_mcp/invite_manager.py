@@ -220,7 +220,12 @@ class InviteManager:
         # Mark expired invites
         now = datetime.now(timezone.utc)
         for invite in invites:
-            if invite["expires_at"] < now:
+            # Make expires_at timezone-aware if needed
+            expires_at = invite["expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+            if expires_at < now:
                 await InviteManager._mark_expired(invite["id"])
                 invite["status"] = "expired"
 
