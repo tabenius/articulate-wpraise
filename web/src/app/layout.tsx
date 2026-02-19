@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ConnectionProvider } from "@/contexts/connection-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Navigation } from "@/components/navigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,7 +30,6 @@ export default function RootLayout({
         >
           <AuthProvider>
             <ConnectionProvider>
-              <Navigation />
               {children}
             </ConnectionProvider>
           </AuthProvider>
