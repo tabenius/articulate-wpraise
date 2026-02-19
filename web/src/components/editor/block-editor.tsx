@@ -39,11 +39,17 @@ export function BlockEditor() {
     })
   );
 
-  // Add keyboard shortcuts for undo/redo
+  // Add keyboard shortcuts for undo/redo and escape to deselect
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd (Mac) or Ctrl (Windows/Linux)
       const isMod = e.metaKey || e.ctrlKey;
+
+      // Escape: Deselect current block
+      if (e.key === "Escape") {
+        e.preventDefault();
+        selectBlock(null);
+      }
 
       // Undo: Cmd+Z or Ctrl+Z
       if (isMod && e.key === "z" && !e.shiftKey) {
@@ -60,7 +66,7 @@ export function BlockEditor() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, selectBlock]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {

@@ -10,6 +10,8 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { CommandPalette } from "@/components/command-palette";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { PanelLeftClose, PanelBottomClose } from "lucide-react";
 
 interface AppShellProps {
   onLoadPost: (postId: number) => void;
@@ -23,6 +25,24 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Layout orientation: "vertical" = chat below (default), "horizontal" = chat on left
+  const [layoutOrientation, setLayoutOrientation] = useState<"vertical" | "horizontal">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("chat-layout-orientation");
+      return (saved === "horizontal" ? "horizontal" : "vertical") as "vertical" | "horizontal";
+    }
+    return "vertical";
+  });
+
+  // Save layout preference to localStorage
+  useEffect(() => {
+    localStorage.setItem("chat-layout-orientation", layoutOrientation);
+  }, [layoutOrientation]);
+
+  const toggleLayoutOrientation = useCallback(() => {
+    setLayoutOrientation(prev => prev === "vertical" ? "horizontal" : "vertical");
+  }, []);
 
   // Listen for keyboard shortcuts
   useEffect(() => {
@@ -89,11 +109,37 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost }: AppS
           onOpenShortcuts={() => setShortcutsOpen(true)}
         />
 
-        <div className="flex-1 overflow-hidden">
-          <SplitView
-            left={<ChatPanel />}
-            right={<EditorPanel />}
-          />
+        <div className="flex-1 overflow-hidden relative">
+          {layoutOrientation === "vertical" ? (
+            <SplitView
+              direction="vertical"
+              left={<EditorPanel />}
+              right={<ChatPanel />}
+              defaultSize={65}
+            />
+          ) : (
+            <SplitView
+              direction="horizontal"
+              left={<ChatPanel />}
+              right={<EditorPanel />}
+            />
+          )}
+
+          {/* Layout toggle button */}
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleLayoutOrientation}
+              title={layoutOrientation === "vertical" ? "Chat on left" : "Chat below"}
+            >
+              {layoutOrientation === "vertical" ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelBottomClose className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
 
         <Sidebar
