@@ -420,20 +420,13 @@ async def delete_user_account_endpoint(request):
 
 
 # Organization management endpoints
+@require_auth
 async def create_organization_endpoint(request):
     """Create a new organization."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user
         data = await request.json()
         org = await OrganizationManager.create_organization(
             owner_id=user["id"],
@@ -451,20 +444,13 @@ async def create_organization_endpoint(request):
         return JSONResponse({"error": "Failed to create organization"}, status_code=500)
 
 
+@require_auth
 async def get_organizations_endpoint(request):
     """Get user's organizations."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user
         orgs = await OrganizationManager.get_organizations_for_user(user["id"])
         return JSONResponse(sanitize_for_json(orgs))
     except Exception as e:
@@ -487,20 +473,13 @@ async def get_organization_endpoint(request):
         return JSONResponse({"error": "Failed to get organization"}, status_code=500)
 
 
+@require_auth
 async def update_organization_endpoint(request):
     """Update organization."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user
         org_id = int(request.path_params.get("id"))
         data = await request.json()
 
@@ -520,20 +499,13 @@ async def update_organization_endpoint(request):
         return JSONResponse({"error": "Failed to update organization"}, status_code=500)
 
 
+@require_auth
 async def delete_organization_endpoint(request):
     """Delete organization."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user
         org_id = int(request.path_params.get("id"))
         await OrganizationManager.delete_organization(org_id, user["id"])
         return JSONResponse({"success": True})
@@ -544,20 +516,13 @@ async def delete_organization_endpoint(request):
         return JSONResponse({"error": "Failed to delete organization"}, status_code=500)
 
 
+@require_auth
 async def transfer_organization_ownership_endpoint(request):
     """Transfer organization ownership to another admin."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user
         org_id = int(request.path_params.get("id"))
         data = await request.json()
 
@@ -671,19 +636,13 @@ async def update_member_role_endpoint(request):
         return JSONResponse({"error": "Failed to update role"}, status_code=500)
 
 
+@require_auth
 async def remove_member_endpoint(request):
     """Remove member from organization."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.organization_manager import OrganizationManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         org_id = int(request.path_params.get("id"))
         member_id = int(request.path_params.get("member_id"))
@@ -702,19 +661,13 @@ async def remove_member_endpoint(request):
 
 
 # Organization invite endpoints
+@require_auth
 async def create_invite_endpoint(request):
     """Create organization invite."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         org_id = int(request.path_params.get("id"))
         data = await request.json()
@@ -733,19 +686,13 @@ async def create_invite_endpoint(request):
         return JSONResponse({"error": "Failed to create invite"}, status_code=500)
 
 
+@require_auth
 async def get_organization_invites_endpoint(request):
     """Get organization invites."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         org_id = int(request.path_params.get("id"))
         invites = await InviteManager.get_invites_for_organization(org_id, user["id"])
@@ -757,19 +704,13 @@ async def get_organization_invites_endpoint(request):
         return JSONResponse({"error": "Failed to get invites"}, status_code=500)
 
 
+@require_auth
 async def get_user_invites_endpoint(request):
-    """Get current user's pending invites."""
-    from wp_mcp.user_manager import UserManager
+    """Get current user\'s pending invites."""
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         invites = await InviteManager.get_invites_for_user(user["email"])
         return JSONResponse(sanitize_for_json(invites))
@@ -778,19 +719,13 @@ async def get_user_invites_endpoint(request):
         return JSONResponse({"error": "Failed to get invites"}, status_code=500)
 
 
+@require_auth
 async def accept_invite_endpoint(request):
     """Accept organization invite."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         data = await request.json()
         token = data.get("token")
@@ -804,19 +739,13 @@ async def accept_invite_endpoint(request):
         return JSONResponse({"error": "Failed to accept invite"}, status_code=500)
 
 
+@require_auth
 async def reject_invite_endpoint(request):
     """Reject organization invite."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         data = await request.json()
         token = data.get("token")
@@ -830,19 +759,13 @@ async def reject_invite_endpoint(request):
         return JSONResponse({"error": "Failed to reject invite"}, status_code=500)
 
 
+@require_auth
 async def cancel_invite_endpoint(request):
     """Cancel organization invite."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.invite_manager import InviteManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+        user = request.state.user
 
         invite_id = int(request.path_params.get("invite_id"))
         await InviteManager.cancel_invite(invite_id, user["id"])
