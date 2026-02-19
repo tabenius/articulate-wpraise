@@ -18,6 +18,7 @@ from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
 from wp_mcp.config import config
+from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
 from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies, revisions, image_tools
@@ -324,7 +325,7 @@ async def get_profile_endpoint(request):
             return JSONResponse({"error": "Invalid session"}, status_code=401)
 
         profile = await ProfileManager.get_profile(user["id"])
-        return JSONResponse(profile)
+        return JSONResponse(sanitize_for_json(profile))
     except Exception as e:
         logger.error("Get profile error: %s", e)
         return JSONResponse({"error": "Failed to get profile"}, status_code=500)
@@ -354,7 +355,7 @@ async def update_profile_endpoint(request):
             bio=data.get("bio"),
             visibility=data.get("visibility"),
         )
-        return JSONResponse(profile)
+        return JSONResponse(sanitize_for_json(profile))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -381,7 +382,7 @@ async def get_profile_by_username_endpoint(request):
         profile = await ProfileManager.get_profile_by_username(username, requesting_user_id)
         if not profile:
             return JSONResponse({"error": "User not found or profile is private"}, status_code=404)
-        return JSONResponse(profile)
+        return JSONResponse(sanitize_for_json(profile))
     except Exception as e:
         logger.error("Get profile by username error: %s", e)
         return JSONResponse({"error": "Failed to get profile"}, status_code=500)
@@ -455,7 +456,7 @@ async def create_organization_endpoint(request):
             banner=data.get("banner"),
             bio=data.get("bio"),
         )
-        return JSONResponse(org, status_code=201)
+        return JSONResponse(sanitize_for_json(org), status_code=201)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -478,7 +479,7 @@ async def get_organizations_endpoint(request):
             return JSONResponse({"error": "Invalid session"}, status_code=401)
 
         orgs = await OrganizationManager.get_organizations_for_user(user["id"])
-        return JSONResponse(orgs)
+        return JSONResponse(sanitize_for_json(orgs))
     except Exception as e:
         logger.error("Get organizations error: %s", e)
         return JSONResponse({"error": "Failed to get organizations"}, status_code=500)
@@ -608,7 +609,7 @@ async def search_organizations_endpoint(request):
             limit=limit,
             offset=offset
         )
-        return JSONResponse(orgs)
+        return JSONResponse(sanitize_for_json(orgs))
     except Exception as e:
         logger.error("Search organizations error: %s", e)
         return JSONResponse({"error": "Failed to search organizations"}, status_code=500)
@@ -645,7 +646,7 @@ async def get_organization_members_endpoint(request):
     try:
         org_id = int(request.path_params.get("id"))
         members = await OrganizationManager.get_members(org_id)
-        return JSONResponse(members)
+        return JSONResponse(sanitize_for_json(members))
     except Exception as e:
         logger.error("Get members error: %s", e)
         return JSONResponse({"error": "Failed to get members"}, status_code=500)
@@ -761,7 +762,7 @@ async def get_organization_invites_endpoint(request):
 
         org_id = int(request.path_params.get("id"))
         invites = await InviteManager.get_invites_for_organization(org_id, user["id"])
-        return JSONResponse(invites)
+        return JSONResponse(sanitize_for_json(invites))
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -784,7 +785,7 @@ async def get_user_invites_endpoint(request):
             return JSONResponse({"error": "Invalid session"}, status_code=401)
 
         invites = await InviteManager.get_invites_for_user(user["email"])
-        return JSONResponse(invites)
+        return JSONResponse(sanitize_for_json(invites))
     except Exception as e:
         logger.error("Get user invites error: %s", e)
         return JSONResponse({"error": "Failed to get invites"}, status_code=500)
@@ -885,7 +886,7 @@ async def get_user_activities_endpoint(request):
         offset = int(request.query_params.get("offset", 0))
 
         activities = await ActivityManager.get_user_activities(user["id"], limit, offset)
-        return JSONResponse(activities)
+        return JSONResponse(sanitize_for_json(activities))
     except Exception as e:
         logger.error("Get user activities error: %s", e)
         return JSONResponse({"error": "Failed to get activities"}, status_code=500)
@@ -901,7 +902,7 @@ async def get_organization_activities_endpoint(request):
         offset = int(request.query_params.get("offset", 0))
 
         activities = await ActivityManager.get_organization_activities(org_id, limit, offset)
-        return JSONResponse(activities)
+        return JSONResponse(sanitize_for_json(activities))
     except Exception as e:
         logger.error("Get organization activities error: %s", e)
         return JSONResponse({"error": "Failed to get activities"}, status_code=500)
@@ -925,7 +926,7 @@ async def get_activity_feed_endpoint(request):
         offset = int(request.query_params.get("offset", 0))
 
         activities = await ActivityManager.get_feed(user["id"], limit, offset)
-        return JSONResponse(activities)
+        return JSONResponse(sanitize_for_json(activities))
     except Exception as e:
         logger.error("Get activity feed error: %s", e)
         return JSONResponse({"error": "Failed to get feed"}, status_code=500)
@@ -947,7 +948,7 @@ async def get_connections_endpoint(request):
             return JSONResponse({"error": "Invalid session"}, status_code=401)
 
         connections = await connection_manager.get_connections(user["id"])
-        return JSONResponse(connections)
+        return JSONResponse(sanitize_for_json(connections))
     except Exception as e:
         logger.error("Get connections error: %s", e)
         return JSONResponse({"error": "Failed to get connections"}, status_code=500)
