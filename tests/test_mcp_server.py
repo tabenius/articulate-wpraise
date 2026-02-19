@@ -254,41 +254,47 @@ class TestProfile:
 
     def test_profile_visibility_public(self, base_url, auth_session, second_user):
         """Test public profile visibility."""
+        import time
+        username = f"public_user_{int(time.time())}"
+
         # Set main user's profile to public
         response = requests.put(
             f"{base_url}/profile",
             headers=auth_session["headers"],
-            json={"visibility": "public", "username": "public_user_test"},
+            json={"visibility": "public", "username": username},
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
 
         # Second user should be able to view it
         response = requests.get(
-            f"{base_url}/profile/public_user_test",
+            f"{base_url}/profile/{username}",
             headers=second_user["headers"],
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["username"] == "public_user_test"
+        assert data["username"] == username
         assert data["visibility"] == "public"
         print("\n✅ Public profile visible to other users")
 
     def test_profile_visibility_private(self, base_url, auth_session, second_user):
         """Test private profile visibility."""
+        import time
+        username = f"private_user_{int(time.time())}"
+
         # Set main user's profile to private
         response = requests.put(
             f"{base_url}/profile",
             headers=auth_session["headers"],
-            json={"visibility": "private", "username": "private_user_test"},
+            json={"visibility": "private", "username": username},
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
 
         # Second user should NOT be able to view it
         response = requests.get(
-            f"{base_url}/profile/private_user_test",
+            f"{base_url}/profile/{username}",
             headers=second_user["headers"],
             timeout=TEST_TIMEOUT
         )
@@ -297,13 +303,13 @@ class TestProfile:
 
         # But the owner should still be able to view it
         response = requests.get(
-            f"{base_url}/profile/private_user_test",
+            f"{base_url}/profile/{username}",
             headers=auth_session["headers"],
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["username"] == "private_user_test"
+        assert data["username"] == username
         assert data["visibility"] == "private"
         print("✅ Private profile visible to owner")
 
@@ -873,6 +879,8 @@ class TestImageCompression:
     def test_upload_with_compression_webp(self, base_url, auth_session):
         """Test POST /upload with WebP compression."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         # Create test image
         test_image = self.create_test_image(format="PNG", size=(200, 200))
@@ -904,6 +912,8 @@ class TestImageCompression:
     def test_upload_with_compression_avif(self, base_url, auth_session):
         """Test POST /upload with AVIF compression."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         test_image = self.create_test_image(format="PNG", size=(200, 200))
 
@@ -932,6 +942,8 @@ class TestImageCompression:
     def test_upload_with_resize(self, base_url, auth_session):
         """Test POST /upload with resizing."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         # Create large image
         test_image = self.create_test_image(format="PNG", size=(1000, 1000))
@@ -962,6 +974,8 @@ class TestImageCompression:
     def test_upload_without_compression(self, base_url, auth_session):
         """Test POST /upload without compression."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         test_image = self.create_test_image(format="PNG", size=(100, 100))
 
@@ -985,6 +999,8 @@ class TestImageCompression:
     def test_upload_invalid_format(self, base_url, auth_session):
         """Test POST /upload with invalid format."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         test_image = self.create_test_image(format="PNG")
 
@@ -1070,6 +1086,8 @@ class TestImageCompression:
     def test_large_file_upload(self, base_url, auth_session):
         """Test upload with larger file to verify progress handling."""
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         # Create larger test image (500x500)
         test_image = self.create_test_image(format="PNG", size=(500, 500))
@@ -1099,6 +1117,8 @@ class TestImageCompression:
         from PIL import Image
 
         headers = auth_session["headers"].copy()
+        # Remove Content-Type for multipart/form-data upload
+        headers.pop("Content-Type", None)
 
         # Create a cropped square image (simulate client-side cropping)
         img = Image.new("RGB", (300, 300), (0, 128, 255))

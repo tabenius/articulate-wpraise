@@ -375,7 +375,7 @@ async def get_profile_by_username_endpoint(request):
         requesting_user_id = None
         if session_id:
             from wp_mcp.user_manager import UserManager
-            user = await UserManager.get_user_by_session(session_id)
+            user = await UserManager.get_user_from_session(session_id)
             if user:
                 requesting_user_id = user["id"]
 
