@@ -223,7 +223,8 @@ services:
     environment:
       - DOMAIN=${DOMAIN:-ragbaz.xyz}
     networks:
-      - wp-ai-proxy
+      - wp-ai-internal  # Access to WordPress, MCP, and other internal services
+      - wp-ai-proxy     # Receive traffic from HAProxy/external
 
 networks:
   # Internal network - not accessible from outside

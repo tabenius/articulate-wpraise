@@ -128,18 +128,18 @@ http://my.ragbaz.xyz {
         path /wp-json/*
     }
     handle @wpapi {
+        # Enable CORS for API access
+        @origin header Origin *
+        header @origin Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header @origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header @origin Access-Control-Allow-Headers "Authorization, Content-Type"
+        header @origin Access-Control-Allow-Credentials "true"
+
         reverse_proxy wordpress:80 {
             header_up Host {host}
             header_up X-Real-IP {header.X-Real-IP}
             header_up X-Forwarded-For {header.X-Forwarded-For}
             header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-
-            # Enable CORS for API access
-            @origin header Origin *
-            header @origin Access-Control-Allow-Origin "{http.request.header.Origin}"
-            header @origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            header @origin Access-Control-Allow-Headers "Authorization, Content-Type"
-            header @origin Access-Control-Allow-Credentials "true"
         }
     }
 
