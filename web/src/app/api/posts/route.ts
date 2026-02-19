@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, status } = body;
+    const { title, content, status, type } = body;
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         title,
         content: content || "",
         status: status || "draft",
+        post_type: type || "post",
       },
       authHeaders
     );

@@ -7,8 +7,14 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from wp_mcp.graphql.client import get_graphql_client
-from wp_mcp.graphql.queries import GET_POST, GET_POSTS
-from wp_mcp.graphql.mutations import CREATE_POST, UPDATE_POST, DELETE_POST
+from wp_mcp.graphql.queries import GET_POST, GET_POSTS, GET_PAGES, GET_PAGE
+from wp_mcp.graphql.mutations import (
+    CREATE_POST,
+    UPDATE_POST,
+    DELETE_POST,
+    CREATE_PAGE,
+    UPDATE_PAGE,
+)
 from wp_mcp.context_helper import get_connection_info
 
 
@@ -22,32 +28,55 @@ def register(mcp: FastMCP) -> None:
         search: str | None = None,
         context: dict | None = None,
     ) -> list[dict[str, Any]]:
-        """List WordPress posts with optional filtering.
+        """List WordPress posts and pages with optional filtering.
 
         Args:
-            status: Post status filter (publish, draft, pending, private).
+            status: Post status filter (publish, draft, pending, private, any).
             per_page: Number of posts to return (max 100).
             search: Optional search term to filter posts by title/content.
 
         Returns:
-            List of post objects with id, title, slug, status, date, excerpt.
+            List of post/page objects with id, title, slug, status, date, excerpt.
         """
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
+        # Fetch both posts and pages
+        results: list[dict[str, Any]] = []
+
+        # Fetch posts
         where: dict[str, Any] = {}
-        if status:
+        if status and status.lower() != "any":
             where["status"] = status.upper()
         if search:
             where["search"] = search
 
-        data = await client.query(
+        posts_data = await client.query(
             GET_POSTS,
             variables={"first": min(per_page, 100), "where": where if where else None},
             user_id=user_id,
         )
-        posts = data.get("posts", {}).get("nodes", [])
-        return [_format_post_summary(p) for p in posts]
+        posts = posts_data.get("posts", {}).get("nodes", [])
+        results.extend([_format_post_summary(p, "post") for p in posts])
+
+        # Fetch pages (pages don't support status/search filters in the same way)
+        pages_data = await client.query(
+            GET_PAGES,
+            variables={"first": min(per_page, 100)},
+            user_id=user_id,
+        )
+        pages = pages_data.get("pages", {}).get("nodes", [])
+
+        # Filter pages by status if specified
+        if status and status.lower() != "any":
+            pages = [p for p in pages if p.get("status", "").upper() == status.upper()]
+
+        results.extend([_format_post_summary(p, "page") for p in pages])
+
+        # Sort by date descending
+        results.sort(key=lambda x: x.get("date", ""), reverse=True)
+
+        return results[: min(per_page, 100)]
 
     @mcp.tool()
     async def get_post(post_id: int, context: dict | None = None) -> dict[str, Any]:
@@ -77,25 +106,27 @@ def register(mcp: FastMCP) -> None:
         title: str,
         content: str = "",
         status: str = "draft",
+        post_type: str = "post",
         featured_image_id: int | None = None,
         category_ids: list[int] | None = None,
         tag_ids: list[int] | None = None,
         date: str | None = None,
         context: dict | None = None,
     ) -> dict[str, Any]:
-        """Create a new WordPress post.
+        """Create a new WordPress post or page.
 
         Args:
-            title: The post title.
-            content: The post content in WordPress block format (serialized HTML comments).
+            title: The post/page title.
+            content: The content in WordPress block format (serialized HTML comments).
             status: Post status (draft, publish, pending, private). Default: draft.
+            post_type: The post type ('post' or 'page'). Default: post.
             featured_image_id: Database ID of the featured image (optional).
-            category_ids: List of category database IDs to assign (optional).
-            tag_ids: List of tag database IDs to assign (optional).
+            category_ids: List of category database IDs to assign (optional, posts only).
+            tag_ids: List of tag database IDs to assign (optional, posts only).
             date: ISO 8601 date string. Future dates schedule the post (optional).
 
         Returns:
-            The created post object with id, title, slug, status.
+            The created post/page object with id, title, slug, status.
         """
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
@@ -107,26 +138,35 @@ def register(mcp: FastMCP) -> None:
         }
         if featured_image_id is not None:
             input_data["featuredImageId"] = str(featured_image_id)
-        if category_ids is not None:
-            input_data["categories"] = {
-                "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
-            }
-        if tag_ids is not None:
-            input_data["tags"] = {
-                "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
-            }
+
+        # Categories and tags only apply to posts, not pages
+        if post_type == "post":
+            if category_ids is not None:
+                input_data["categories"] = {
+                    "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
+                }
+            if tag_ids is not None:
+                input_data["tags"] = {
+                    "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
+                }
+
         if date is not None:
             input_data["date"] = date
 
+        # Use different mutation based on post type
+        mutation = CREATE_PAGE if post_type == "page" else CREATE_POST
+        mutation_key = "createPage" if post_type == "page" else "createPost"
+        result_key = "page" if post_type == "page" else "post"
+
         data = await client.mutate(
-            CREATE_POST,
+            mutation,
             variables={"input": input_data},
-            invalidate_patterns=["gql:*post*"],
+            invalidate_patterns=["gql:*post*", "gql:*page*"],
         )
-        post = data.get("createPost", {}).get("post")
-        if not post:
-            return {"error": "Failed to create post"}
-        return _format_post(post)
+        result = data.get(mutation_key, {}).get(result_key)
+        if not result:
+            return {"error": f"Failed to create {post_type}"}
+        return _format_post(result)
 
     @mcp.tool()
     async def update_post(
@@ -215,7 +255,7 @@ def register(mcp: FastMCP) -> None:
         }
 
 
-def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
+def _format_post_summary(post: dict[str, Any], post_type: str = "post") -> dict[str, Any]:
     """Format a post for the summary list."""
     # Generate slug from title if WordPress doesn't provide one (drafts)
     slug = post.get("slug")
@@ -232,6 +272,7 @@ def _format_post_summary(post: dict[str, Any]) -> dict[str, Any]:
         "modified": post.get("modified", ""),
         "excerpt": post.get("excerpt", ""),
         "author": (post.get("author") or {}).get("node", {}).get("name", ""),
+        "type": post_type,
     }
 
     # Add featured image if present
