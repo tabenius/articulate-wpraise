@@ -109,80 +109,72 @@ export function BlockEditor() {
     [addBlock]
   );
 
-  if (blocks.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground px-4">
-        <div className="text-center max-w-md">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-16 w-16 text-muted-foreground/40"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            No content yet
-          </h3>
-          <p className="text-sm mb-6">
-            Start writing or use AI to create content. Use the &quot;Add Block&quot; button above or ask the AI assistant in the chat panel.
-          </p>
-          <div className="flex flex-col gap-2 text-xs text-left bg-muted/50 rounded-lg p-4">
-            <p className="font-medium text-foreground mb-1">Try asking:</p>
-            <p className="text-muted-foreground">
-              💬 &quot;Write an introduction about...&quot;
-            </p>
-            <p className="text-muted-foreground">
-              💬 &quot;Add a heading that says...&quot;
-            </p>
-            <p className="text-muted-foreground">
-              💬 &quot;Create a list of...&quot;
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="pl-12 pr-4 py-4" onClick={handleBackgroundClick}>
       <div className="max-w-3xl mx-auto">
         <TitleEditor />
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={blocks.map((b) => b.clientId)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-1">
-              {blocks.map((block, index) => (
-                <div key={block.clientId} className="group relative">
-                  <BlockWrapper block={block} />
-                  <BlockInserter
-                    onInsertBlock={(type) => handleInsertBlock(type, index + 1)}
-                    position="below"
-                  />
-                </div>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
 
-        {/* Add block inserter at the end if no blocks */}
-        {blocks.length === 0 && (
-          <div className="mt-8">
-            <BlockInserter onInsertBlock={(type) => handleInsertBlock(type)} />
+        {blocks.length === 0 ? (
+          <div className="flex items-center justify-center text-muted-foreground py-16">
+            <div className="text-center max-w-md">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-16 w-16 text-muted-foreground/40"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                No content yet
+              </h3>
+              <p className="text-sm mb-6">
+                Start writing or use AI to create content. Use the &quot;Add Block&quot; button above or ask the AI assistant in the chat panel.
+              </p>
+              <div className="flex flex-col gap-2 text-xs text-left bg-muted/50 rounded-lg p-4">
+                <p className="font-medium text-foreground mb-1">Try asking:</p>
+                <p className="text-muted-foreground">
+                  💬 &quot;Write an introduction about...&quot;
+                </p>
+                <p className="text-muted-foreground">
+                  💬 &quot;Add a heading that says...&quot;
+                </p>
+                <p className="text-muted-foreground">
+                  💬 &quot;Create a list of...&quot;
+                </p>
+              </div>
+            </div>
           </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={blocks.map((b) => b.clientId)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-1">
+                {blocks.map((block, index) => (
+                  <div key={block.clientId} className="group relative">
+                    <BlockWrapper block={block} />
+                    <BlockInserter
+                      onInsertBlock={(type) => handleInsertBlock(type, index + 1)}
+                      position="below"
+                    />
+                  </div>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </div>
