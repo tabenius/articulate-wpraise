@@ -166,6 +166,7 @@ export default function ProfilePage() {
       avatar: profile?.avatar || "",
       banner: profile?.banner || "",
       bio: profile?.bio || "",
+      visibility: profile?.visibility || "public",
     });
     setIsEditing(false);
   }

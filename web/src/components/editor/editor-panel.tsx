@@ -6,14 +6,19 @@ import { Button } from "@/components/ui/button";
 import { BlockEditor } from "./block-editor";
 import { BlockToolbar } from "./block-toolbar";
 import { PreviewMode } from "./preview-mode";
+import { LivePreview } from "./live-preview";
+import { PreviewControls } from "./preview-controls";
 import { DesignSystemPanel } from "./design-system-panel";
 import { RevisionTimeline } from "./revision-timeline";
+import { SplitView } from "@/components/layout/split-view";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
-import { Undo2, Redo2 } from "lucide-react";
+import { Undo2, Redo2, Edit3, Columns2, Eye } from "lucide-react";
+
+type ViewMode = "edit" | "split" | "preview";
 
 export function EditorPanel() {
-  const [isPreview, setIsPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("edit");
   const currentPost = usePostStore((s) => s.currentPost);
   const blocks = useEditorStore((s) => s.blocks);
   const blockCount = blocks.length;
@@ -24,7 +29,7 @@ export function EditorPanel() {
 
   // Calculate word count and reading time
   const wordCount = blocks.reduce((count, block) => {
-    const content = block.attributes.content as string || "";
+    const content = (block.attributes.content as string) || "";
     const text = content.replace(/<[^>]*>/g, ""); // Strip HTML tags
     const words = text.trim().split(/\s+/).filter(Boolean);
     return count + words.length;
@@ -32,74 +37,184 @@ export function EditorPanel() {
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
 
-  if (isPreview) {
+  // Render old preview mode for backward compatibility
+  if (viewMode === "preview") {
     return (
-      <PreviewMode
-        isPreview={isPreview}
-        onTogglePreview={() => setIsPreview(false)}
-      />
+      <PreviewMode isPreview={true} onTogglePreview={() => setViewMode("edit")} />
     );
   }
 
-  return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Editor toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-        <div className="flex items-center gap-3">
-          <BlockToolbar />
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo (Cmd+Z)"
-              className="h-8 w-8 p-0"
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo (Cmd+Shift+Z)"
-              className="h-8 w-8 p-0"
-            >
-              <Redo2 className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{blockCount} block{blockCount !== 1 ? "s" : ""}</span>
-            {wordCount > 0 && (
-              <>
-                <span>•</span>
-                <span>{wordCount} word{wordCount !== 1 ? "s" : ""}</span>
-                <span>•</span>
-                <span>{readingTime} min read</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <DesignSystemPanel />
-          <RevisionTimeline />
-          <PreviewMode
-            isPreview={false}
-            onTogglePreview={() => setIsPreview(true)}
+  // Render split view: Editor | Live WordPress Preview
+  if (viewMode === "split") {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {/* View mode toggle toolbar */}
+        <ViewModeToolbar viewMode={viewMode} setViewMode={setViewMode} />
+
+        {/* Preview controls */}
+        <PreviewControls />
+
+        {/* Split view content */}
+        <div className="flex-1">
+          <SplitView
+            left={
+              <div className="h-full flex flex-col">
+                {/* Editor toolbar */}
+                <EditorToolbar
+                  blockCount={blockCount}
+                  wordCount={wordCount}
+                  readingTime={readingTime}
+                  undo={undo}
+                  redo={redo}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  currentPost={currentPost}
+                />
+                {/* Editor content */}
+                <ScrollArea className="flex-1">
+                  <BlockEditor />
+                </ScrollArea>
+              </div>
+            }
+            right={<LivePreview />}
+            defaultSize={50}
+            leftId="editor-panel"
+            rightId="preview-panel"
           />
-          {currentPost && (
-            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-              {currentPost.title}
-            </span>
-          )}
         </div>
       </div>
+    );
+  }
+
+  // Render edit mode (default)
+  return (
+    <div className="h-full flex flex-col bg-background">
+      {/* View mode toggle toolbar */}
+      <ViewModeToolbar viewMode={viewMode} setViewMode={setViewMode} />
+
+      {/* Editor toolbar */}
+      <EditorToolbar
+        blockCount={blockCount}
+        wordCount={wordCount}
+        readingTime={readingTime}
+        undo={undo}
+        redo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        currentPost={currentPost}
+      />
 
       {/* Editor content */}
       <ScrollArea className="flex-1">
         <BlockEditor />
       </ScrollArea>
+    </div>
+  );
+}
+
+// View mode toggle component
+function ViewModeToolbar({
+  viewMode,
+  setViewMode,
+}: {
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
+}) {
+  const modes: { mode: ViewMode; icon: typeof Edit3; label: string }[] = [
+    { mode: "edit", icon: Edit3, label: "Edit" },
+    { mode: "split", icon: Columns2, label: "Split" },
+    { mode: "preview", icon: Eye, label: "Preview" },
+  ];
+
+  return (
+    <div className="flex items-center gap-1 px-4 py-2 border-b bg-muted/20">
+      {modes.map(({ mode, icon: Icon, label }) => (
+        <Button
+          key={mode}
+          variant={viewMode === mode ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode(mode)}
+          className="gap-1.5"
+        >
+          <Icon className="h-4 w-4" />
+          <span>{label}</span>
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+// Editor toolbar component (extracted for reuse)
+function EditorToolbar({
+  blockCount,
+  wordCount,
+  readingTime,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  currentPost,
+}: {
+  blockCount: number;
+  wordCount: number;
+  readingTime: number;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  currentPost: any;
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+      <div className="flex items-center gap-3">
+        <BlockToolbar />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Cmd+Z)"
+            className="h-8 w-8 p-0"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Cmd+Shift+Z)"
+            className="h-8 w-8 p-0"
+          >
+            <Redo2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>
+            {blockCount} block{blockCount !== 1 ? "s" : ""}
+          </span>
+          {wordCount > 0 && (
+            <>
+              <span>•</span>
+              <span>
+                {wordCount} word{wordCount !== 1 ? "s" : ""}
+              </span>
+              <span>•</span>
+              <span>{readingTime} min read</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <DesignSystemPanel />
+        <RevisionTimeline />
+        {currentPost && (
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+            {currentPost.title}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

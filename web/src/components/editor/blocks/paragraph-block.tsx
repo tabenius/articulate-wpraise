@@ -1,34 +1,26 @@
 "use client";
 
-import { useRef, useCallback } from "react";
 import type { BlockProps, ParagraphAttributes } from "@/types/blocks";
+import { RichTextEditor } from "../rich-text-editor";
 
 export function ParagraphBlock({
   attributes,
   isSelected,
   onUpdate,
 }: BlockProps<ParagraphAttributes>) {
-  const ref = useRef<HTMLParagraphElement>(null);
-
-  const handleBlur = useCallback(() => {
-    if (ref.current) {
-      const content = ref.current.innerHTML;
-      if (content !== attributes.content) {
-        onUpdate({ content });
-      }
+  const handleChange = (html: string) => {
+    if (html !== attributes.content) {
+      onUpdate({ content: html });
     }
-  }, [attributes.content, onUpdate]);
+  };
 
   return (
-    <p
-      ref={ref}
-      className={`block-content min-h-[1.5em] ${
-        attributes.align ? `text-${attributes.align}` : ""
-      } ${isSelected ? "ring-2 ring-primary/20 rounded" : ""}`}
-      contentEditable
-      suppressContentEditableWarning
-      onBlur={handleBlur}
-      dangerouslySetInnerHTML={{ __html: attributes.content || "" }}
+    <RichTextEditor
+      content={attributes.content || ""}
+      placeholder="Write a paragraph..."
+      isSelected={isSelected}
+      onChange={handleChange}
+      className={attributes.align ? `text-${attributes.align}` : ""}
     />
   );
 }

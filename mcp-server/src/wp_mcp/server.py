@@ -25,7 +25,7 @@ from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
 from wp_mcp.middleware.logging import RequestLoggingMiddleware
-from wp_mcp.tools import posts, pages, blocks, media, fonts, search, taxonomies, revisions, image_tools
+from wp_mcp.tools import posts, pages, blocks, media, fonts, preview, search, taxonomies, revisions, image_tools
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -72,6 +72,7 @@ pages.register(mcp)
 blocks.register(mcp)
 media.register(mcp)
 fonts.register(mcp)
+preview.register(mcp)
 search.register(mcp)
 taxonomies.register(mcp)
 revisions.register(mcp)

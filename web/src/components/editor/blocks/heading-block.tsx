@@ -1,33 +1,25 @@
 "use client";
 
-import { useRef, useCallback } from "react";
 import type { BlockProps, HeadingAttributes } from "@/types/blocks";
+import { RichTextEditor } from "../rich-text-editor";
 
 export function HeadingBlock({
   attributes,
   isSelected,
   onUpdate,
 }: BlockProps<HeadingAttributes>) {
-  const ref = useRef<HTMLHeadingElement>(null);
   const level = attributes.level || 2;
 
-  const handleBlur = useCallback(() => {
-    if (ref.current) {
-      const content = ref.current.innerHTML;
-      if (content !== attributes.content) {
-        onUpdate({ content });
-      }
+  const handleChange = (html: string) => {
+    if (html !== attributes.content) {
+      onUpdate({ content: html });
     }
-  }, [attributes.content, onUpdate]);
+  };
 
-  const handleLevelChange = useCallback(
-    (newLevel: number) => {
-      onUpdate({ level: newLevel as HeadingAttributes["level"] });
-    },
-    [onUpdate]
-  );
+  const handleLevelChange = (newLevel: number) => {
+    onUpdate({ level: newLevel as HeadingAttributes["level"] });
+  };
 
-  const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   const sizeClasses: Record<number, string> = {
     1: "text-4xl font-bold",
     2: "text-3xl font-bold",
@@ -36,6 +28,10 @@ export function HeadingBlock({
     5: "text-lg font-medium",
     6: "text-base font-medium",
   };
+
+  const className = `${sizeClasses[level] || sizeClasses[2]} ${
+    attributes.textAlign ? `text-${attributes.textAlign}` : ""
+  }`;
 
   return (
     <div className="relative group">
@@ -56,15 +52,12 @@ export function HeadingBlock({
           ))}
         </div>
       )}
-      <Tag
-        ref={ref as React.Ref<HTMLHeadingElement>}
-        className={`block-content ${sizeClasses[level] || sizeClasses[2]} ${
-          attributes.textAlign ? `text-${attributes.textAlign}` : ""
-        } ${isSelected ? "ring-2 ring-primary/20 rounded" : ""}`}
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={handleBlur}
-        dangerouslySetInnerHTML={{ __html: attributes.content || "" }}
+      <RichTextEditor
+        content={attributes.content || ""}
+        placeholder={`Heading ${level}`}
+        isSelected={isSelected}
+        onChange={handleChange}
+        className={className}
       />
     </div>
   );
