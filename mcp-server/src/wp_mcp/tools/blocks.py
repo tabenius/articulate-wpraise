@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -79,7 +79,7 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Confirmation with the updated post id and block count.
         """
-        serialized = serialize_blocks(blocks)
+        serialized = serialize_blocks(cast(list[Block | dict[str, Any]], blocks))
 
         data = await gql_client.mutate(
             UPDATE_POST,
@@ -129,7 +129,7 @@ def register(mcp: FastMCP) -> None:
         # Save back
         result = await update_blocks(post_id, block_dicts)
         if "error" in result:
-            return result
+            return cast(dict[str, Any], result)
 
         return {
             "success": True,
@@ -163,7 +163,7 @@ def register(mcp: FastMCP) -> None:
 
         result = await update_blocks(post_id, filtered)
         if "error" in result:
-            return result
+            return cast(dict[str, Any], result)
 
         return {
             "success": True,
@@ -210,7 +210,7 @@ def register(mcp: FastMCP) -> None:
 
         result = await update_blocks(post_id, remaining)
         if "error" in result:
-            return result
+            return cast(dict[str, Any], result)
 
         return {
             "success": True,

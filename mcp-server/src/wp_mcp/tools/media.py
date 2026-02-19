@@ -84,8 +84,8 @@ def register(mcp: FastMCP) -> None:
             # Upload to WordPress REST API
             try:
                 files = {"file": (filename, file_content, content_type)}
-                headers = {}
-                data = {}
+                headers: dict[str, str] = {}
+                data: dict[str, str] = {}
 
                 if title:
                     data["title"] = title

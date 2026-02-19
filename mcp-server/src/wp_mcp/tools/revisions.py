@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -104,4 +104,4 @@ def register(mcp: FastMCP) -> None:
         # Fetch updated post
         updated_result = await gql_client.query(GET_POST, variables={"id": str(post_id)})
 
-        return updated_result.get("post", {})
+        return cast(dict[str, Any], updated_result.get("post", {}))
