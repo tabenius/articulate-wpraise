@@ -92,8 +92,16 @@ class HumanReadableFormatter(logging.Formatter):
 
         # Add extra context if available
         extras = []
+        if hasattr(record, "method") and hasattr(record, "path"):
+            extras.append(f"{record.method} {record.path}")
+        if hasattr(record, "status_code"):
+            extras.append(f"status={record.status_code}")
         if hasattr(record, "duration_ms"):
             extras.append(f"duration={record.duration_ms}ms")
+        if hasattr(record, "user_id"):
+            extras.append(f"user={record.user_id}")
+        if hasattr(record, "client_ip"):
+            extras.append(f"ip={record.client_ip}")
         if hasattr(record, "tool_name"):
             extras.append(f"tool={record.tool_name}")
         if hasattr(record, "cache_hit"):

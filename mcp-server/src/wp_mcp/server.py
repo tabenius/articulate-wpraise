@@ -23,6 +23,7 @@ from wp_mcp.exceptions import APIException, ValidationError, NotFoundError
 from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
+from wp_mcp.middleware.logging import RequestLoggingMiddleware
 from wp_mcp.tools import posts, pages, blocks, media, search, taxonomies, revisions, image_tools
 
 # Configure structured logging
@@ -1495,9 +1496,20 @@ mcp._app.routes.extend(
     ]
 )
 
-# NOW wrap app with authentication middleware AFTER routes are added
+# NOW wrap app with middleware AFTER routes are added
+# Keep a reference to the bare Starlette app for event registration
+bare_starlette_app = mcp._app
+
+# Order: Logging wraps Auth (outer to inner: Logging -> Auth -> App)
 mcp._app = AuthMiddleware(mcp._app)
 logger.info("Authentication middleware enabled")
+mcp._app = RequestLoggingMiddleware(mcp._app)
+logger.info("Request logging middleware enabled")
+
+# Register startup event on the bare Starlette app (before middleware wrapping)
+@bare_starlette_app.on_event("startup")
+async def on_startup():
+    await startup()
 
 
 async def startup():
@@ -1528,18 +1540,10 @@ def main() -> None:
         # For HTTP transport, use uvicorn to serve FastMCP's ASGI app
         import uvicorn
 
-        # Get the wrapped app (AuthMiddleware wrapping Starlette)
+        # Get the wrapped app (middleware wrapping Starlette)
         wrapped_app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
 
-        # Get the underlying Starlette app to register startup event
-        # AuthMiddleware.app contains the actual Starlette instance
-        starlette_app = wrapped_app.app if hasattr(wrapped_app, 'app') else wrapped_app
-
-        # Add startup event to the underlying Starlette app
-        @starlette_app.on_event("startup")
-        async def on_startup():
-            await startup()
-
+        # Startup event is already registered on the underlying Starlette app
         uvicorn.run(
             wrapped_app,
             host=config.mcp_host,
@@ -1550,17 +1554,10 @@ def main() -> None:
         # For SSE transport, use uvicorn as well
         import uvicorn
 
-        # Get the wrapped app (AuthMiddleware wrapping Starlette)
+        # Get the wrapped app (middleware wrapping Starlette)
         wrapped_app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
 
-        # Get the underlying Starlette app to register startup event
-        starlette_app = wrapped_app.app if hasattr(wrapped_app, 'app') else wrapped_app
-
-        # Add startup event to the underlying Starlette app
-        @starlette_app.on_event("startup")
-        async def on_startup():
-            await startup()
-
+        # Startup event is already registered on the underlying Starlette app
         uvicorn.run(
             wrapped_app,
             host=config.mcp_host,
