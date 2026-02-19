@@ -19,6 +19,7 @@ export interface Post {
   title: string;
   slug: string | null;
   status: string;
+  type?: string;
   content?: string;
   date: string;
   modified?: string;
@@ -34,6 +35,7 @@ export interface PostSummary {
   title: string;
   slug: string | null;
   status: string;
+  type?: string;
   date: string;
   modified?: string;
   excerpt?: string;
