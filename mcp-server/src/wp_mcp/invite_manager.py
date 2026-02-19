@@ -250,7 +250,13 @@ class InviteManager:
             raise ValueError(f"Invite is {invite['status']}")
 
         # Check if expired
-        if invite["expires_at"] < datetime.now(timezone.utc):
+        # Make both datetimes timezone-aware for comparison
+        expires_at = invite["expires_at"]
+        if expires_at.tzinfo is None:
+            # Database datetime is naive, make it UTC-aware
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at < datetime.now(timezone.utc):
             await InviteManager._mark_expired(invite["id"])
             raise ValueError("Invite has expired")
 
