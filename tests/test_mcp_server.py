@@ -122,6 +122,30 @@ def second_user(base_url):
     )
 
 
+@pytest.fixture
+def test_organization(base_url, auth_session):
+    """Create a test organization for tests that need one."""
+    import time
+    import random
+    # Use time + random to avoid collisions when tests run in same second
+    slug = f"test-org-{int(time.time())}-{random.randint(1000, 9999)}"
+
+    response = requests.post(
+        f"{base_url}/organizations",
+        headers=auth_session["headers"],
+        json={
+            "name": "Test Organization",
+            "slug": slug,
+            "bio": "Organization for pytest testing"
+        },
+        timeout=TEST_TIMEOUT
+    )
+    assert response.status_code == 201, f"Failed to create test organization: {response.text}"
+    data = response.json()
+    track_resource("organizations", data["id"])
+    return data
+
+
 # Cleanup tracking
 created_resources = {
     "organizations": [],
@@ -335,7 +359,8 @@ class TestOrganizations:
     def test_create_organization(self, base_url, auth_session):
         """Test POST /organizations."""
         import time
-        slug = f"test-org-{int(time.time())}"
+        import random
+        slug = f"test-org-{int(time.time())}-{random.randint(1000, 9999)}"
 
         response = requests.post(
             f"{base_url}/organizations",
@@ -355,11 +380,9 @@ class TestOrganizations:
         track_resource("organizations", data["id"])
         return data
 
-    def test_list_organizations(self, base_url, auth_session):
+    def test_list_organizations(self, base_url, auth_session, test_organization):
         """Test GET /organizations."""
-        # Create an org first
-        self.test_create_organization(base_url, auth_session)
-
+        # test_organization fixture creates an org for us
         response = requests.get(
             f"{base_url}/organizations",
             headers=auth_session["headers"],
@@ -369,25 +392,23 @@ class TestOrganizations:
         data = response.json()
         assert isinstance(data, list)
         assert len(data) > 0
+        # Verify our test org is in the list
+        assert any(org["id"] == test_organization["id"] for org in data)
 
-    def test_get_organization(self, base_url, auth_session):
+    def test_get_organization(self, base_url, test_organization):
         """Test GET /organizations/{id}."""
-        org = self.test_create_organization(base_url, auth_session)
-
         response = requests.get(
-            f"{base_url}/organizations/{org['id']}",
+            f"{base_url}/organizations/{test_organization['id']}",
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == org["id"]
+        assert data["id"] == test_organization["id"]
 
-    def test_update_organization(self, base_url, auth_session):
+    def test_update_organization(self, base_url, auth_session, test_organization):
         """Test PUT /organizations/{id}."""
-        org = self.test_create_organization(base_url, auth_session)
-
         response = requests.put(
-            f"{base_url}/organizations/{org['id']}",
+            f"{base_url}/organizations/{test_organization['id']}",
             headers=auth_session["headers"],
             json={
                 "name": "Updated Organization Name",
@@ -399,12 +420,10 @@ class TestOrganizations:
         data = response.json()
         assert data["name"] == "Updated Organization Name"
 
-    def test_get_members(self, base_url, auth_session):
+    def test_get_members(self, base_url, test_organization):
         """Test GET /organizations/{id}/members."""
-        org = self.test_create_organization(base_url, auth_session)
-
         response = requests.get(
-            f"{base_url}/organizations/{org['id']}/members",
+            f"{base_url}/organizations/{test_organization['id']}/members",
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 200
@@ -414,16 +433,16 @@ class TestOrganizations:
         assert len(data) >= 1
         assert data[0]["role"] == "owner"
 
-    def test_change_member_role(self, base_url, auth_session, second_user):
+    def test_change_member_role(self, base_url, auth_session, second_user, test_organization):
         """Test PUT /organizations/{id}/members/{member_id} to change role."""
-        # Create organization
-        org = self.test_create_organization(base_url, auth_session)
+        # Use test_organization fixture
+        org = test_organization
 
         # Create invite for second user
         invite_response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "member"},
+            json={"email": second_user["email"], "role": "member"},
             timeout=TEST_TIMEOUT
         )
         assert invite_response.status_code == 201
@@ -443,7 +462,7 @@ class TestOrganizations:
             timeout=TEST_TIMEOUT
         )
         members = members_response.json()
-        second_member = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        second_member = next(m for m in members if m["user_id"] == second_user["id"])
         assert second_member["role"] == "member"
 
         # Change role to admin (owner can do this)
@@ -462,19 +481,19 @@ class TestOrganizations:
             timeout=TEST_TIMEOUT
         )
         members = members_response.json()
-        updated_member = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        updated_member = next(m for m in members if m["user_id"] == second_user["id"])
         assert updated_member["role"] == "admin"
 
-    def test_change_role_permissions(self, base_url, auth_session, second_user):
+    def test_change_role_permissions(self, base_url, auth_session, second_user, test_organization):
         """Test that only owners/admins can change roles."""
-        # Create organization
-        org = self.test_create_organization(base_url, auth_session)
+        # Use test_organization fixture
+        org = test_organization
 
         # Create and accept invite as member
         invite_response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "viewer"},
+            json={"email": second_user["email"], "role": "viewer"},
             timeout=TEST_TIMEOUT
         )
         invite = invite_response.json()
@@ -504,16 +523,16 @@ class TestOrganizations:
         assert response.status_code in [403, 400]
         print("\n✅ Viewer cannot change roles")
 
-    def test_transfer_ownership(self, base_url, auth_session, second_user):
+    def test_transfer_ownership(self, base_url, auth_session, second_user, test_organization):
         """Test POST /organizations/{id}/transfer to transfer ownership."""
-        # Create organization
-        org = self.test_create_organization(base_url, auth_session)
+        # Use test_organization fixture
+        org = test_organization
 
         # Invite second user as admin
         invite_response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "admin"},
+            json={"email": second_user["email"], "role": "admin"},
             timeout=TEST_TIMEOUT
         )
         invite = invite_response.json()
@@ -531,7 +550,7 @@ class TestOrganizations:
             f"{base_url}/organizations/{org['id']}/transfer",
             headers=auth_session["headers"],
             json={
-                "new_owner_id": second_user["user"]["id"],
+                "new_owner_id": second_user["id"],
                 "password": auth_session["user"]["password"],
             },
             timeout=TEST_TIMEOUT
@@ -545,7 +564,7 @@ class TestOrganizations:
             timeout=TEST_TIMEOUT
         )
         updated_org = org_response.json()
-        assert updated_org["owner_id"] == second_user["user"]["id"]
+        assert updated_org["owner_id"] == second_user["id"]
 
         # Verify old owner is now admin
         members_response = requests.get(
@@ -557,19 +576,19 @@ class TestOrganizations:
         assert old_owner["role"] == "admin"
 
         # Verify new owner has owner role
-        new_owner = next(m for m in members if m["user_id"] == second_user["user"]["id"])
+        new_owner = next(m for m in members if m["user_id"] == second_user["id"])
         assert new_owner["role"] == "owner"
         print("✅ Roles updated correctly after transfer")
 
-    def test_transfer_ownership_validation(self, base_url, auth_session, second_user):
+    def test_transfer_ownership_validation(self, base_url, auth_session, second_user, test_organization):
         """Test ownership transfer validation."""
-        org = self.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Try to transfer to non-admin (should fail)
         invite_response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "member"},
+            json={"email": second_user["email"], "role": "member"},
             timeout=TEST_TIMEOUT
         )
         invite = invite_response.json()
@@ -585,7 +604,7 @@ class TestOrganizations:
             f"{base_url}/organizations/{org['id']}/transfer",
             headers=auth_session["headers"],
             json={
-                "new_owner_id": second_user["user"]["id"],
+                "new_owner_id": second_user["id"],
                 "password": auth_session["user"]["password"],
             },
             timeout=TEST_TIMEOUT
@@ -598,7 +617,7 @@ class TestOrganizations:
             f"{base_url}/organizations/{org['id']}/transfer",
             headers=auth_session["headers"],
             json={
-                "new_owner_id": second_user["user"]["id"],
+                "new_owner_id": second_user["id"],
                 "password": "wrong_password",
             },
             timeout=TEST_TIMEOUT
@@ -614,16 +633,15 @@ class TestOrganizations:
 class TestActivityFeeds:
     """Test activity feed functionality."""
 
-    def test_invite_creates_activity(self, base_url, auth_session, second_user):
+    def test_invite_creates_activity(self, base_url, auth_session, second_user, test_organization):
         """Test that sending an invite creates an activity."""
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Send invite
         response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "member"},
+            json={"email": second_user["email"], "role": "member"},
             timeout=TEST_TIMEOUT
         )
         assert response.status_code == 201
@@ -642,16 +660,15 @@ class TestActivityFeeds:
         assert len(invite_activities) > 0
         print("\n✅ Invite sent activity logged")
 
-    def test_accept_invite_creates_activity(self, base_url, auth_session, second_user):
+    def test_accept_invite_creates_activity(self, base_url, auth_session, second_user, test_organization):
         """Test that accepting an invite creates activities."""
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Send and accept invite
         invite_response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
             headers=auth_session["headers"],
-            json={"email": second_user["user"]["email"], "role": "member"},
+            json={"email": second_user["email"], "role": "member"},
             timeout=TEST_TIMEOUT
         )
         invite = invite_response.json()
@@ -680,10 +697,9 @@ class TestActivityFeeds:
         assert len(joined_activities) > 0
         print("\n✅ Invite acceptance activities logged")
 
-    def test_organization_activities(self, base_url, auth_session, second_user):
+    def test_organization_activities(self, base_url, auth_session, second_user, test_organization):
         """Test GET /organizations/{id}/activities."""
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Get organization activities
         response = requests.get(
@@ -717,11 +733,10 @@ class TestActivityFeeds:
 class TestOrganizationDiscovery:
     """Test organization search and discovery."""
 
-    def test_search_organizations(self, base_url, auth_session):
+    def test_search_organizations(self, base_url, auth_session, test_organization):
         """Test GET /organizations/search."""
-        # Create an organization
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        # test_organization fixture creates an organization for us
+        org = test_organization
 
         # Search for all organizations
         response = requests.get(
@@ -734,10 +749,9 @@ class TestOrganizationDiscovery:
         assert len(orgs) > 0
         print(f"\n✅ Found {len(orgs)} organizations")
 
-    def test_search_with_query(self, base_url, auth_session):
+    def test_search_with_query(self, base_url, auth_session, test_organization):
         """Test search with query parameter."""
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Search by name
         response = requests.get(
@@ -753,11 +767,9 @@ class TestOrganizationDiscovery:
         assert len(test_orgs) > 0
         print("\n✅ Search by query works")
 
-    def test_join_public_organization(self, base_url, auth_session, second_user):
+    def test_join_public_organization(self, base_url, auth_session, second_user, test_organization):
         """Test POST /organizations/{id}/join."""
-        # Create organization
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Join as second user
         response = requests.post(
@@ -777,13 +789,12 @@ class TestOrganizationDiscovery:
         )
         members = members_response.json()
         member_ids = [m["user_id"] for m in members]
-        assert second_user["user"]["id"] in member_ids
+        assert second_user["id"] in member_ids
         print("✅ Membership verified")
 
-    def test_cannot_join_twice(self, base_url, auth_session, second_user):
+    def test_cannot_join_twice(self, base_url, auth_session, second_user, test_organization):
         """Test that user cannot join the same organization twice."""
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         # Join first time
         requests.post(
@@ -809,11 +820,9 @@ class TestOrganizationDiscovery:
 class TestInvites:
     """Test organization invite system."""
 
-    def test_create_invite(self, base_url, auth_session, second_user):
+    def test_create_invite(self, base_url, auth_session, second_user, test_organization):
         """Test POST /organizations/{id}/invites."""
-        # Create an organization
-        org_test = TestOrganizations()
-        org = org_test.test_create_organization(base_url, auth_session)
+        org = test_organization
 
         response = requests.post(
             f"{base_url}/organizations/{org['id']}/invites",
@@ -832,10 +841,19 @@ class TestInvites:
         track_resource("invites", data["id"])
         return data
 
-    def test_get_user_invites(self, base_url, auth_session, second_user):
+    def test_get_user_invites(self, base_url, auth_session, second_user, test_organization):
         """Test GET /invites."""
         # Create an invite for second user
-        self.test_create_invite(base_url, auth_session, second_user)
+        response = requests.post(
+            f"{base_url}/organizations/{test_organization['id']}/invites",
+            headers=auth_session["headers"],
+            json={
+                "email": second_user["email"],
+                "role": "member"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert response.status_code == 201
 
         # Check second user's invites
         response = requests.get(
@@ -848,10 +866,22 @@ class TestInvites:
         assert isinstance(data, list)
         assert len(data) > 0
 
-    def test_accept_invite(self, base_url, auth_session, second_user):
+    def test_accept_invite(self, base_url, auth_session, second_user, test_organization):
         """Test POST /invites/accept."""
-        invite = self.test_create_invite(base_url, auth_session, second_user)
+        # Create invite
+        invite_response = requests.post(
+            f"{base_url}/organizations/{test_organization['id']}/invites",
+            headers=auth_session["headers"],
+            json={
+                "email": second_user["email"],
+                "role": "member"
+            },
+            timeout=TEST_TIMEOUT
+        )
+        assert invite_response.status_code == 201
+        invite = invite_response.json()
 
+        # Accept invite
         response = requests.post(
             f"{base_url}/invites/accept",
             headers=second_user["headers"],
