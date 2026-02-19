@@ -4,6 +4,10 @@ Add this configuration to your HAProxy setup. HAProxy will handle SSL terminatio
 
 ## HAProxy Configuration
 
+**Requirements:**
+- HAProxy 2.0+ (for http-check syntax)
+- For HAProxy 1.8 or older, see "Alternative Health Check Syntax" below
+
 ```haproxy
 global
     log /dev/log local0
@@ -89,13 +93,15 @@ frontend https_frontend
 backend app_backend
     mode http
     balance roundrobin
-    
-    # Health check
-    option httpchk GET /health HTTP/1.1\r\nHost:\ app.ragbaz.xyz
-    
+
+    # Health check (HAProxy 2.x+ syntax)
+    option httpchk
+    http-check send meth GET uri /health ver HTTP/1.1 hdr Host app.ragbaz.xyz
+    http-check expect status 200
+
     # Caddy server (running in Docker)
     server caddy1 127.0.0.1:4555 check inter 5000 rise 2 fall 3
-    
+
     # Connection settings
     http-reuse safe
     timeout server 30s
@@ -104,17 +110,19 @@ backend app_backend
 backend wp_backend
     mode http
     balance roundrobin
-    
-    # Health check
-    option httpchk GET /wp-json/ HTTP/1.1\r\nHost:\ my.ragbaz.xyz
-    
+
+    # Health check (HAProxy 2.x+ syntax)
+    option httpchk
+    http-check send meth GET uri /wp-json/ ver HTTP/1.1 hdr Host my.ragbaz.xyz
+    http-check expect status 200
+
     # Caddy server (running in Docker)
     server caddy1 127.0.0.1:4555 check inter 5000 rise 2 fall 3
-    
+
     # Connection settings
     http-reuse safe
     timeout server 60s
-    
+
     # Longer timeout for WordPress admin
     timeout client 60s
 
@@ -128,6 +136,56 @@ listen stats
     stats admin if TRUE
     # Add basic auth:
     # stats auth admin:your_secure_password_here
+```
+
+## Alternative Health Check Syntax
+
+### For HAProxy 1.8 or Older
+
+If you're using HAProxy 1.8 or older and get errors about the `http-check` syntax, use this simpler format:
+
+```haproxy
+# Backend for app.ragbaz.xyz
+backend app_backend
+    mode http
+    balance roundrobin
+
+    # Simple health check (no Host header)
+    option httpchk GET /health
+
+    server caddy1 127.0.0.1:4555 check inter 5000 rise 2 fall 3
+    http-reuse safe
+    timeout server 30s
+
+# Backend for my.ragbaz.xyz
+backend wp_backend
+    mode http
+    balance roundrobin
+
+    # Simple health check (no Host header)
+    option httpchk GET /wp-json/
+
+    server caddy1 127.0.0.1:4555 check inter 5000 rise 2 fall 3
+    http-reuse safe
+    timeout server 60s
+    timeout client 60s
+```
+
+**Note:** This simpler syntax doesn't send the Host header, but Caddy can route based on the incoming request path. If you need Host header support, upgrade to HAProxy 2.0+.
+
+### Check Your HAProxy Version
+
+```bash
+haproxy -v
+```
+
+If you see version 1.8 or older, consider upgrading:
+
+```bash
+# Ubuntu/Debian - Add HAProxy PPA for latest version
+sudo add-apt-repository ppa:vbernat/haproxy-2.8
+sudo apt update
+sudo apt install haproxy
 ```
 
 ## SSL Certificate Setup
