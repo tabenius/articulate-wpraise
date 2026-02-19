@@ -73,6 +73,59 @@ The app will be available at **http://localhost:3000**.
 - GraphQL endpoint: http://localhost:8080/graphql
 - MCP Server: http://localhost:8000
 
+## Python Development
+
+For local Python development on the MCP server:
+
+### Setup Virtual Environment
+
+```bash
+cd mcp-server
+
+# Create virtual environment with uv (fast package installer)
+uv venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Linux/macOS
+# or
+.venv\Scripts\activate  # Windows
+
+# Install dependencies (including dev tools)
+uv pip install -e ".[dev]"
+```
+
+### Type Checking
+
+```bash
+# Run mypy type checker (from mcp-server directory with venv activated)
+mypy src/wp_mcp
+```
+
+The project uses gradual typing with mypy. See `mypy.ini` for configuration.
+
+### Running Tests
+
+```bash
+# Run pytest (from mcp-server directory with venv activated)
+pytest
+```
+
+### Rebuilding Docker Images
+
+**Important**: When you modify Python source files, you must rebuild the Docker image before testing:
+
+```bash
+# Rebuild MCP server image (from project root)
+docker compose build mcp-server
+
+# Restart with new image
+docker compose down mcp-server
+docker compose up -d mcp-server
+
+# Or rebuild and restart in one command
+docker compose up -d --build mcp-server
+```
+
 ## Usage
 
 ### Chat Mode
