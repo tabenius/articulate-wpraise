@@ -46,9 +46,31 @@ class AuthMiddleware:
 
         request = Request(scope, receive=receive)
         path = request.url.path
+        method = scope.get("method", "GET")
 
-        # Skip authentication for health, metrics, and public auth endpoints
-        if path.startswith(("/health", "/metrics", "/register", "/login")) or path == "/me":
+        # Public endpoints (no authentication required)
+        public_paths = [
+            "/health",
+            "/metrics",
+            "/register",
+            "/login",
+            "/me",
+            "/organizations/search",  # Public organization search
+        ]
+
+        # Public GET endpoints (read-only access)
+        public_get_paths = [
+            "/profile/",  # GET /profile/{username}
+            "/organizations/",  # GET /organizations/{id}
+        ]
+
+        # Check if path is public
+        is_public = (
+            any(path.startswith(p) for p in public_paths) or
+            (method == "GET" and any(path.startswith(p) for p in public_get_paths))
+        )
+
+        if is_public:
             # Still apply rate limiting to auth endpoints (unless in testing mode)
             if path in ["/register", "/login"] and not TESTING_MODE:
                 try:
