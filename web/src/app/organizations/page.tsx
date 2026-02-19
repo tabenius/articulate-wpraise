@@ -235,6 +235,7 @@ export default function OrganizationsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {organizations.length === 0 ? (

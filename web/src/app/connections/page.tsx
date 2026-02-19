@@ -198,6 +198,7 @@ export default function ConnectionsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {connections.length === 0 ? (
