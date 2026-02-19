@@ -18,6 +18,7 @@ from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
 from wp_mcp.config import config
+from wp_mcp.decorators import require_auth, optional_auth
 from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
@@ -310,20 +311,13 @@ async def me_endpoint(request):
 
 
 # Profile management endpoints
+@require_auth
 async def get_profile_endpoint(request):
     """Get user profile."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.profile_manager import ProfileManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user  # Injected by @require_auth
         profile = await ProfileManager.get_profile(user["id"])
         return JSONResponse(sanitize_for_json(profile))
     except Exception as e:
@@ -331,20 +325,13 @@ async def get_profile_endpoint(request):
         return JSONResponse({"error": "Failed to get profile"}, status_code=500)
 
 
+@require_auth
 async def update_profile_endpoint(request):
     """Update user profile."""
-    from wp_mcp.user_manager import UserManager
     from wp_mcp.profile_manager import ProfileManager
 
     try:
-        session_id = request.headers.get("X-Session-ID")
-        if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
-
-        user = await UserManager.get_user_from_session(session_id)
-        if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
-
+        user = request.state.user  # Injected by @require_auth
         data = await request.json()
         profile = await ProfileManager.update_profile(
             user_id=user["id"],
