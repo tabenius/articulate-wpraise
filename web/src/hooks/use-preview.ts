@@ -81,5 +81,6 @@ export function usePreview(postId: number | null, enabled: boolean = true) {
         abortControllerRef.current.abort();
       }
     };
-  }, [blocks, postId, enabled, setHtml, setLoading, setError]);
+    // Zustand actions (setHtml, setLoading, setError) are stable and excluded from deps
+  }, [blocks, postId, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 }

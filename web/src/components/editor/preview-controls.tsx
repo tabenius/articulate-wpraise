@@ -34,8 +34,9 @@ export function PreviewControls() {
 
   const handleOpenInWordPress = () => {
     if (!currentPost) return;
-    // Open in WordPress frontend (adjust URL as needed)
-    const wpUrl = process.env.NEXT_PUBLIC_WP_URL || "http://localhost:8080";
+    // Open in WordPress frontend - use Caddy proxy in production, direct access in dev
+    const wpUrl = process.env.NEXT_PUBLIC_WP_URL ||
+                  (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4555` : "");
     window.open(`${wpUrl}/?p=${currentPost.id}`, "_blank", "noopener,noreferrer");
   };
 

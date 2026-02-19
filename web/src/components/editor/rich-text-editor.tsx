@@ -56,7 +56,7 @@ export function RichTextEditor({
 
     const currentContent = editor.getHTML();
     // Only update if content actually changed to avoid cursor jumps
-    if (content !== currentContent && content !== editor.getText()) {
+    if (content !== currentContent) {
       editor.commands.setContent(content, false);
     }
   }, [content, editor]);
