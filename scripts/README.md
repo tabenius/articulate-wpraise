@@ -1,4 +1,108 @@
-# Remote WordPress Setup Script
+# WP-AI Configuration Scripts
+
+This directory contains setup and configuration tools for WP-AI.
+
+## 1. configure.py - Domain & Proxy Configuration (⭐ New)
+
+Modern Python-based configuration tool for setting up domains, SSL, and reverse proxy with HAProxy management capabilities.
+
+### Features
+
+- **Interactive Configuration**: Guided setup for domains, SSL, and reverse proxy
+- **HAProxy Management**: Automatic HAProxy configuration, testing, and reloading
+- **DNS Validation**: Checks DNS resolution and provides setup instructions
+- **Caddy Integration**: Automatically updates Caddyfile with your domains
+- **WordPress Integration**: Updates WordPress URLs in the database
+- **SSL Setup**: Guided SSL certificate setup (Cloudflare, Let's Encrypt, Manual)
+- **CLI & Interactive Modes**: Use as interactive wizard or with command-line arguments
+
+### Requirements
+
+- Python 3.6+ (standard library only, no dependencies)
+- sudo access (for HAProxy management)
+- Docker (for WordPress URL updates)
+
+### Usage
+
+#### Interactive Mode (Recommended)
+
+```bash
+./scripts/configure.py
+```
+
+Follow the prompts to configure your domain, proxy type, and SSL.
+
+#### Non-Interactive Mode
+
+```bash
+# HAProxy mode with split domains
+./scripts/configure.py \
+  --haproxy \
+  --app-domain app.example.com \
+  --wp-domain my.example.com
+
+# Single domain mode
+./scripts/configure.py \
+  --wp-domain example.com
+```
+
+#### Quick HAProxy Management
+
+```bash
+# Test HAProxy configuration
+./scripts/configure.py --test-haproxy
+
+# Reload HAProxy service
+./scripts/configure.py --reload-haproxy
+
+# Test custom config path
+./scripts/configure.py --test-haproxy --haproxy-config /etc/haproxy/haproxy.cfg
+```
+
+### What It Does
+
+1. **Detects Proxy Type**: HAProxy, direct Caddy, or other
+2. **Collects Domains**: Prompts for app and WordPress domains (or single domain)
+3. **Validates DNS**: Checks if domains resolve to your server IP
+4. **Updates .env**: Sets DOMAIN, WP_DOMAIN, APP_DOMAIN, WP_SUBDOMAIN
+5. **Updates Caddyfile**: Replaces default domains with your domains
+6. **Updates WordPress**: Sets WordPress home and siteurl in database
+7. **Configures SSL**: Provides Cloudflare/Let's Encrypt/Manual instructions
+8. **Manages HAProxy** (if selected):
+   - Updates domain ACLs and routing rules
+   - Updates SSL certificate paths
+   - Updates health check Host headers
+   - Tests configuration validity
+   - Offers to reload HAProxy service
+
+### Example Workflow
+
+```bash
+./scripts/configure.py
+
+# Select HAProxy mode (option 1)
+# Enter app domain: app.ragbaz.xyz
+# Enter WordPress domain: my.ragbaz.xyz
+
+# Script will:
+# - Check DNS resolution for both domains
+# - Update .env, Caddyfile, WordPress URLs
+# - Guide you through SSL certificate setup
+# - Ask if you want to update HAProxy config
+# - Test HAProxy config validity
+# - Ask if you want to reload HAProxy
+```
+
+### Safety Features
+
+- **Automatic Backups**: Creates .backup files before modifying configs
+- **Configuration Testing**: Tests HAProxy config before reloading
+- **Confirmation Prompts**: Asks before making changes to HAProxy
+- **Color-Coded Output**: Green ✓, Red ✗, Yellow ⚠, Blue info
+
+---
+
+## 2. setup-remote-wordpress.py - Remote WordPress Setup
 
 Automatically configure remote WordPress instances for WP-AI MCP Server integration via SSH.
 
