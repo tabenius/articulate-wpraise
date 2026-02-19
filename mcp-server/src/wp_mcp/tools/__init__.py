@@ -9,5 +9,7 @@ from . import taxonomies
 from . import blocks
 from . import revisions
 from . import tenants  # Multi-tenancy support
+from . import settings
+from . import menus
 
-__all__ = ["posts", "media", "fonts", "preview", "taxonomies", "blocks", "revisions", "tenants"]
+__all__ = ["posts", "media", "fonts", "preview", "taxonomies", "blocks", "revisions", "tenants", "settings", "menus"]
