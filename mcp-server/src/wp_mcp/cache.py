@@ -18,7 +18,7 @@ def ensure_redis_connection(func: Callable) -> Callable:
     """Decorator to ensure Redis connection before executing cache operations."""
 
     @functools.wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: CacheManager, *args: Any, **kwargs: Any) -> Any:
         if not self.redis:
             await self.connect()
             if not self.redis:
@@ -34,11 +34,11 @@ def ensure_redis_connection(func: Callable) -> Callable:
 class CacheManager:
     """Async Redis cache manager with TTL support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Redis connection."""
         self.redis: Optional[redis.Redis] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to Redis server."""
         if self.redis is None:
             try:
@@ -54,7 +54,7 @@ class CacheManager:
                 logger.error("Failed to connect to Redis: %s", e)
                 self.redis = None
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Disconnect from Redis server."""
         if self.redis:
             await self.redis.aclose()
@@ -71,6 +71,7 @@ class CacheManager:
         Returns:
             Cached value as dict, or None if not found or Redis unavailable
         """
+        assert self.redis is not None  # Guaranteed by decorator
         try:
             value = await self.redis.get(key)
             if value:
@@ -83,7 +84,7 @@ class CacheManager:
             return None
 
     @ensure_redis_connection
-    async def set(self, key: str, value: dict[str, Any], ttl: int = 300):
+    async def set(self, key: str, value: dict[str, Any], ttl: int = 300) -> None:
         """Set cached value with TTL.
 
         Args:
@@ -91,6 +92,7 @@ class CacheManager:
             value: Value to cache (must be JSON-serializable)
             ttl: Time to live in seconds (default 5 minutes)
         """
+        assert self.redis is not None  # Guaranteed by decorator
         try:
             await self.redis.setex(key, ttl, json.dumps(value))
             logger.debug("Cache SET: %s (TTL: %ds)", key, ttl)
@@ -98,12 +100,13 @@ class CacheManager:
             logger.warning("Cache set error for key %s: %s", key, e)
 
     @ensure_redis_connection
-    async def delete(self, key: str):
+    async def delete(self, key: str) -> None:
         """Delete cached value by key.
 
         Args:
             key: Cache key
         """
+        assert self.redis is not None  # Guaranteed by decorator
         try:
             await self.redis.delete(key)
             logger.debug("Cache DELETE: %s", key)
@@ -111,12 +114,13 @@ class CacheManager:
             logger.warning("Cache delete error for key %s: %s", key, e)
 
     @ensure_redis_connection
-    async def invalidate_pattern(self, pattern: str):
+    async def invalidate_pattern(self, pattern: str) -> None:
         """Invalidate all keys matching pattern.
 
         Args:
             pattern: Redis pattern (e.g., "post:*", "posts:*")
         """
+        assert self.redis is not None  # Guaranteed by decorator
         try:
             keys = []
             async for key in self.redis.scan_iter(match=pattern):
@@ -129,8 +133,9 @@ class CacheManager:
             logger.warning("Cache invalidate error for pattern %s: %s", pattern, e)
 
     @ensure_redis_connection
-    async def clear_all(self):
+    async def clear_all(self) -> None:
         """Clear all cached data (use with caution)."""
+        assert self.redis is not None  # Guaranteed by decorator
         try:
             await self.redis.flushdb()
             logger.info("Cache cleared (flushdb)")

@@ -125,6 +125,7 @@ def configure_logging(json_format: bool = False, log_level: str = "INFO"):
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
     # Determine formatter based on environment
+    formatter: logging.Formatter
     if json_format:
         formatter = StructuredFormatter()
     else:
@@ -162,7 +163,7 @@ class PerformanceLogger:
         self.logger = logger
         self.operation = operation
         self.extra = extra
-        self.start_time = None
+        self.start_time: float | None = None
 
     def __enter__(self):
         """Start timing."""

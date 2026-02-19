@@ -8,14 +8,14 @@ from decimal import Decimal
 from typing import Any
 
 
-def json_serializer(obj: Any) -> str:
+def json_serializer(obj: Any) -> str | float:
     """Serialize objects to JSON-compatible format.
 
     Args:
         obj: Object to serialize
 
     Returns:
-        JSON-serializable representation
+        JSON-serializable representation (str for dates/bytes, float for Decimal)
 
     Raises:
         TypeError: If object type is not supported

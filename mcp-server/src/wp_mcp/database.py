@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 class Database:
     """MySQL/MariaDB database connection manager."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize database connection pool."""
         self.pool: Optional[aiomysql.Pool] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Create database connection pool."""
         if self.pool is not None:
             return
@@ -48,7 +48,7 @@ class Database:
             logger.error("Failed to create database connection pool: %s", e)
             self.pool = None
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Close database connection pool."""
         if self.pool:
             self.pool.close()
@@ -56,7 +56,7 @@ class Database:
             self.pool = None
             logger.info("Database connection pool closed")
 
-    async def _ensure_connection(self):
+    async def _ensure_connection(self) -> None:
         """Ensure database connection is available.
 
         Raises:
@@ -79,6 +79,7 @@ class Database:
             Number of affected rows
         """
         await self._ensure_connection()
+        assert self.pool is not None  # Guaranteed by _ensure_connection
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -96,6 +97,7 @@ class Database:
             Row as dict or None
         """
         await self._ensure_connection()
+        assert self.pool is not None  # Guaranteed by _ensure_connection
 
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -113,6 +115,7 @@ class Database:
             List of rows as dicts
         """
         await self._ensure_connection()
+        assert self.pool is not None  # Guaranteed by _ensure_connection
 
         async with self.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -130,6 +133,7 @@ class Database:
             Last inserted ID
         """
         await self._ensure_connection()
+        assert self.pool is not None  # Guaranteed by _ensure_connection
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
