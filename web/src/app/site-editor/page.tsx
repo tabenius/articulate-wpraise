@@ -8,6 +8,7 @@ import { FileCode2, Layout, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTemplateStore } from "@/stores/template-store";
 import { TemplateEditor } from "@/components/site-editor/template-editor";
+import { CreateTemplateDialog } from "@/components/site-editor/create-template-dialog";
 
 interface Template {
   id: number;
@@ -93,11 +94,19 @@ export default function SiteEditorPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b bg-muted/30 px-4 py-3">
-        <h1 className="text-2xl font-bold">Site Editor</h1>
-        <p className="text-sm text-muted-foreground">
-          Edit templates, template parts, and global styles
-        </p>
+      <div className="border-b bg-muted/30 px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Site Editor</h1>
+          <p className="text-sm text-muted-foreground">
+            Edit templates, template parts, and global styles
+          </p>
+        </div>
+        <CreateTemplateDialog
+          onTemplateCreated={async (template) => {
+            await loadTemplates();
+            setCurrentTemplate(template as any);
+          }}
+        />
       </div>
 
       {/* Content */}

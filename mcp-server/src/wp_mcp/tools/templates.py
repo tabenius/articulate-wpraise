@@ -202,6 +202,36 @@ def register(mcp: FastMCP) -> None:
         ]
 
     @mcp.tool()
+    async def create_template(
+        title: str,
+        slug: str,
+        content: str = "",
+        context: dict | None = None,
+    ) -> dict[str, Any]:
+        """Create a new custom template.
+
+        Args:
+            title: Template title (e.g., "Custom Home")
+            slug: Template slug (e.g., "custom-home")
+            content: Initial template content (WordPress blocks)
+
+        Returns:
+            Created template data.
+        """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        # WordPress doesn't have GraphQL mutation for wp_template
+        # Return placeholder for now
+
+        return {
+            "success": False,
+            "message": "Template creation via GraphQL not yet supported. Use WordPress REST API.",
+            "title": title,
+            "slug": slug,
+        }
+
+    @mcp.tool()
     async def get_global_styles(
         context: dict | None = None,
     ) -> dict[str, Any]:
