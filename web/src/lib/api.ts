@@ -4,6 +4,7 @@
 
 import type { Post, PostSummary } from "@/types/post";
 import type { Block } from "@/types/blocks";
+import type { CreatePostResponse, UpdatePostResponse, GetPostResponse } from "@/types/mcp-generated";
 
 const API_BASE = "/api";
 
@@ -31,21 +32,35 @@ export async function fetchPost(id: number): Promise<Post> {
 }
 
 export async function createPost(title: string): Promise<Post> {
-  const result = await fetchJSON<Post>("/posts", {
+  const result = await fetchJSON<CreatePostResponse>("/posts", {
     method: "POST",
     body: JSON.stringify({ title, status: "draft" }),
   });
-  console.log("createPost API response:", result);
-  return result;
+  console.error("=== createPost API response ===", JSON.stringify(result, null, 2));
+
+  // Runtime validation - ensure id exists
+  if (!result || typeof result.id !== 'number') {
+    console.error("=== ERROR: Invalid response structure ===", result);
+    throw new Error(`Invalid response from create_post: missing or invalid id field. Got: ${JSON.stringify(result)}`);
+  }
+
+  return result as Post;
 }
 
 export async function createPage(title: string): Promise<Post> {
-  const result = await fetchJSON<Post>("/posts", {
+  const result = await fetchJSON<CreatePostResponse>("/posts", {
     method: "POST",
     body: JSON.stringify({ title, status: "draft", type: "page" }),
   });
-  console.log("createPage API response:", result);
-  return result;
+  console.error("=== createPage API response ===", JSON.stringify(result, null, 2));
+
+  // Runtime validation - ensure id exists
+  if (!result || typeof result.id !== 'number') {
+    console.error("=== ERROR: Invalid response structure ===", result);
+    throw new Error(`Invalid response from create_post: missing or invalid id field. Got: ${JSON.stringify(result)}`);
+  }
+
+  return result as Post;
 }
 
 export async function updatePost(
