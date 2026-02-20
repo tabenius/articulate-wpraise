@@ -25,7 +25,7 @@ from wp_mcp.json_utils import sanitize_for_json
 from wp_mcp.logging_config import configure_logging
 from wp_mcp.middleware.auth import AuthMiddleware
 from wp_mcp.middleware.logging import RequestLoggingMiddleware
-from wp_mcp.tools import posts, pages, blocks, media, fonts, preview, search, taxonomies, revisions, image_tools, settings, menus
+from wp_mcp.tools import posts, pages, blocks, media, fonts, preview, search, taxonomies, revisions, image_tools, settings, menus, templates
 from wp_mcp.tools import generated
 
 # Configure structured logging
@@ -80,6 +80,7 @@ revisions.register(mcp)
 image_tools.register(mcp)
 settings.register(mcp)
 menus.register(mcp)
+templates.register(mcp)
 
 # Register auto-generated tools from WordPress GraphQL schema
 generated.register(mcp)

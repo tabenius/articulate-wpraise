@@ -28,6 +28,7 @@ def generate_schemas():
         taxonomies,
         menus,
         settings,
+        templates,
         generated,
     )
 
@@ -37,6 +38,7 @@ def generate_schemas():
     taxonomies.register(mcp)
     menus.register(mcp)
     settings.register(mcp)
+    templates.register(mcp)
     generated.register(mcp)
 
     # Extract tool schemas

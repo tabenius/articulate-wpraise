@@ -11,6 +11,7 @@ from . import revisions
 from . import tenants  # Multi-tenancy support
 from . import settings
 from . import menus
+from . import templates  # Full-Site Editing templates
 from . import generated  # Auto-generated from GraphQL schema
 
-__all__ = ["posts", "media", "fonts", "preview", "taxonomies", "blocks", "revisions", "tenants", "settings", "menus", "generated"]
+__all__ = ["posts", "media", "fonts", "preview", "taxonomies", "blocks", "revisions", "tenants", "settings", "menus", "templates", "generated"]

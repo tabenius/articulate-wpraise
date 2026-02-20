@@ -21,7 +21,9 @@ import {
   Keyboard,
   Plus,
   File,
+  Layout,
 } from "lucide-react";
+import Link from "next/link";
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -72,6 +74,13 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
           <FileText className="h-4 w-4 mr-2" />
           {currentPost ? currentPost.title : "Select Post"}
         </Button>
+
+        <Link href="/site-editor">
+          <Button variant="ghost" size="sm">
+            <Layout className="h-4 w-4 mr-2" />
+            Site Editor
+          </Button>
+        </Link>
 
         {currentPost && (
           <Badge variant={isDirty ? "destructive" : "secondary"}>
