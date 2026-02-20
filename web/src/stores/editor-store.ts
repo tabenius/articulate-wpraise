@@ -32,11 +32,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   lastHistoryPush: 0,
 
   setBlocks: (blocks) => {
+    // Validate input
+    if (!Array.isArray(blocks)) {
+      console.error("setBlocks: invalid blocks array", blocks);
+      return;
+    }
     set({ blocks, isDirty: false, history: [blocks], historyIndex: 0 });
   },
 
   updateBlock: (clientId, attributes) => {
+    // Validate input
+    if (!clientId || typeof clientId !== "string") {
+      console.error("updateBlock: invalid clientId", clientId);
+      return;
+    }
+    if (!attributes || typeof attributes !== "object") {
+      console.error("updateBlock: invalid attributes", attributes);
+      return;
+    }
+
     const { blocks } = get();
+    if (!Array.isArray(blocks)) {
+      console.error("updateBlock: blocks is not an array");
+      return;
+    }
+
     const updated = updateBlockRecursive(blocks, clientId, attributes);
     get().pushHistory();
     set({ blocks: updated, isDirty: true });
@@ -55,7 +75,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   removeBlock: (clientId) => {
+    // Validate input
+    if (!clientId || typeof clientId !== "string") {
+      console.error("removeBlock: invalid clientId", clientId);
+      return;
+    }
+
     const { blocks, selectedBlockId } = get();
+    if (!Array.isArray(blocks)) {
+      console.error("removeBlock: blocks is not an array");
+      return;
+    }
+
     const filtered = blocks.filter((b) => b.clientId !== clientId);
     get().pushHistory();
     set({
@@ -66,9 +97,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   moveBlock: (clientId, newPosition) => {
+    // Validate input
+    if (!clientId || typeof clientId !== "string") {
+      console.error("moveBlock: invalid clientId", clientId);
+      return;
+    }
+    if (typeof newPosition !== "number" || newPosition < 0) {
+      console.error("moveBlock: invalid newPosition", newPosition);
+      return;
+    }
+
     const { blocks } = get();
+    if (!Array.isArray(blocks)) {
+      console.error("moveBlock: blocks is not an array");
+      return;
+    }
+
     const index = blocks.findIndex((b) => b.clientId === clientId);
-    if (index === -1) return;
+    if (index === -1) {
+      console.warn("moveBlock: block not found", clientId);
+      return;
+    }
 
     const newBlocks = [...blocks];
     const [moved] = newBlocks.splice(index, 1);
@@ -119,8 +168,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
+    // Validate blocks array
+    if (!Array.isArray(blocks)) {
+      console.error("pushHistory: blocks is not an array", blocks);
+      return;
+    }
+
     const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(structuredClone(blocks));
+
+    // Deep clone blocks with fallback
+    let clonedBlocks: Block[];
+    try {
+      clonedBlocks = structuredClone(blocks);
+    } catch (error) {
+      console.warn("structuredClone failed, using JSON fallback:", error);
+      try {
+        clonedBlocks = JSON.parse(JSON.stringify(blocks));
+      } catch (jsonError) {
+        console.error("Failed to clone blocks:", jsonError);
+        return;
+      }
+    }
+
+    newHistory.push(clonedBlocks);
     // Keep max 50 history entries
     if (newHistory.length > 50) newHistory.shift();
     set({

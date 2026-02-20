@@ -30,13 +30,30 @@ export function EditorPanel() {
 
   // Calculate word count and reading time
   const wordCount = blocks.reduce((count, block) => {
-    // Only count blocks that have text content (paragraph, heading, quote, code, list)
-    const content = block.attributes.content || block.attributes.value || block.attributes.values;
-    if (typeof content !== "string") return count;
+    // Validate block structure
+    if (!block || !block.attributes) return count;
 
-    const text = content.replace(/<[^>]*>/g, ""); // Strip HTML tags
-    const words = text.trim().split(/\s+/).filter(Boolean);
-    return count + words.length;
+    // Only count blocks that have text content (paragraph, heading, quote, code, list)
+    const content =
+      block.attributes.content ||
+      block.attributes.value ||
+      block.attributes.values;
+
+    // Handle string content
+    if (typeof content === "string") {
+      const text = content.replace(/<[^>]*>/g, ""); // Strip HTML tags
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      return count + words.length;
+    }
+
+    // Handle array content (for list blocks)
+    if (Array.isArray(content)) {
+      const text = content.join(" ").replace(/<[^>]*>/g, "");
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      return count + words.length;
+    }
+
+    return count;
   }, 0);
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
@@ -166,7 +183,7 @@ function EditorToolbar({
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  currentPost: any;
+  currentPost: { id: number; title: string } | null;
 }) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
@@ -214,7 +231,7 @@ function EditorToolbar({
         {currentPost && <PostSettingsDialog />}
         <DesignSystemPanel />
         <RevisionTimeline />
-        {currentPost && (
+        {currentPost && currentPost.title && (
           <span className="text-xs text-muted-foreground truncate max-w-[200px]">
             {currentPost.title}
           </span>

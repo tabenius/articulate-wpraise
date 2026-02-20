@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ConnectionProvider } from "@/contexts/connection-context";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,12 +29,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <ConnectionProvider>
-              {children}
-            </ConnectionProvider>
-          </AuthProvider>
-          <Toaster />
+          <ErrorBoundary>
+            <AuthProvider>
+              <ConnectionProvider>
+                {children}
+              </ConnectionProvider>
+            </AuthProvider>
+            <Toaster />
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
