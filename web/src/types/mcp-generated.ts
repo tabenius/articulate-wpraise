@@ -3,7 +3,7 @@
  * DO NOT EDIT MANUALLY - regenerate using `npm run generate-types`
  *
  * Schema version: 1.0.0
- * Generated: 2026-02-20T08:24:57.914Z
+ * Generated: 2026-02-20T08:38:23.748Z
  */
 
 /**
@@ -221,9 +221,75 @@ export type SetFrontPageResponse = Record<string, unknown>;
 export type UnsetFrontPageResponse = Record<string, unknown>;
 
 /**
+ * Response from contentNode
+ * A node used to manage content
+ */
+export type ContentNodeResponse = Record<string, unknown>;
+
+/**
+ * Response from page
+ * An object of the page Type. 
+ */
+export type PageResponse = Record<string, unknown>;
+
+/**
+ * Response from pages
+ * Connection between the RootQuery type and the page type
+ */
+export type PagesResponse = Record<string, unknown>;
+
+/**
+ * Response from post
+ * An object of the post Type. 
+ */
+export type PostResponse = Record<string, unknown>;
+
+/**
+ * Response from posts
+ * Connection between the RootQuery type and the post type
+ */
+export type PostsResponse = Record<string, unknown>;
+
+/**
+ * Response from createPage
+ * The createPage mutation
+ */
+export type CreatePageResponse = Record<string, unknown>;
+
+/**
+ * Response from createPost
+ * The createPost mutation
+ */
+export type CreatePostResponse = Record<string, unknown>;
+
+/**
+ * Response from deletePage
+ * The deletePage mutation
+ */
+export type DeletePageResponse = Record<string, unknown>;
+
+/**
+ * Response from deletePost
+ * The deletePost mutation
+ */
+export type DeletePostResponse = Record<string, unknown>;
+
+/**
+ * Response from updatePage
+ * The updatePage mutation
+ */
+export type UpdatePageResponse = Record<string, unknown>;
+
+/**
+ * Response from updatePost
+ * The updatePost mutation
+ */
+export type UpdatePostResponse = Record<string, unknown>;
+
+/**
  * All available MCP tool names
  */
-export type MCPToolName = "get_posts" | "get_post" | "create_post" | "update_post" | "delete_post" | "get_blocks" | "update_blocks" | "insert_block" | "remove_block" | "move_block" | "get_media" | "get_media_item" | "upload_media" | "get_categories" | "get_tags" | "create_category" | "create_tag" | "list_menus" | "get_menu_items" | "add_page_to_menu" | "remove_page_from_menu" | "get_front_page_settings" | "set_front_page" | "unset_front_page";
+export type MCPToolName = "get_posts" | "get_post" | "create_post" | "update_post" | "delete_post" | "get_blocks" | "update_blocks" | "insert_block" | "remove_block" | "move_block" | "get_media" | "get_media_item" | "upload_media" | "get_categories" | "get_tags" | "create_category" | "create_tag" | "list_menus" | "get_menu_items" | "add_page_to_menu" | "remove_page_from_menu" | "get_front_page_settings" | "set_front_page" | "unset_front_page" | "contentNode" | "page" | "pages" | "post" | "posts" | "createPage" | "createPost" | "deletePage" | "deletePost" | "updatePage" | "updatePost";
 
 /**
  * Helper type to get the response type for a specific tool
@@ -253,4 +319,15 @@ export type MCPToolResponse<T extends MCPToolName> =
   T extends "get_front_page_settings" ? GetFrontPageSettingsResponse :
   T extends "set_front_page" ? SetFrontPageResponse :
   T extends "unset_front_page" ? UnsetFrontPageResponse :
+  T extends "contentNode" ? ContentNodeResponse :
+  T extends "page" ? PageResponse :
+  T extends "pages" ? PagesResponse :
+  T extends "post" ? PostResponse :
+  T extends "posts" ? PostsResponse :
+  T extends "createPage" ? CreatePageResponse :
+  T extends "createPost" ? CreatePostResponse :
+  T extends "deletePage" ? DeletePageResponse :
+  T extends "deletePost" ? DeletePostResponse :
+  T extends "updatePage" ? UpdatePageResponse :
+  T extends "updatePost" ? UpdatePostResponse :
   never;

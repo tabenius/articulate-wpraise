@@ -1,0 +1,513 @@
+{
+  "version": "1.0.0",
+  "tools": {
+    "get_posts": {
+      "description": "List WordPress posts and pages with optional filtering.\n\n        Args:\n            status: Post status filter (publish, draft, pending, private, any).\n            per_page: Number of posts to return (max 100).\n            search: Optional search term to filter posts by title/content.\n\n        Returns:\n            List of post/page objects with id, title, slug, status, date, excerpt.\n        ",
+      "input": {},
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer"
+            },
+            "title": {
+              "type": "string"
+            },
+            "slug": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "modified": {
+              "type": "string"
+            },
+            "excerpt": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            },
+            "featuredImage": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "altText": {
+                  "type": "string"
+                },
+                "width": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "height": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "slug",
+            "status",
+            "type",
+            "date"
+          ]
+        }
+      }
+    },
+    "get_post": {
+      "description": "Get a single WordPress post by its database ID.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n\n        Returns:\n            Post object with id, title, slug, status, content, date.\n        ",
+      "input": {},
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string"
+          },
+          "modified": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "featuredImage": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              },
+              "altText": {
+                "type": "string"
+              },
+              "width": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "height": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "status"
+        ]
+      }
+    },
+    "create_post": {
+      "description": "Create a new WordPress post or page.\n\n        Args:\n            title: The post/page title.\n            content: The content in WordPress block format (serialized HTML comments).\n            status: Post status (draft, publish, pending, private). Default: draft.\n            post_type: The post type ('post' or 'page'). Default: post.\n            featured_image_id: Database ID of the featured image (optional).\n            category_ids: List of category database IDs to assign (optional, posts only).\n            tag_ids: List of tag database IDs to assign (optional, posts only).\n            date: ISO 8601 date string. Future dates schedule the post (optional).\n\n        Returns:\n            The created post/page object with id, title, slug, status.\n        ",
+      "input": {},
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string"
+          },
+          "modified": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "status"
+        ]
+      }
+    },
+    "update_post": {
+      "description": "Update an existing WordPress post.\n\n        Args:\n            post_id: The WordPress database ID of the post to update.\n            title: New title (optional).\n            content: New content in WordPress block format (optional).\n            status: New status (optional).\n            featured_image_id: Database ID of the featured image (optional, use 0 to remove).\n            category_ids: List of category database IDs to assign (optional).\n            tag_ids: List of tag database IDs to assign (optional).\n            date: ISO 8601 date string. Future dates schedule the post (optional).\n\n        Returns:\n            The updated post object.\n        ",
+      "input": {},
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": "string"
+          },
+          "modified": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "status"
+        ]
+      }
+    },
+    "delete_post": {
+      "description": "Delete a WordPress post by its database ID.\n\n        Args:\n            post_id: The WordPress database ID of the post to delete.\n\n        Returns:\n            Confirmation with deleted post title and id.\n        ",
+      "input": {},
+      "output": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      }
+    },
+    "get_blocks": {
+      "description": "Get the structured block tree for a WordPress post.\n\n        Returns blocks with: name, clientId, attributes, innerBlocks.\n        Block types include: core/paragraph, core/heading, core/image,\n        core/list, core/quote, core/columns, core/group, etc.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n\n        Returns:\n            List of block objects in tree structure.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "update_blocks": {
+      "description": "Update all blocks for a WordPress post.\n\n        Replaces the entire block content of the post.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n            blocks: List of block dicts. Each should have:\n                - name (str): Block type, e.g. \"core/paragraph\"\n                - attributes (dict): Block attributes, e.g. {\"content\": \"Hello\"}\n                - innerBlocks (list, optional): Nested blocks for containers\n\n        Returns:\n            Confirmation with the updated post id and block count.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "insert_block": {
+      "description": "Insert a single block into a post at a given position.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n            block: Block dict with name and attributes.\n                Example: {\"name\": \"core/paragraph\", \"attributes\": {\"content\": \"Hello\"}}\n            position: Position to insert at (0-indexed). -1 means append to end.\n\n        Returns:\n            Updated block list with the new block inserted.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "remove_block": {
+      "description": "Remove a block from a post by its clientId.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n            client_id: The clientId of the block to remove.\n\n        Returns:\n            Confirmation with updated block count.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "move_block": {
+      "description": "Move a block to a new position within the post.\n\n        Args:\n            post_id: The WordPress database ID of the post.\n            client_id: The clientId of the block to move.\n            new_position: The target position (0-indexed).\n\n        Returns:\n            Confirmation with the block's new position.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_media": {
+      "description": "List media items from the WordPress media library.\n\n        Args:\n            per_page: Number of media items to return (max 100).\n\n        Returns:\n            List of media objects with id, title, url, alt text, dimensions.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_media_item": {
+      "description": "Get a single media item with URL, alt text, and dimensions.\n\n        Args:\n            media_id: The WordPress database ID of the media item.\n\n        Returns:\n            Media object with id, title, url, alt, dimensions, mime type.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "upload_media": {
+      "description": "Upload a media file to WordPress from a URL or data URI.\n\n        Args:\n            file_url: URL of the file to download and upload, or data URI (base64).\n            title: Title for the media item (optional).\n            alt_text: Alt text for the image (optional).\n\n        Returns:\n            Uploaded media object with id, url, and dimensions.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_categories": {
+      "description": "List WordPress categories.\n\n        Args:\n            per_page: Number of categories to return (max 100).\n\n        Returns:\n            List of category objects with id, name, slug, description, count.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_tags": {
+      "description": "List WordPress tags.\n\n        Args:\n            per_page: Number of tags to return (max 100).\n\n        Returns:\n            List of tag objects with id, name, slug, description, count.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "create_category": {
+      "description": "Create a new WordPress category.\n\n        Args:\n            name: The category name.\n            description: Optional description for the category.\n\n        Returns:\n            The created category object with id, name, slug.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "create_tag": {
+      "description": "Create a new WordPress tag.\n\n        Args:\n            name: The tag name.\n            description: Optional description for the tag.\n\n        Returns:\n            The created tag object with id, name, slug.\n        ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "list_menus": {
+      "description": "List all WordPress menus.",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_menu_items": {
+      "description": "Get items in a specific menu.\n\n    Args:\n        menu_id: Database ID of the menu\n\n    Returns:\n        Dictionary with menu items\n    ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "add_page_to_menu": {
+      "description": "Add a page to a WordPress menu.\n\n    Args:\n        page_id: Database ID of the page to add\n        menu_id: Database ID of the menu\n        label: Optional custom label (defaults to page title)\n\n    Returns:\n        Dictionary with success status\n    ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "remove_page_from_menu": {
+      "description": "Remove a page from a WordPress menu.\n\n    Args:\n        page_id: Database ID of the page\n        menu_id: Database ID of the menu\n\n    Returns:\n        Dictionary with success status\n    ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "get_front_page_settings": {
+      "description": "Get current front page settings.",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "set_front_page": {
+      "description": "Set a page as the site's front page.\n\n    Args:\n        page_id: The ID of the page to set as front page\n\n    Returns:\n        Dictionary with success status and updated settings\n    ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "unset_front_page": {
+      "description": "Unset the front page (show posts on front page instead).",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "contentNode": {
+      "description": "A node used to manage content",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "page": {
+      "description": "An object of the page Type. ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "pages": {
+      "description": "Connection between the RootQuery type and the page type",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "post": {
+      "description": "An object of the post Type. ",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "posts": {
+      "description": "Connection between the RootQuery type and the post type",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "createPage": {
+      "description": "The createPage mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "createPost": {
+      "description": "The createPost mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "deletePage": {
+      "description": "The deletePage mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "deletePost": {
+      "description": "The deletePost mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "updatePage": {
+      "description": "The updatePage mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    },
+    "updatePost": {
+      "description": "The updatePost mutation",
+      "input": {},
+      "output": {
+        "type": "object"
+      }
+    }
+  }
+}
