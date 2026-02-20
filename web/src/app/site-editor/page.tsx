@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileCode2, Layout, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTemplateStore } from "@/stores/template-store";
+import { TemplateEditor } from "@/components/site-editor/template-editor";
 
 interface Template {
   id: number;
@@ -23,10 +24,14 @@ interface TemplatePart {
 }
 
 export default function SiteEditorPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [templateParts, setTemplateParts] = useState<TemplatePart[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [loading, setLoading] = useState(true);
+  const templates = useTemplateStore((s) => s.templates);
+  const templateParts = useTemplateStore((s) => s.templateParts);
+  const currentTemplate = useTemplateStore((s) => s.currentTemplate);
+  const setTemplates = useTemplateStore((s) => s.setTemplates);
+  const setTemplateParts = useTemplateStore((s) => s.setTemplateParts);
+  const setCurrentTemplate = useTemplateStore((s) => s.setCurrentTemplate);
+  const isLoading = useTemplateStore((s) => s.isLoading);
+  const setLoading = useTemplateStore((s) => s.setLoading);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,7 +83,7 @@ export default function SiteEditorPage() {
   };
 
   const handleSelectTemplate = async (template: Template) => {
-    setSelectedTemplate(template);
+    setCurrentTemplate(template);
     toast({
       title: "Template selected",
       description: `Loaded "${template.title}"`,
@@ -113,7 +118,7 @@ export default function SiteEditorPage() {
 
             <TabsContent value="templates" className="flex-1 mt-4">
               <ScrollArea className="h-full px-4">
-                {loading ? (
+                {isLoading ? (
                   <div className="text-sm text-muted-foreground">
                     Loading templates...
                   </div>
@@ -128,7 +133,7 @@ export default function SiteEditorPage() {
                       <Button
                         key={template.id}
                         variant={
-                          selectedTemplate?.id === template.id
+                          currentTemplate?.id === template.id
                             ? "default"
                             : "ghost"
                         }
@@ -182,59 +187,40 @@ export default function SiteEditorPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {selectedTemplate ? (
-            <>
-              {/* Template Editor Toolbar */}
-              <div className="border-b bg-muted/20 px-4 py-3">
-                <h2 className="font-semibold">{selectedTemplate.title}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {selectedTemplate.slug}
+        {currentTemplate ? (
+          <TemplateEditor
+            templateId={currentTemplate.id}
+            onSave={() => {
+              toast({
+                title: "Template saved",
+                description: `"${currentTemplate.title}" has been saved to WordPress`,
+              });
+            }}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-muted-foreground max-w-md">
+              <Palette className="h-16 w-16 mx-auto mb-4 opacity-40" />
+              <h3 className="text-lg font-semibold mb-2">
+                WordPress Site Editor
+              </h3>
+              <p className="text-sm">
+                Select a template or template part from the sidebar to start
+                editing.
+              </p>
+              <div className="mt-6 text-xs space-y-1">
+                <p>
+                  <strong>Templates</strong> control the layout of different page
+                  types
                 </p>
-              </div>
-
-              {/* Template Editor */}
-              <ScrollArea className="flex-1">
-                <div className="p-8 max-w-4xl mx-auto">
-                  <div className="bg-muted/30 rounded-lg p-4 font-mono text-sm">
-                    <pre className="whitespace-pre-wrap">
-                      {selectedTemplate.content || "No content"}
-                    </pre>
-                  </div>
-                  <div className="mt-4 text-sm text-muted-foreground">
-                    <p>
-                      Template editing is currently read-only. Future updates will
-                      enable full block editing.
-                    </p>
-                  </div>
-                </div>
-              </ScrollArea>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-muted-foreground max-w-md">
-                <Palette className="h-16 w-16 mx-auto mb-4 opacity-40" />
-                <h3 className="text-lg font-semibold mb-2">
-                  WordPress Site Editor
-                </h3>
-                <p className="text-sm">
-                  Select a template or template part from the sidebar to start
-                  editing.
+                <p>
+                  <strong>Template Parts</strong> are reusable components like
+                  headers and footers
                 </p>
-                <div className="mt-6 text-xs space-y-1">
-                  <p>
-                    <strong>Templates</strong> control the layout of different page
-                    types
-                  </p>
-                  <p>
-                    <strong>Template Parts</strong> are reusable components like
-                    headers and footers
-                  </p>
-                </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,194 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useEditorStore } from "@/stores/editor-store";
+import { useTemplateStore } from "@/stores/template-store";
+import { BlockEditor } from "@/components/editor/block-editor";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Save, Eye, Code2, Blocks } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { Block } from "@/types/blocks";
+
+interface TemplateEditorProps {
+  templateId: number;
+  onSave?: () => void;
+}
+
+export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
+  const [viewMode, setViewMode] = useState<"visual" | "code">("visual");
+  const [isSaving, setIsSaving] = useState(false);
+  const currentTemplate = useTemplateStore((s) => s.currentTemplate);
+  const updateTemplate = useTemplateStore((s) => s.updateTemplate);
+  const blocks = useEditorStore((s) => s.blocks);
+  const setBlocks = useEditorStore((s) => s.setBlocks);
+  const isDirty = useEditorStore((s) => s.isDirty);
+  const setDirty = useEditorStore((s) => s.setDirty);
+  const { toast } = useToast();
+
+  // Load template content into block editor
+  useEffect(() => {
+    if (!currentTemplate) return;
+
+    try {
+      // Parse WordPress blocks from HTML comment format
+      // For now, show the raw content as a single block
+      // In the future, parse actual block comments
+      const parsedBlocks: Block[] = [
+        {
+          clientId: `template-block-${Date.now()}`,
+          name: "core/html",
+          attributes: {
+            content: currentTemplate.content || "",
+          },
+          innerBlocks: [],
+        },
+      ];
+
+      setBlocks(parsedBlocks);
+    } catch (error) {
+      console.error("Failed to parse template blocks:", error);
+      toast({
+        variant: "destructive",
+        title: "Error loading template",
+        description: "Failed to parse template content",
+      });
+    }
+  }, [currentTemplate, setBlocks, toast]);
+
+  const handleSave = async () => {
+    if (!currentTemplate) return;
+
+    try {
+      setIsSaving(true);
+
+      // Serialize blocks back to HTML
+      // For now, just use the first block's content
+      const content =
+        blocks.length > 0
+          ? (blocks[0].attributes.content as string) || ""
+          : "";
+
+      const response = await fetch(`/api/templates/${currentTemplate.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Update store
+      updateTemplate(currentTemplate.id, { content });
+      setDirty(false);
+
+      toast({
+        title: "Template saved",
+        description: `"${currentTemplate.title}" has been saved`,
+      });
+
+      onSave?.();
+    } catch (error) {
+      console.error("Failed to save template:", error);
+      toast({
+        variant: "destructive",
+        title: "Error saving template",
+        description:
+          error instanceof Error ? error.message : "Failed to save template",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!currentTemplate) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        No template selected
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Toolbar */}
+      <div className="border-b bg-muted/20 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold">{currentTemplate.title}</h2>
+          <span className="text-xs text-muted-foreground">
+            {currentTemplate.slug}
+          </span>
+          {isDirty && (
+            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">
+              Unsaved changes
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 border rounded-md p-1">
+            <Button
+              variant={viewMode === "visual" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("visual")}
+              className="h-7"
+            >
+              <Blocks className="h-4 w-4 mr-1" />
+              Visual
+            </Button>
+            <Button
+              variant={viewMode === "code" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("code")}
+              className="h-7"
+            >
+              <Code2 className="h-4 w-4 mr-1" />
+              Code
+            </Button>
+          </div>
+
+          <Button size="sm" variant="outline">
+            <Eye className="h-4 w-4 mr-1" />
+            Preview
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!isDirty || isSaving}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Editor Content */}
+      {viewMode === "visual" ? (
+        <ScrollArea className="flex-1">
+          <BlockEditor />
+        </ScrollArea>
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="p-8 max-w-4xl mx-auto">
+            <textarea
+              className="w-full min-h-[600px] font-mono text-sm bg-muted/30 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-ring"
+              value={currentTemplate.content || ""}
+              onChange={(e) => {
+                updateTemplate(currentTemplate.id, {
+                  content: e.target.value,
+                });
+                setDirty(true);
+              }}
+              placeholder="Template HTML..."
+            />
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
