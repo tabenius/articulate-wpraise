@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { useEditorStore } from "@/stores/editor-store";
 import { useTemplateStore } from "@/stores/template-store";
 import { BlockEditor } from "@/components/editor/block-editor";
+import { SplitView } from "@/components/layout/split-view";
+import { TemplatePreview } from "./template-preview";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, Code2, Blocks } from "lucide-react";
+import { Save, Eye, Code2, Blocks, Columns2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { parseBlocks, serializeBlocks } from "@/lib/block-serializer";
 import type { Block } from "@/types/blocks";
 
 interface TemplateEditorProps {
@@ -17,6 +20,7 @@ interface TemplateEditorProps {
 
 export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
   const [viewMode, setViewMode] = useState<"visual" | "code">("visual");
+  const [layoutMode, setLayoutMode] = useState<"editor" | "split" | "preview">("editor");
   const [isSaving, setIsSaving] = useState(false);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
   const updateTemplate = useTemplateStore((s) => s.updateTemplate);
@@ -32,20 +36,24 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
 
     try {
       // Parse WordPress blocks from HTML comment format
-      // For now, show the raw content as a single block
-      // In the future, parse actual block comments
-      const parsedBlocks: Block[] = [
-        {
+      const parsedBlocks = parseBlocks(currentTemplate.content || "");
+
+      // If no blocks found, treat as raw HTML
+      if (parsedBlocks.length === 0 && currentTemplate.content) {
+        const fallbackBlock: Block = {
           clientId: `template-block-${Date.now()}`,
           name: "core/html",
           attributes: {
-            content: currentTemplate.content || "",
+            content: currentTemplate.content,
           },
           innerBlocks: [],
-        },
-      ];
+        };
+        setBlocks([fallbackBlock]);
+      } else {
+        setBlocks(parsedBlocks);
+      }
 
-      setBlocks(parsedBlocks);
+      console.log(`Parsed ${parsedBlocks.length} blocks from template`);
     } catch (error) {
       console.error("Failed to parse template blocks:", error);
       toast({
@@ -62,12 +70,8 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
     try {
       setIsSaving(true);
 
-      // Serialize blocks back to HTML
-      // For now, just use the first block's content
-      const content =
-        blocks.length > 0
-          ? (blocks[0].attributes.content as string) || ""
-          : "";
+      // Serialize blocks back to WordPress block comment format
+      const content = serializeBlocks(blocks);
 
       const response = await fetch(`/api/templates/${currentTemplate.id}`, {
         method: "PUT",
@@ -87,9 +91,10 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
 
       toast({
         title: "Template saved",
-        description: `"${currentTemplate.title}" has been saved`,
+        description: `"${currentTemplate.title}" has been saved to WordPress`,
       });
 
+      console.log(`Saved ${blocks.length} blocks to template`);
       onSave?.();
     } catch (error) {
       console.error("Failed to save template:", error);
@@ -151,10 +156,36 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
             </Button>
           </div>
 
-          <Button size="sm" variant="outline">
-            <Eye className="h-4 w-4 mr-1" />
-            Preview
-          </Button>
+          {/* Layout Mode Toggle */}
+          <div className="flex items-center gap-1 border rounded-md p-1">
+            <Button
+              variant={layoutMode === "editor" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLayoutMode("editor")}
+              className="h-7"
+              title="Editor only"
+            >
+              <Blocks className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={layoutMode === "split" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLayoutMode("split")}
+              className="h-7"
+              title="Split view"
+            >
+              <Columns2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={layoutMode === "preview" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLayoutMode("preview")}
+              className="h-7"
+              title="Preview only"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
 
           <Button
             size="sm"
@@ -168,7 +199,39 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
       </div>
 
       {/* Editor Content */}
-      {viewMode === "visual" ? (
+      {layoutMode === "preview" ? (
+        <TemplatePreview templateId={currentTemplate.id} />
+      ) : layoutMode === "split" ? (
+        <SplitView
+          left={
+            viewMode === "visual" ? (
+              <ScrollArea className="h-full">
+                <BlockEditor />
+              </ScrollArea>
+            ) : (
+              <ScrollArea className="h-full">
+                <div className="p-8">
+                  <textarea
+                    className="w-full min-h-[600px] font-mono text-sm bg-muted/30 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={currentTemplate.content || ""}
+                    onChange={(e) => {
+                      updateTemplate(currentTemplate.id, {
+                        content: e.target.value,
+                      });
+                      setDirty(true);
+                    }}
+                    placeholder="Template HTML..."
+                  />
+                </div>
+              </ScrollArea>
+            )
+          }
+          right={<TemplatePreview templateId={currentTemplate.id} />}
+          defaultSize={50}
+          leftId="template-editor"
+          rightId="template-preview"
+        />
+      ) : viewMode === "visual" ? (
         <ScrollArea className="flex-1">
           <BlockEditor />
         </ScrollArea>
