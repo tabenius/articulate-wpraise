@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTemplateStore } from "@/stores/template-store";
 import { TemplateEditor } from "@/components/site-editor/template-editor";
 import { CreateTemplateDialog } from "@/components/site-editor/create-template-dialog";
+import { GlobalStylesEditor } from "@/components/site-editor/global-styles-editor";
 
 interface Template {
   id: number;
@@ -25,6 +26,7 @@ interface TemplatePart {
 }
 
 export default function SiteEditorPage() {
+  const [activeTab, setActiveTab] = useState<"templates" | "parts" | "styles">("templates");
   const templates = useTemplateStore((s) => s.templates);
   const templateParts = useTemplateStore((s) => s.templateParts);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
@@ -113,15 +115,23 @@ export default function SiteEditorPage() {
       <div className="flex-1 flex">
         {/* Sidebar */}
         <div className="w-80 border-r bg-muted/10">
-          <Tabs defaultValue="templates" className="h-full flex flex-col">
-            <TabsList className="mx-4 mt-4">
-              <TabsTrigger value="templates" className="flex-1">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as "templates" | "parts" | "styles")}
+            className="h-full flex flex-col"
+          >
+            <TabsList className="mx-4 mt-4 grid grid-cols-3">
+              <TabsTrigger value="templates">
                 <Layout className="h-4 w-4 mr-2" />
                 Templates
               </TabsTrigger>
-              <TabsTrigger value="parts" className="flex-1">
+              <TabsTrigger value="parts">
                 <FileCode2 className="h-4 w-4 mr-2" />
                 Parts
+              </TabsTrigger>
+              <TabsTrigger value="styles">
+                <Palette className="h-4 w-4 mr-2" />
+                Styles
               </TabsTrigger>
             </TabsList>
 
@@ -192,11 +202,22 @@ export default function SiteEditorPage() {
                 )}
               </ScrollArea>
             </TabsContent>
+
+            <TabsContent value="styles" className="flex-1 mt-4">
+              <ScrollArea className="h-full px-4">
+                <div className="text-sm text-muted-foreground">
+                  Click on Global Styles to edit theme colors, typography, and
+                  spacing.
+                </div>
+              </ScrollArea>
+            </TabsContent>
           </Tabs>
         </div>
 
         {/* Main Content */}
-        {currentTemplate ? (
+        {activeTab === "styles" ? (
+          <GlobalStylesEditor />
+        ) : currentTemplate ? (
           <TemplateEditor
             templateId={currentTemplate.id}
             onSave={() => {
