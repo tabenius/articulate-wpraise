@@ -106,6 +106,8 @@ export default function Home() {
     try {
       setLoading(true);
       const post = await createPost("Untitled Post");
+      console.log("handleCreatePost received post:", post);
+      console.log("post.id:", post.id, "type:", typeof post.id);
       setCurrentPost(post);
       useEditorStore.getState().setBlocks([]);
       await handleLoadPosts();
@@ -132,6 +134,8 @@ export default function Home() {
     try {
       setLoading(true);
       const page = await createPage("Untitled Page");
+      console.log("handleCreatePage received page:", page);
+      console.log("page.id:", page.id, "type:", typeof page.id);
       setCurrentPost(page);
       useEditorStore.getState().setBlocks([]);
       await handleLoadPosts();

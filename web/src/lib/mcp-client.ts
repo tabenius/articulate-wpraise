@@ -72,17 +72,23 @@ export async function callMCPTool(
 
   // Extract the text content from MCP tool result
   const result = data.result;
+  console.error("=== MCP DEBUG: raw result ===", JSON.stringify(result, null, 2));
+
   if (result?.content) {
     const textContent = result.content.find((c) => c.type === "text");
     if (textContent?.text) {
       try {
-        return JSON.parse(textContent.text);
+        const parsed = JSON.parse(textContent.text);
+        console.error("=== MCP DEBUG: parsed content ===", JSON.stringify(parsed, null, 2));
+        return parsed;
       } catch {
+        console.error("=== MCP DEBUG: returning text (parse failed) ===");
         return textContent.text;
       }
     }
   }
 
+  console.error("=== MCP DEBUG: returning raw result (no content) ===");
   return result;
 }
 

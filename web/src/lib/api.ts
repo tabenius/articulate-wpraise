@@ -31,17 +31,21 @@ export async function fetchPost(id: number): Promise<Post> {
 }
 
 export async function createPost(title: string): Promise<Post> {
-  return fetchJSON<Post>("/posts", {
+  const result = await fetchJSON<Post>("/posts", {
     method: "POST",
     body: JSON.stringify({ title, status: "draft" }),
   });
+  console.log("createPost API response:", result);
+  return result;
 }
 
 export async function createPage(title: string): Promise<Post> {
-  return fetchJSON<Post>("/posts", {
+  const result = await fetchJSON<Post>("/posts", {
     method: "POST",
     body: JSON.stringify({ title, status: "draft", type: "page" }),
   });
+  console.log("createPage API response:", result);
+  return result;
 }
 
 export async function updatePost(
