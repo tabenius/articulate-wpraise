@@ -28,6 +28,7 @@ def generate_schemas():
         taxonomies,
         menus,
         settings,
+        generated,
     )
 
     posts.register(mcp)
@@ -36,6 +37,7 @@ def generate_schemas():
     taxonomies.register(mcp)
     menus.register(mcp)
     settings.register(mcp)
+    generated.register(mcp)
 
     # Extract tool schemas
     tools_schema = {
