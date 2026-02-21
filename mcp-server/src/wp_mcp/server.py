@@ -69,6 +69,10 @@ from wp_mcp.routes.ai_preferences import (
     get_ai_preferences_endpoint, update_ai_preferences_endpoint
 )
 from wp_mcp.routes.seo_generator import generate_seo_endpoint
+from wp_mcp.routes.image_alt_text import generate_alt_text_endpoint
+from wp_mcp.routes.content_assistant import (
+    analyze_content_endpoint, improve_content_endpoint
+)
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -250,6 +254,13 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
 
     # AI SEO Generator
     Route("/ai/generate-seo", generate_seo_endpoint, methods=["POST"]),
+
+    # AI Alt Text Generator
+    Route("/ai/generate-alt-text", generate_alt_text_endpoint, methods=["POST"]),
+
+    # AI Content Assistant
+    Route("/ai/analyze-content", analyze_content_endpoint, methods=["POST"]),
+    Route("/ai/improve-content", improve_content_endpoint, methods=["POST"]),
 
     # Static files
     Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),
