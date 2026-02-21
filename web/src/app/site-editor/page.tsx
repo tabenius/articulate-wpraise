@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileCode2, Layout, Palette } from "lucide-react";
+import { FileCode2, Layout, Palette, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTemplateStore } from "@/stores/template-store";
 import { TemplateEditor } from "@/components/site-editor/template-editor";
 import { CreateTemplateDialog } from "@/components/site-editor/create-template-dialog";
 import { GlobalStylesEditor } from "@/components/site-editor/global-styles-editor";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { TemplateListSkeleton } from "@/components/skeletons/template-list-skeleton";
 
 interface Template {
   id: number;
@@ -28,6 +31,8 @@ interface TemplatePart {
 export default function SiteEditorPage() {
   const [activeTab, setActiveTab] = useState<"templates" | "parts" | "styles">("templates");
   const [currentTemplatePart, setCurrentTemplatePart] = useState<TemplatePart | null>(null);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [partSearch, setPartSearch] = useState("");
   const templates = useTemplateStore((s) => s.templates);
   const templateParts = useTemplateStore((s) => s.templateParts);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
@@ -104,22 +109,50 @@ export default function SiteEditorPage() {
     });
   };
 
+  // Filter templates based on search
+  const filteredTemplates = templates.filter((template) => {
+    const searchLower = templateSearch.toLowerCase();
+    return (
+      template.title.toLowerCase().includes(searchLower) ||
+      template.slug.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Filter template parts based on search
+  const filteredTemplateParts = templateParts.filter((part) => {
+    const searchLower = partSearch.toLowerCase();
+    return (
+      part.title.toLowerCase().includes(searchLower) ||
+      part.slug.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b bg-muted/30 px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Site Editor</h1>
-          <p className="text-sm text-muted-foreground">
-            Edit templates, template parts, and global styles
-          </p>
+      <div className="border-b bg-muted/30 px-4 py-3">
+        <div className="mb-3">
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Site Editor" },
+            ]}
+          />
         </div>
-        <CreateTemplateDialog
-          onTemplateCreated={async (template) => {
-            await loadTemplates();
-            setCurrentTemplate(template as any);
-          }}
-        />
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Site Editor</h1>
+            <p className="text-sm text-muted-foreground">
+              Edit templates, template parts, and global styles
+            </p>
+          </div>
+          <CreateTemplateDialog
+            onTemplateCreated={async (template) => {
+              await loadTemplates();
+              setCurrentTemplate(template as any);
+            }}
+          />
+        </div>
       </div>
 
       {/* Content */}
@@ -147,19 +180,35 @@ export default function SiteEditorPage() {
             </TabsList>
 
             <TabsContent value="templates" className="flex-1 mt-4">
-              <ScrollArea className="h-full px-4">
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search templates..."
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {templateSearch && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} found
+                  </p>
+                )}
+              </div>
+              <ScrollArea className="h-full">
                 {isLoading ? (
-                  <div className="text-sm text-muted-foreground">
-                    Loading templates...
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    No templates found. Your theme may not support Full Site
-                    Editing.
+                  <TemplateListSkeleton />
+                ) : filteredTemplates.length === 0 ? (
+                  <div className="px-4 text-sm text-muted-foreground">
+                    {templateSearch
+                      ? `No templates match "${templateSearch}"`
+                      : "No templates found. Your theme may not support Full Site Editing."}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {templates.map((template) => (
+                  <div className="space-y-2 px-4">
+                    {filteredTemplates.map((template) => (
                       <Button
                         key={template.id}
                         variant={
@@ -187,14 +236,33 @@ export default function SiteEditorPage() {
             </TabsContent>
 
             <TabsContent value="parts" className="flex-1 mt-4">
-              <ScrollArea className="h-full px-4">
-                {templateParts.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    No template parts found.
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search template parts..."
+                    value={partSearch}
+                    onChange={(e) => setPartSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {partSearch && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {filteredTemplateParts.length} part{filteredTemplateParts.length !== 1 ? 's' : ''} found
+                  </p>
+                )}
+              </div>
+              <ScrollArea className="h-full">
+                {filteredTemplateParts.length === 0 ? (
+                  <div className="px-4 text-sm text-muted-foreground">
+                    {partSearch
+                      ? `No template parts match "${partSearch}"`
+                      : "No template parts found."}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {templateParts.map((part) => (
+                  <div className="space-y-2 px-4">
+                    {filteredTemplateParts.map((part) => (
                       <Button
                         key={part.id}
                         variant={

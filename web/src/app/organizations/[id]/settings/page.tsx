@@ -14,6 +14,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ImageUpload } from "@/components/profile/image-upload";
 import { OrgApiKeysPanel } from "@/components/organizations/org-api-keys-panel";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { OrganizationSkeleton } from "@/components/skeletons/organization-skeleton";
 
 interface Organization {
   id: number;
@@ -166,11 +168,7 @@ export default function OrganizationSettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <p>Loading...</p>
-      </div>
-    );
+    return <OrganizationSkeleton />;
   }
 
   if (!organization) {
@@ -205,13 +203,14 @@ export default function OrganizationSettingsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <div className="mb-6">
-        <Link href={`/organizations/${orgId}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Organization
-          </Button>
-        </Link>
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: "Organizations", href: "/organizations" },
+            { label: organization.name, href: `/organizations/${orgId}` },
+            { label: "Settings" },
+          ]}
+        />
       </div>
 
       <div className="mb-6">

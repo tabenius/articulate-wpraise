@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Trash2, Crown, Shield, Eye, Users as UsersIcon, Settings } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 interface Organization {
   id: number;
@@ -387,13 +388,13 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
-      <div className="mb-6">
-        <Link href="/organizations">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Organizations
-          </Button>
-        </Link>
+      <div className="mb-4">
+        <Breadcrumbs
+          items={[
+            { label: "Organizations", href: "/organizations" },
+            { label: organization.name },
+          ]}
+        />
       </div>
 
       {/* Organization Header */}

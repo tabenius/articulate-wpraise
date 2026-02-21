@@ -8,7 +8,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { TemplatePreview } from "./template-preview";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Eye, Code2, Blocks, Columns2 } from "lucide-react";
+import { Save, Eye, Code2, Blocks, Columns2, Check, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { parseBlocks, serializeBlocks } from "@/lib/block-serializer";
 import type { Block } from "@/types/blocks";
@@ -24,6 +24,7 @@ export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps
   const [layoutMode, setLayoutMode] = useState<"editor" | "split" | "preview">("editor");
   const [isSaving, setIsSaving] = useState(false);
   const [content, setContent] = useState<string>("");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
   const templateParts = useTemplateStore((s) => s.templateParts);
   const updateTemplate = useTemplateStore((s) => s.updateTemplate);
@@ -37,6 +38,16 @@ export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps
   const currentItem = type === "template"
     ? currentTemplate
     : templateParts.find(p => p.id === templateId);
+
+  // Format time since last save
+  const formatTimeSince = (date: Date) => {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  };
 
   // Load template or template part content into block editor
   useEffect(() => {
@@ -106,6 +117,7 @@ export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps
       // Note: For template parts, we would need a similar updateTemplatePart function in the store
 
       setDirty(false);
+      setLastSaved(new Date());
 
       toast({
         title: `${type === "template" ? "Template" : "Template part"} saved`,
@@ -144,11 +156,22 @@ export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps
           <span className="text-xs text-muted-foreground">
             {currentItem.slug}
           </span>
-          {isDirty && (
+          {/* Save status indicator */}
+          {isSaving ? (
+            <span className="text-xs flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-3 w-3 animate-spin" />
+              Saving...
+            </span>
+          ) : isDirty ? (
             <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">
               Unsaved changes
             </span>
-          )}
+          ) : lastSaved ? (
+            <span className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400">
+              <Check className="h-3 w-3" />
+              Saved {formatTimeSince(lastSaved)}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
