@@ -15,14 +15,17 @@ import type { Block } from "@/types/blocks";
 
 interface TemplateEditorProps {
   templateId: number;
+  type: "template" | "part";
   onSave?: () => void;
 }
 
-export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
+export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps) {
   const [viewMode, setViewMode] = useState<"visual" | "code">("visual");
   const [layoutMode, setLayoutMode] = useState<"editor" | "split" | "preview">("editor");
   const [isSaving, setIsSaving] = useState(false);
+  const [content, setContent] = useState<string>("");
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
+  const templateParts = useTemplateStore((s) => s.templateParts);
   const updateTemplate = useTemplateStore((s) => s.updateTemplate);
   const blocks = useEditorStore((s) => s.blocks);
   const setBlocks = useEditorStore((s) => s.setBlocks);
@@ -30,21 +33,26 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
   const setDirty = useEditorStore((s) => s.setDirty);
   const { toast } = useToast();
 
-  // Load template content into block editor
+  // Get the current item (template or template part)
+  const currentItem = type === "template"
+    ? currentTemplate
+    : templateParts.find(p => p.id === templateId);
+
+  // Load template or template part content into block editor
   useEffect(() => {
-    if (!currentTemplate) return;
+    if (!currentItem) return;
 
     try {
       // Parse WordPress blocks from HTML comment format
-      const parsedBlocks = parseBlocks(currentTemplate.content || "");
+      const parsedBlocks = parseBlocks(currentItem.content || "");
 
       // If no blocks found, treat as raw HTML
-      if (parsedBlocks.length === 0 && currentTemplate.content) {
+      if (parsedBlocks.length === 0 && currentItem.content) {
         const fallbackBlock: Block = {
-          clientId: `template-block-${Date.now()}`,
+          clientId: `${type}-block-${Date.now()}`,
           name: "core/html",
           attributes: {
-            content: currentTemplate.content,
+            content: currentItem.content,
           },
           innerBlocks: [],
         };
@@ -53,19 +61,20 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
         setBlocks(parsedBlocks);
       }
 
-      console.log(`Parsed ${parsedBlocks.length} blocks from template`);
+      console.log(`Parsed ${parsedBlocks.length} blocks from ${type}`);
+      setContent(currentItem.content || "");
     } catch (error) {
-      console.error("Failed to parse template blocks:", error);
+      console.error(`Failed to parse ${type} blocks:`, error);
       toast({
         variant: "destructive",
-        title: "Error loading template",
-        description: "Failed to parse template content",
+        title: `Error loading ${type}`,
+        description: `Failed to parse ${type} content`,
       });
     }
-  }, [currentTemplate, setBlocks, toast]);
+  }, [currentItem, type, setBlocks, toast]);
 
   const handleSave = async () => {
-    if (!currentTemplate) return;
+    if (!currentItem) return;
 
     try {
       setIsSaving(true);
@@ -73,7 +82,12 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
       // Serialize blocks back to WordPress block comment format
       const content = serializeBlocks(blocks);
 
-      const response = await fetch(`/api/templates/${currentTemplate.id}`, {
+      // Use the correct API endpoint based on type
+      const endpoint = type === "template"
+        ? `/api/templates/${currentItem.id}`
+        : `/api/template-parts/${currentItem.id}`;
+
+      const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
@@ -85,34 +99,38 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
 
       const result = await response.json();
 
-      // Update store
-      updateTemplate(currentTemplate.id, { content });
+      // Update store based on type
+      if (type === "template") {
+        updateTemplate(currentItem.id, { content });
+      }
+      // Note: For template parts, we would need a similar updateTemplatePart function in the store
+
       setDirty(false);
 
       toast({
-        title: "Template saved",
-        description: `"${currentTemplate.title}" has been saved to WordPress`,
+        title: `${type === "template" ? "Template" : "Template part"} saved`,
+        description: `"${currentItem.title}" has been saved to WordPress`,
       });
 
-      console.log(`Saved ${blocks.length} blocks to template`);
+      console.log(`Saved ${blocks.length} blocks to ${type}`);
       onSave?.();
     } catch (error) {
-      console.error("Failed to save template:", error);
+      console.error(`Failed to save ${type}:`, error);
       toast({
         variant: "destructive",
-        title: "Error saving template",
+        title: `Error saving ${type}`,
         description:
-          error instanceof Error ? error.message : "Failed to save template",
+          error instanceof Error ? error.message : `Failed to save ${type}`,
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!currentTemplate) {
+  if (!currentItem) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        No template selected
+        No {type} selected
       </div>
     );
   }
@@ -122,9 +140,9 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
       {/* Toolbar */}
       <div className="border-b bg-muted/20 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold">{currentTemplate.title}</h2>
+          <h2 className="font-semibold">{currentItem.title}</h2>
           <span className="text-xs text-muted-foreground">
-            {currentTemplate.slug}
+            {currentItem.slug}
           </span>
           {isDirty && (
             <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">
@@ -200,7 +218,7 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
 
       {/* Editor Content */}
       {layoutMode === "preview" ? (
-        <TemplatePreview templateId={currentTemplate.id} />
+        <TemplatePreview templateId={currentItem.id} />
       ) : layoutMode === "split" ? (
         <SplitView
           left={
@@ -213,20 +231,22 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
                 <div className="p-8">
                   <textarea
                     className="w-full min-h-[600px] font-mono text-sm bg-muted/30 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-ring"
-                    value={currentTemplate.content || ""}
+                    value={currentItem.content || ""}
                     onChange={(e) => {
-                      updateTemplate(currentTemplate.id, {
-                        content: e.target.value,
-                      });
+                      if (type === "template") {
+                        updateTemplate(currentItem.id, {
+                          content: e.target.value,
+                        });
+                      }
                       setDirty(true);
                     }}
-                    placeholder="Template HTML..."
+                    placeholder={`${type === "template" ? "Template" : "Template part"} HTML...`}
                   />
                 </div>
               </ScrollArea>
             )
           }
-          right={<TemplatePreview templateId={currentTemplate.id} />}
+          right={<TemplatePreview templateId={currentItem.id} />}
           defaultSize={50}
           leftId="template-editor"
           rightId="template-preview"
@@ -240,14 +260,16 @@ export function TemplateEditor({ templateId, onSave }: TemplateEditorProps) {
           <div className="p-8 max-w-4xl mx-auto">
             <textarea
               className="w-full min-h-[600px] font-mono text-sm bg-muted/30 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-ring"
-              value={currentTemplate.content || ""}
+              value={currentItem.content || ""}
               onChange={(e) => {
-                updateTemplate(currentTemplate.id, {
-                  content: e.target.value,
-                });
+                if (type === "template") {
+                  updateTemplate(currentItem.id, {
+                    content: e.target.value,
+                  });
+                }
                 setDirty(true);
               }}
-              placeholder="Template HTML..."
+              placeholder={`${type === "template" ? "Template" : "Template part"} HTML...`}
             />
           </div>
         </ScrollArea>

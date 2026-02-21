@@ -27,6 +27,7 @@ interface TemplatePart {
 
 export default function SiteEditorPage() {
   const [activeTab, setActiveTab] = useState<"templates" | "parts" | "styles">("templates");
+  const [currentTemplatePart, setCurrentTemplatePart] = useState<TemplatePart | null>(null);
   const templates = useTemplateStore((s) => s.templates);
   const templateParts = useTemplateStore((s) => s.templateParts);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
@@ -35,7 +36,7 @@ export default function SiteEditorPage() {
   const setCurrentTemplate = useTemplateStore((s) => s.setCurrentTemplate);
   const isLoading = useTemplateStore((s) => s.isLoading);
   const setLoading = useTemplateStore((s) => s.setLoading);
-  const { toast } = useToast();
+  const { toast} = useToast();
 
   useEffect(() => {
     loadTemplates();
@@ -87,9 +88,19 @@ export default function SiteEditorPage() {
 
   const handleSelectTemplate = async (template: Template) => {
     setCurrentTemplate(template);
+    setCurrentTemplatePart(null);
     toast({
       title: "Template selected",
       description: `Loaded "${template.title}"`,
+    });
+  };
+
+  const handleSelectTemplatePart = async (part: TemplatePart) => {
+    setCurrentTemplatePart(part);
+    setCurrentTemplate(null);
+    toast({
+      title: "Template part selected",
+      description: `Loaded "${part.title}"`,
     });
   };
 
@@ -186,8 +197,13 @@ export default function SiteEditorPage() {
                     {templateParts.map((part) => (
                       <Button
                         key={part.id}
-                        variant="ghost"
+                        variant={
+                          currentTemplatePart?.id === part.id
+                            ? "default"
+                            : "ghost"
+                        }
                         className="w-full justify-start"
+                        onClick={() => handleSelectTemplatePart(part)}
                       >
                         <FileCode2 className="h-4 w-4 mr-2" />
                         <div className="flex-1 text-left truncate">
@@ -220,10 +236,22 @@ export default function SiteEditorPage() {
         ) : currentTemplate ? (
           <TemplateEditor
             templateId={currentTemplate.id}
+            type="template"
             onSave={() => {
               toast({
                 title: "Template saved",
                 description: `"${currentTemplate.title}" has been saved to WordPress`,
+              });
+            }}
+          />
+        ) : currentTemplatePart ? (
+          <TemplateEditor
+            templateId={currentTemplatePart.id}
+            type="part"
+            onSave={() => {
+              toast({
+                title: "Template part saved",
+                description: `"${currentTemplatePart.title}" has been saved to WordPress`,
               });
             }}
           />
