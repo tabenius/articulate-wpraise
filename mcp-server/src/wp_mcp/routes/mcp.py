@@ -64,15 +64,29 @@ async def mcp_jsonrpc_endpoint(request, mcp):
             # Call the MCP tool directly
             result = await mcp.call_tool(tool_name, tool_args)
 
-            logger.info(f"Tool result type: {type(result)}, has content: {hasattr(result, 'content')}")
+            logger.info(f"Tool result type: {type(result)}")
 
-            # Extract the actual data from MCP result format
-            # result is a ToolCallResult with content array and metadata
+            # FastMCP returns a tuple: (content_list, parsed_data)
+            # We need to extract the content from the first element
+            if isinstance(result, tuple) and len(result) >= 1:
+                content_list = result[0]
+                # Check if content_list is a list with TextContent objects
+                if isinstance(content_list, list) and len(content_list) > 0:
+                    text_content = content_list[0]
+                    if hasattr(text_content, 'text'):
+                        # Return the text content wrapped in JSON-RPC format
+                        return StarletteJSONResponse({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": text_content.text}]
+                            }
+                        })
+
+            # Handle ToolCallResult object with content attribute
             if hasattr(result, 'content') and result.content:
-                # Extract text from first TextContent
                 text_content = result.content[0]
                 if hasattr(text_content, 'text'):
-                    # Return the text content wrapped in JSON-RPC format
                     return StarletteJSONResponse({
                         "jsonrpc": "2.0",
                         "id": request_id,
@@ -81,7 +95,7 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                         }
                     })
 
-            # Handle case where result is already a dict (shouldn't happen but let's be safe)
+            # Handle case where result is already a dict
             if isinstance(result, dict):
                 result_json = json_lib.dumps(result)
                 return StarletteJSONResponse({
@@ -93,7 +107,7 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 })
 
             # Fallback: log error and return empty result
-            logger.error(f"Unexpected result format from tool {tool_name}: {type(result)}")
+            logger.error(f"Unexpected result format from tool {tool_name}: {type(result)}, value: {result}")
             return StarletteJSONResponse({
                 "jsonrpc": "2.0",
                 "id": request_id,
