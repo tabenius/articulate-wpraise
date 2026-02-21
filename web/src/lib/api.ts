@@ -5,6 +5,7 @@
 import type { Post, PostSummary } from "@/types/post";
 import type { Block } from "@/types/blocks";
 import type { CreatePostResponse, UpdatePostResponse, GetPostResponse } from "@/types/mcp-generated";
+import { logger } from "./logger";
 
 const API_BASE = "/api";
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
@@ -53,7 +54,7 @@ async function fetchJSON<T>(
     // Handle abort/timeout
     if (error instanceof Error && error.name === "AbortError") {
       if (retries > 0) {
-        console.warn(`Request timeout, retrying... (${retries} retries left)`);
+        logger.warn(`Request timeout, retrying... (${retries} retries left)`);
         return fetchJSON<T>(url, options, timeout, retries - 1);
       }
       throw new Error("Request timeout - please check your connection");
@@ -65,7 +66,7 @@ async function fetchJSON<T>(
       error.message.includes("fetch") &&
       retries > 0
     ) {
-      console.warn(`Network error, retrying... (${retries} retries left)`);
+      logger.warn(`Network error, retrying... (${retries} retries left)`);
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s before retry
       return fetchJSON<T>(url, options, timeout, retries - 1);
     }
@@ -79,7 +80,7 @@ export async function fetchPosts(): Promise<PostSummary[]> {
   const result = await fetchJSON<PostSummary[]>("/posts");
   // Validate response is an array
   if (!Array.isArray(result)) {
-    console.error("fetchPosts returned non-array:", result);
+    logger.error("fetchPosts returned non-array:", result);
     return [];
   }
   return result;
@@ -107,11 +108,11 @@ export async function createPost(title: string): Promise<Post> {
     method: "POST",
     body: JSON.stringify({ title: title.trim(), status: "draft" }),
   });
-  console.log("createPost API response:", result);
+  logger.info("createPost API response:", result);
 
   // Runtime validation - ensure id exists
   if (!result || typeof result.id !== "number" || result.id <= 0) {
-    console.error("Invalid response structure:", result);
+    logger.error("Invalid response structure:", result);
     throw new Error(
       `Invalid response from create_post: missing or invalid id field. Got: ${JSON.stringify(result)}`
     );
@@ -135,11 +136,11 @@ export async function createPage(title: string): Promise<Post> {
     method: "POST",
     body: JSON.stringify({ title: title.trim(), status: "draft", type: "page" }),
   });
-  console.log("createPage API response:", result);
+  logger.info("createPage API response:", result);
 
   // Runtime validation - ensure id exists
   if (!result || typeof result.id !== "number" || result.id <= 0) {
-    console.error("Invalid response structure:", result);
+    logger.error("Invalid response structure:", result);
     throw new Error(
       `Invalid response from create_post: missing or invalid id field. Got: ${JSON.stringify(result)}`
     );
@@ -182,7 +183,7 @@ export async function fetchBlocks(postId: number): Promise<Block[]> {
   const result = await fetchJSON<Block[]>(`/blocks?postId=${postId}`);
   // Validate response is an array
   if (!Array.isArray(result)) {
-    console.error("fetchBlocks returned non-array:", result);
+    logger.error("fetchBlocks returned non-array:", result);
     return [];
   }
   return result;

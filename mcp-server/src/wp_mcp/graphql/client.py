@@ -60,11 +60,17 @@ class GraphQLClient:
     def _extract_cache_ttl(self, query: str) -> int:
         """Determine cache TTL based on query type.
 
+        Implements intelligent caching with different TTLs for different content types:
+        - Revisions: 60s (frequently updated, short TTL)
+        - Posts/Pages: 300s (5 min, balance between freshness and performance)
+        - Categories/Tags/Media: 600s (10 min, rarely change)
+        - Default: 300s (5 min conservative default)
+
         Args:
-            query: GraphQL query string
+            query: GraphQL query string to analyze
 
         Returns:
-            TTL in seconds
+            TTL in seconds (60-600s depending on query type)
         """
         query_lower = query.lower()
 
