@@ -32,6 +32,14 @@ class ImageCompressor:
         "png": {"optimize": True, "compress_level": 6},
     }
 
+    # Quality presets for easy selection
+    QUALITY_PRESETS = {
+        "low": {"quality": 60, "description": "Smallest file size, lower quality"},
+        "medium": {"quality": 75, "description": "Balanced size and quality"},
+        "high": {"quality": 85, "description": "High quality, recommended"},
+        "max": {"quality": 95, "description": "Maximum quality, larger files"},
+    }
+
     @staticmethod
     def is_available() -> bool:
         """Check if Pillow is available."""
@@ -199,6 +207,81 @@ class ImageCompressor:
             image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         return image
+
+    @staticmethod
+    def get_quality_from_preset(preset: str) -> int:
+        """Get quality value from a preset name.
+
+        Args:
+            preset: Preset name (low, medium, high, max)
+
+        Returns:
+            Quality value (1-100)
+
+        Raises:
+            ValueError: If preset is invalid
+        """
+        if preset not in ImageCompressor.QUALITY_PRESETS:
+            raise ValueError(
+                f"Invalid preset: {preset}. "
+                f"Valid presets: {', '.join(ImageCompressor.QUALITY_PRESETS.keys())}"
+            )
+        return ImageCompressor.QUALITY_PRESETS[preset]["quality"]
+
+    @staticmethod
+    def compress_batch(
+        images: list[tuple[str, bytes]],
+        output_format: Optional[str] = None,
+        quality: Optional[int] = None,
+        max_width: Optional[int] = None,
+        max_height: Optional[int] = None,
+        preserve_exif: bool = True,
+    ) -> list[tuple[str, bytes, dict]]:
+        """Compress multiple images with the same settings.
+
+        Args:
+            images: List of (identifier, image_data) tuples
+            output_format: Target format for all images
+            quality: Quality setting for all images
+            max_width: Maximum width for all images
+            max_height: Maximum height for all images
+            preserve_exif: Keep EXIF metadata
+
+        Returns:
+            List of (identifier, compressed_data, metadata) tuples
+        """
+        results = []
+        total = len(images)
+
+        for idx, (identifier, image_data) in enumerate(images):
+            logger.info(f"Compressing image {idx + 1}/{total}: {identifier}")
+
+            try:
+                compressed_data, metadata = ImageCompressor.compress_image(
+                    image_data,
+                    output_format=output_format,
+                    quality=quality,
+                    max_width=max_width,
+                    max_height=max_height,
+                    preserve_exif=preserve_exif,
+                )
+                metadata["identifier"] = identifier
+                metadata["success"] = True
+                results.append((identifier, compressed_data, metadata))
+
+            except Exception as e:
+                logger.error(f"Failed to compress {identifier}: {e}")
+                results.append((
+                    identifier,
+                    b"",
+                    {
+                        "identifier": identifier,
+                        "success": False,
+                        "error": str(e),
+                    }
+                ))
+
+        return results
 
     @staticmethod
     def get_image_info(image_data: bytes) -> dict:
