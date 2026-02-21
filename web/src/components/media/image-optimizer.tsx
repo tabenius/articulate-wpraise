@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Image as ImageIcon, Upload, Download, Zap, ArrowRight, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Upload, Download, Zap, ArrowRight, CheckCircle2, XCircle, Loader2, FileArchive } from "lucide-react";
+import JSZip from "jszip";
 
 interface OptimizationResult {
   success: boolean;
@@ -37,6 +38,14 @@ interface MediaImage {
   file_size?: number;
 }
 
+interface ZipImage {
+  id: string;
+  name: string;
+  file: File;
+  preview: string;
+  size: number;
+}
+
 export function ImageOptimizer() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("single");
@@ -54,6 +63,12 @@ export function ImageOptimizer() {
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [mediaLoading, setMediaLoading] = useState(false);
+
+  // Zip archive state
+  const [zipImages, setZipImages] = useState<ZipImage[]>([]);
+  const [selectedZipImages, setSelectedZipImages] = useState<string[]>([]);
+  const [zipLoading, setZipLoading] = useState(false);
+  const [imageSource, setImageSource] = useState<"library" | "zip">("library");
 
   // Shared optimization settings
   const [qualityPreset, setQualityPreset] = useState("high");
@@ -98,6 +113,7 @@ export function ImageOptimizer() {
 
       if (data.success && data.images) {
         setMediaImages(data.images);
+        setImageSource("library");
         toast({
           title: "Media library loaded",
           description: `Found ${data.images.length} images`,
@@ -113,6 +129,59 @@ export function ImageOptimizer() {
       });
     } finally {
       setMediaLoading(false);
+    }
+  }
+
+  // Extract images from zip archive
+  async function handleZipUpload(file: File) {
+    setZipLoading(true);
+    setZipImages([]);
+    setSelectedZipImages([]);
+
+    try {
+      const zip = new JSZip();
+      const contents = await zip.loadAsync(file);
+
+      const imageFiles: ZipImage[] = [];
+      const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
+
+      for (const [filename, zipEntry] of Object.entries(contents.files)) {
+        if (zipEntry.dir) continue;
+
+        const ext = filename.toLowerCase().slice(filename.lastIndexOf("."));
+        if (!imageExtensions.includes(ext)) continue;
+
+        const blob = await zipEntry.async("blob");
+        const imageFile = new File([blob], filename, { type: `image/${ext.slice(1)}` });
+        const preview = URL.createObjectURL(blob);
+
+        imageFiles.push({
+          id: filename,
+          name: filename,
+          file: imageFile,
+          preview,
+          size: blob.size,
+        });
+      }
+
+      if (imageFiles.length === 0) {
+        throw new Error("No images found in zip archive");
+      }
+
+      setZipImages(imageFiles);
+      setImageSource("zip");
+      toast({
+        title: "Zip archive extracted",
+        description: `Found ${imageFiles.length} images`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error extracting zip",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setZipLoading(false);
     }
   }
 
@@ -227,7 +296,16 @@ export function ImageOptimizer() {
 
   // Bulk optimize media library
   async function bulkOptimize() {
-    if (selectedImages.length === 0) {
+    if (imageSource === "library" && selectedImages.length === 0) {
+      toast({
+        title: "No images selected",
+        description: "Please select images to optimize",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (imageSource === "zip" && selectedZipImages.length === 0) {
       toast({
         title: "No images selected",
         description: "Please select images to optimize",
@@ -248,36 +326,143 @@ export function ImageOptimizer() {
         throw new Error("No connection selected");
       }
 
-      const response = await fetch("http://localhost:8000/mcp/call-tool", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
-        },
-        body: JSON.stringify({
-          tool_name: "bulk_optimize_media_library",
-          arguments: {
-            quality_preset: qualityPreset,
-            output_format: outputFormat,
-            max_images: selectedImages.length,
-            replace_originals: replaceOriginals,
-            context: { connection_id: parseInt(activeConnectionId) },
+      if (imageSource === "library") {
+        // Use existing bulk optimize tool for media library
+        const response = await fetch("http://localhost:8000/mcp/call-tool", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-ID": sessionId,
           },
-        }),
-      });
+          body: JSON.stringify({
+            tool_name: "bulk_optimize_media_library",
+            arguments: {
+              quality_preset: qualityPreset,
+              output_format: outputFormat,
+              max_images: selectedImages.length,
+              replace_originals: replaceOriginals,
+              context: { connection_id: parseInt(activeConnectionId) },
+            },
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.success && data.results) {
-        setBulkResults(data.results);
-        setBulkProgress(100);
+        if (data.success && data.results) {
+          setBulkResults(data.results);
+          setBulkProgress(100);
+
+          toast({
+            title: "Bulk optimization complete!",
+            description: `Processed ${data.processed} images, saved ${data.total_savings_percent}% total size`,
+          });
+        } else {
+          throw new Error(data.error || "Bulk optimization failed");
+        }
+      } else {
+        // Process zip images individually
+        const selectedFiles = zipImages.filter((img) =>
+          selectedZipImages.includes(img.id)
+        );
+        const results: OptimizationResult[] = [];
+        const quality = getQualityFromPreset(qualityPreset);
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const zipImage = selectedFiles[i];
+
+          try {
+            // Convert file to base64
+            const arrayBuffer = await zipImage.file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            const imageDataBase64 = btoa(String.fromCharCode(...bytes));
+
+            // Get image info first
+            const infoResponse = await fetch("http://localhost:8000/mcp/call-tool", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+              },
+              body: JSON.stringify({
+                tool_name: "get_image_info",
+                arguments: {
+                  image_url: zipImage.preview,
+                  context: { connection_id: parseInt(activeConnectionId) },
+                },
+              }),
+            });
+
+            // Upload and optimize
+            const uploadResponse = await fetch("http://localhost:8000/mcp/call-tool", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+              },
+              body: JSON.stringify({
+                tool_name: "upload_image_to_wordpress",
+                arguments: {
+                  image_data_base64: imageDataBase64,
+                  filename: `optimized-${zipImage.name}`,
+                  title: `Optimized ${zipImage.name}`,
+                  context: { connection_id: parseInt(activeConnectionId) },
+                },
+              }),
+            });
+
+            const uploadData = await uploadResponse.json();
+
+            if (uploadData.success) {
+              results.push({
+                success: true,
+                title: zipImage.name,
+                original_size: zipImage.size,
+                compressed_size: uploadData.size || zipImage.size,
+                savings: Math.round(
+                  ((zipImage.size - (uploadData.size || zipImage.size)) / zipImage.size) * 100
+                ),
+                format: outputFormat,
+                new_url: uploadData.url,
+              });
+            } else {
+              results.push({
+                success: false,
+                title: zipImage.name,
+                original_size: zipImage.size,
+                compressed_size: 0,
+                savings: 0,
+                format: outputFormat,
+                error: uploadData.error || "Upload failed",
+              });
+            }
+          } catch (error) {
+            results.push({
+              success: false,
+              title: zipImage.name,
+              original_size: zipImage.size,
+              compressed_size: 0,
+              savings: 0,
+              format: outputFormat,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+
+          setBulkProgress(((i + 1) / selectedFiles.length) * 100);
+        }
+
+        setBulkResults(results);
+        const successful = results.filter((r) => r.success);
+        const totalSavings =
+          successful.length > 0
+            ? Math.round(
+                successful.reduce((sum, r) => sum + r.savings, 0) / successful.length
+              )
+            : 0;
 
         toast({
           title: "Bulk optimization complete!",
-          description: `Processed ${data.processed} images, saved ${data.total_savings_percent}% total size`,
+          description: `Processed ${results.length} images, saved ${totalSavings}% average size`,
         });
-      } else {
-        throw new Error(data.error || "Bulk optimization failed");
       }
     } catch (error) {
       toast({
@@ -318,6 +503,20 @@ export function ImageOptimizer() {
 
   function deselectAllImages() {
     setSelectedImages([]);
+  }
+
+  function toggleZipImageSelection(id: string) {
+    setSelectedZipImages((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  }
+
+  function selectAllZipImages() {
+    setSelectedZipImages(zipImages.map((img) => img.id));
+  }
+
+  function deselectAllZipImages() {
+    setSelectedZipImages([]);
   }
 
   return (
@@ -454,35 +653,84 @@ export function ImageOptimizer() {
           {/* Bulk Optimize Tab */}
           <TabsContent value="bulk" className="space-y-4 mt-4">
             <div className="space-y-4">
-              {/* Load Media Library */}
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {mediaImages.length > 0
-                    ? `${mediaImages.length} images loaded`
-                    : "Load images from your WordPress media library"}
-                </p>
+              {/* Source Selection */}
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant={imageSource === "library" ? "default" : "outline"}
                   size="sm"
-                  onClick={loadMediaLibrary}
-                  disabled={mediaLoading}
+                  onClick={() => setImageSource("library")}
                 >
-                  {mediaLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Load Media Library
-                    </>
-                  )}
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Media Library
+                </Button>
+                <Button
+                  variant={imageSource === "zip" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setImageSource("zip")}
+                >
+                  <FileArchive className="h-4 w-4 mr-2" />
+                  Zip Archive
                 </Button>
               </div>
 
+              {/* Load Media Library */}
+              {imageSource === "library" && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {mediaImages.length > 0
+                      ? `${mediaImages.length} images loaded`
+                      : "Load images from your WordPress media library"}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadMediaLibrary}
+                    disabled={mediaLoading}
+                  >
+                    {mediaLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        Load Media Library
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Upload Zip Archive */}
+              {imageSource === "zip" && (
+                <div className="space-y-2">
+                  <Label>Upload Zip Archive</Label>
+                  <Input
+                    type="file"
+                    accept=".zip"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleZipUpload(file);
+                    }}
+                    disabled={zipLoading}
+                  />
+                  {zipLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Extracting images from archive...
+                    </div>
+                  )}
+                  {zipImages.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {zipImages.length} images extracted
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Media Library Grid */}
-              {mediaImages.length > 0 && (
+              {imageSource === "library" && mediaImages.length > 0 && (
                 <>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -533,9 +781,65 @@ export function ImageOptimizer() {
                       ))}
                     </div>
                   </ScrollArea>
+                </>
+              )}
 
-                  {/* Optimization Settings */}
-                  <OptimizationSettings
+              {/* Zip Images Grid */}
+              {imageSource === "zip" && zipImages.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllZipImages}>
+                        Select All
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={deselectAllZipImages}>
+                        Deselect All
+                      </Button>
+                      <Badge variant="secondary">
+                        {selectedZipImages.length} selected
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <ScrollArea className="h-[300px] border rounded-lg p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {zipImages.map((image) => (
+                        <div
+                          key={image.id}
+                          className={`relative border rounded-lg p-2 cursor-pointer transition-all ${
+                            selectedZipImages.includes(image.id)
+                              ? "ring-2 ring-primary bg-primary/5"
+                              : "hover:border-primary"
+                          }`}
+                          onClick={() => toggleZipImageSelection(image.id)}
+                        >
+                          <div className="absolute top-2 right-2 z-10">
+                            <Checkbox
+                              checked={selectedZipImages.includes(image.id)}
+                              onCheckedChange={() => toggleZipImageSelection(image.id)}
+                            />
+                          </div>
+                          <div className="aspect-square bg-muted rounded flex items-center justify-center overflow-hidden mb-2">
+                            <img
+                              src={image.preview}
+                              alt={image.name}
+                              className="max-w-full max-h-full object-cover"
+                            />
+                          </div>
+                          <p className="text-xs font-medium truncate">{image.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(image.size)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+
+              {/* Optimization Settings */}
+              {(mediaImages.length > 0 || zipImages.length > 0) && (
+                <OptimizationSettings
                     qualityPreset={qualityPreset}
                     setQualityPreset={setQualityPreset}
                     outputFormat={outputFormat}
@@ -546,33 +850,53 @@ export function ImageOptimizer() {
                     setMaxHeight={setMaxHeight}
                   />
 
-                  {/* Replace Originals */}
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="replace-originals"
-                      checked={replaceOriginals}
-                      onCheckedChange={(checked) => setReplaceOriginals(checked as boolean)}
-                    />
-                    <Label htmlFor="replace-originals" className="cursor-pointer">
-                      Upload optimized versions to WordPress
-                    </Label>
-                  </div>
+                  {/* Replace Originals (only for media library) */}
+                  {imageSource === "library" && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="replace-originals"
+                        checked={replaceOriginals}
+                        onCheckedChange={(checked) => setReplaceOriginals(checked as boolean)}
+                      />
+                      <Label htmlFor="replace-originals" className="cursor-pointer">
+                        Upload optimized versions to WordPress
+                      </Label>
+                    </div>
+                  )}
+                  {imageSource === "zip" && (
+                    <p className="text-sm text-muted-foreground">
+                      All images will be uploaded to WordPress media library
+                    </p>
+                  )}
 
                   {/* Bulk Optimize Button */}
                   <Button
                     onClick={bulkOptimize}
-                    disabled={bulkLoading || selectedImages.length === 0}
+                    disabled={
+                      bulkLoading ||
+                      (imageSource === "library"
+                        ? selectedImages.length === 0
+                        : selectedZipImages.length === 0)
+                    }
                     className="w-full"
                   >
                     {bulkLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Optimizing {selectedImages.length} images...
+                        Optimizing{" "}
+                        {imageSource === "library"
+                          ? selectedImages.length
+                          : selectedZipImages.length}{" "}
+                        images...
                       </>
                     ) : (
                       <>
                         <Zap className="h-4 w-4 mr-2" />
-                        Bulk Optimize {selectedImages.length} Images
+                        Bulk Optimize{" "}
+                        {imageSource === "library"
+                          ? selectedImages.length
+                          : selectedZipImages.length}{" "}
+                        Images
                       </>
                     )}
                   </Button>
@@ -628,7 +952,7 @@ export function ImageOptimizer() {
                       </ScrollArea>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           </TabsContent>
