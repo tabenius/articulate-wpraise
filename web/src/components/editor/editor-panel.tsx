@@ -13,14 +13,16 @@ import { RevisionTimeline } from "./revision-timeline";
 import { PostSettingsDialog } from "./post-settings-dialog";
 import { SplitView } from "@/components/layout/split-view";
 import { SEOEditor } from "@/components/seo/seo-editor";
+import { ContentAssistantSidebar } from "@/components/ai/content-assistant-sidebar";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
-import { Undo2, Redo2, Edit3, Columns2, Eye } from "lucide-react";
+import { Undo2, Redo2, Edit3, Columns2, Eye, Wand2, X } from "lucide-react";
 
 type ViewMode = "edit" | "split" | "preview";
 
 export function EditorPanel() {
   const [viewMode, setViewMode] = useState<ViewMode>("edit");
+  const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
   const currentPost = usePostStore((s) => s.currentPost);
   const blocks = useEditorStore((s) => s.blocks);
   const blockCount = blocks.length;
@@ -59,6 +61,36 @@ export function EditorPanel() {
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
 
+  // Extract text content for AI assistant
+  const extractedContent = blocks
+    .map((block) => {
+      if (!block || !block.attributes) return "";
+
+      const content =
+        block.attributes.content ||
+        block.attributes.value ||
+        block.attributes.values;
+
+      if (typeof content === "string") {
+        return content.replace(/<[^>]*>/g, "").trim();
+      }
+
+      if (Array.isArray(content)) {
+        return content.join("\n").replace(/<[^>]*>/g, "").trim();
+      }
+
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  // Handle content update from AI assistant
+  const handleContentUpdate = (newContent: string) => {
+    // For now, just show a toast - in the future we could parse and update blocks
+    // This would require a more sophisticated approach to preserve block structure
+    console.log("Content update requested:", newContent);
+  };
+
   // Render old preview mode for backward compatibility
   if (viewMode === "preview") {
     return (
@@ -91,22 +123,44 @@ export function EditorPanel() {
                   canUndo={canUndo}
                   canRedo={canRedo}
                   currentPost={currentPost}
+                  aiSidebarOpen={aiSidebarOpen}
+                  onToggleAiSidebar={() => setAiSidebarOpen(!aiSidebarOpen)}
                 />
-                {/* Editor content */}
-                <ScrollArea className="flex-1">
-                  <BlockEditor />
+                {/* Editor content with optional AI sidebar */}
+                <div className="flex-1 flex overflow-hidden">
+                  <ScrollArea className="flex-1">
+                    <BlockEditor />
 
-                  {/* SEO Editor */}
-                  {currentPost && (
-                    <div className="max-w-3xl mx-auto px-12 py-8">
-                      <SEOEditor
-                        postId={currentPost.id}
-                        postTitle={currentPost.title}
-                        postExcerpt=""
+                    {/* SEO Editor */}
+                    {currentPost && (
+                      <div className="max-w-3xl mx-auto px-12 py-8">
+                        <SEOEditor
+                          postId={currentPost.id}
+                          postTitle={currentPost.title}
+                          postExcerpt=""
+                        />
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {/* AI Assistant Sidebar in split view */}
+                  {aiSidebarOpen && (
+                    <div className="w-96 border-l bg-background flex flex-col relative">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 z-10"
+                        onClick={() => setAiSidebarOpen(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <ContentAssistantSidebar
+                        content={extractedContent}
+                        onContentChange={handleContentUpdate}
                       />
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </div>
             }
             right={<LivePreview />}
@@ -135,23 +189,46 @@ export function EditorPanel() {
         canUndo={canUndo}
         canRedo={canRedo}
         currentPost={currentPost}
+        aiSidebarOpen={aiSidebarOpen}
+        onToggleAiSidebar={() => setAiSidebarOpen(!aiSidebarOpen)}
       />
 
-      {/* Editor content */}
-      <ScrollArea className="flex-1">
-        <BlockEditor />
+      {/* Main content area with optional AI sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Editor content */}
+        <ScrollArea className="flex-1">
+          <BlockEditor />
 
-        {/* SEO Editor */}
-        {currentPost && (
-          <div className="max-w-3xl mx-auto px-12 py-8">
-            <SEOEditor
-              postId={currentPost.id}
-              postTitle={currentPost.title}
-              postExcerpt=""
+          {/* SEO Editor */}
+          {currentPost && (
+            <div className="max-w-3xl mx-auto px-12 py-8">
+              <SEOEditor
+                postId={currentPost.id}
+                postTitle={currentPost.title}
+                postExcerpt=""
+              />
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* AI Assistant Sidebar */}
+        {aiSidebarOpen && (
+          <div className="w-96 border-l bg-background flex flex-col relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10"
+              onClick={() => setAiSidebarOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <ContentAssistantSidebar
+              content={extractedContent}
+              onContentChange={handleContentUpdate}
             />
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -198,6 +275,8 @@ function EditorToolbar({
   canUndo,
   canRedo,
   currentPost,
+  aiSidebarOpen,
+  onToggleAiSidebar,
 }: {
   blockCount: number;
   wordCount: number;
@@ -207,6 +286,8 @@ function EditorToolbar({
   canUndo: boolean;
   canRedo: boolean;
   currentPost: { id: number; title: string } | null;
+  aiSidebarOpen?: boolean;
+  onToggleAiSidebar?: () => void;
 }) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
@@ -254,6 +335,18 @@ function EditorToolbar({
         {currentPost && <PostSettingsDialog />}
         <DesignSystemPanel />
         <RevisionTimeline />
+        {onToggleAiSidebar && (
+          <Button
+            variant={aiSidebarOpen ? "default" : "ghost"}
+            size="sm"
+            onClick={onToggleAiSidebar}
+            title="AI Content Assistant"
+            className="gap-1.5"
+          >
+            <Wand2 className="h-4 w-4" />
+            <span>AI Assistant</span>
+          </Button>
+        )}
         {currentPost && currentPost.title && (
           <span className="text-xs text-muted-foreground truncate max-w-[200px]">
             {currentPost.title}
