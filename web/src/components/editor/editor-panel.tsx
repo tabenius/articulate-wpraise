@@ -12,6 +12,7 @@ import { DesignSystemPanel } from "./design-system-panel";
 import { RevisionTimeline } from "./revision-timeline";
 import { PostSettingsDialog } from "./post-settings-dialog";
 import { SplitView } from "@/components/layout/split-view";
+import { SEOEditor } from "@/components/seo/seo-editor";
 import { usePostStore } from "@/stores/post-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { Undo2, Redo2, Edit3, Columns2, Eye } from "lucide-react";
@@ -94,6 +95,17 @@ export function EditorPanel() {
                 {/* Editor content */}
                 <ScrollArea className="flex-1">
                   <BlockEditor />
+
+                  {/* SEO Editor */}
+                  {currentPost && (
+                    <div className="max-w-3xl mx-auto px-12 py-8">
+                      <SEOEditor
+                        postId={currentPost.id}
+                        postTitle={currentPost.title}
+                        postExcerpt=""
+                      />
+                    </div>
+                  )}
                 </ScrollArea>
               </div>
             }
@@ -128,6 +140,17 @@ export function EditorPanel() {
       {/* Editor content */}
       <ScrollArea className="flex-1">
         <BlockEditor />
+
+        {/* SEO Editor */}
+        {currentPost && (
+          <div className="max-w-3xl mx-auto px-12 py-8">
+            <SEOEditor
+              postId={currentPost.id}
+              postTitle={currentPost.title}
+              postExcerpt=""
+            />
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
