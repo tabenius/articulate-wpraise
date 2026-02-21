@@ -47,7 +47,7 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
   const blockCount = blocks.length;
 
   const wordCount = blocks.reduce((total, block) => {
-    const text = block.attributes?.content || "";
+    const text = (block.attributes as any)?.content || "";
     const words = text.trim().split(/\s+/).filter(Boolean).length;
     return total + words;
   }, 0);

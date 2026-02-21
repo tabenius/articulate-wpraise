@@ -839,7 +839,8 @@ export function ImageOptimizer() {
 
               {/* Optimization Settings */}
               {(mediaImages.length > 0 || zipImages.length > 0) && (
-                <OptimizationSettings
+                <>
+                  <OptimizationSettings
                     qualityPreset={qualityPreset}
                     setQualityPreset={setQualityPreset}
                     outputFormat={outputFormat}
@@ -952,7 +953,7 @@ export function ImageOptimizer() {
                       </ScrollArea>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </TabsContent>

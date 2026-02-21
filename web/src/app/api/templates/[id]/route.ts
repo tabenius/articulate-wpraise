@@ -4,7 +4,7 @@ import { getSessionHeaders } from "@/lib/server-auth";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeaders = await getSessionHeaders();
@@ -15,7 +15,8 @@ export async function GET(
       );
     }
 
-    const templateId = parseInt(params.id, 10);
+    const { id } = await params;
+    const templateId = parseInt(id, 10);
     if (isNaN(templateId)) {
       return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
     }
@@ -35,7 +36,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeaders = await getSessionHeaders();
@@ -46,7 +47,8 @@ export async function PUT(
       );
     }
 
-    const templateId = parseInt(params.id, 10);
+    const { id } = await params;
+    const templateId = parseInt(id, 10);
     if (isNaN(templateId)) {
       return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
     }

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Palette, Type, Spacing } from "lucide-react";
+import { Save, Palette, Type, Space } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ColorPalette {
@@ -201,7 +201,7 @@ export function GlobalStylesEditor() {
                 Typography
               </TabsTrigger>
               <TabsTrigger value="spacing">
-                <Spacing className="h-4 w-4 mr-2" />
+                <Space className="h-4 w-4 mr-2" />
                 Spacing
               </TabsTrigger>
             </TabsList>

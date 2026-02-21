@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Share2, Settings2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Share2, Settings2, AlertCircle, CheckCircle2, Sparkles, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SEOData {
   // General SEO
@@ -43,7 +45,38 @@ interface SEOEditorProps {
   initialData?: Partial<SEOData>;
 }
 
+interface GenerateButtonProps {
+  field: string;
+  generating: boolean;
+  onClick: () => void;
+}
+
+function GenerateButton({ field, generating, onClick }: GenerateButtonProps) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onClick}
+      disabled={generating}
+      className="gap-2"
+    >
+      {generating ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Generating...
+        </>
+      ) : (
+        <>
+          <Sparkles className="h-3 w-3" />
+          Generate
+        </>
+      )}
+    </Button>
+  );
+}
+
 export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, initialData = {} }: SEOEditorProps) {
+  const { toast } = useToast();
   const [seoData, setSEOData] = useState<SEOData>({
     seo_title: initialData.seo_title || "",
     meta_description: initialData.meta_description || "",
@@ -62,6 +95,10 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
     schema_type: initialData.schema_type || "Article",
   });
 
+  // AI generation state
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{ field: string; options: string[] } | null>(null);
+
   useEffect(() => {
     onChange?.(seoData);
   }, [seoData]);
@@ -69,6 +106,54 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
   const updateField = (field: keyof SEOData, value: string) => {
     setSEOData(prev => ({ ...prev, [field]: value }));
   };
+
+  async function generateSEO(field: keyof SEOData) {
+    setGenerating(field);
+    setSuggestions(null);
+
+    try {
+      const sessionId = localStorage.getItem("sessionId");
+      if (!sessionId) throw new Error("Not logged in");
+
+      const response = await fetch("http://localhost:8000/ai/generate-seo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-ID": sessionId,
+        },
+        body: JSON.stringify({
+          content_title: postTitle,
+          content_excerpt: postExcerpt,
+          focus_keyword: seoData.focus_keyword,
+          field: field,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate SEO content");
+
+      const data = await response.json();
+      setSuggestions({ field: field, options: data.suggestions });
+    } catch (error) {
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  function applySuggestion(suggestion: string) {
+    if (suggestions) {
+      updateField(suggestions.field as keyof SEOData, suggestion);
+      setSuggestions(null);
+      toast({
+        title: "Applied suggestion",
+        description: "SEO content has been updated",
+      });
+    }
+  }
 
   // Character count helpers
   const getCharCount = (text: string, limit: number) => {
@@ -131,7 +216,14 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
           {/* General SEO Tab */}
           <TabsContent value="general" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="seo-title">SEO Title</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="seo-title">SEO Title</Label>
+                <GenerateButton
+                  field="seo_title"
+                  generating={generating === "seo_title"}
+                  onClick={() => generateSEO("seo_title")}
+                />
+              </div>
               <Input
                 id="seo-title"
                 value={seoData.seo_title}
@@ -146,7 +238,14 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="meta-description">Meta Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="meta-description">Meta Description</Label>
+                <GenerateButton
+                  field="meta_description"
+                  generating={generating === "meta_description"}
+                  onClick={() => generateSEO("meta_description")}
+                />
+              </div>
               <Textarea
                 id="meta-description"
                 value={seoData.meta_description}
@@ -159,7 +258,14 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="focus-keyword">Focus Keyword</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="focus-keyword">Focus Keyword</Label>
+                <GenerateButton
+                  field="focus_keyword"
+                  generating={generating === "focus_keyword"}
+                  onClick={() => generateSEO("focus_keyword")}
+                />
+              </div>
               <Input
                 id="focus-keyword"
                 value={seoData.focus_keyword}
@@ -198,7 +304,14 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="og-title">OG Title</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="og-title">OG Title</Label>
+                  <GenerateButton
+                    field="og_title"
+                    generating={generating === "og_title"}
+                    onClick={() => generateSEO("og_title")}
+                  />
+                </div>
                 <Input
                   id="og-title"
                   value={seoData.og_title}
@@ -210,7 +323,14 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="og-description">OG Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="og-description">OG Description</Label>
+                  <GenerateButton
+                    field="og_description"
+                    generating={generating === "og_description"}
+                    onClick={() => generateSEO("og_description")}
+                  />
+                </div>
                 <Textarea
                   id="og-description"
                   value={seoData.og_description}
@@ -369,6 +489,44 @@ export function SEOEditor({ postId, postTitle = "", postExcerpt = "", onChange, 
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* AI Suggestions */}
+        {suggestions && (
+          <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <p className="font-semibold">AI Suggestions</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSuggestions(null)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {suggestions.options.map((option, index) => (
+                <div
+                  key={index}
+                  className="p-3 border rounded-md bg-background hover:bg-accent cursor-pointer transition-colors"
+                  onClick={() => applySuggestion(option)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm flex-1">{option}</p>
+                    <Button variant="ghost" size="sm" className="h-auto py-1 px-2">
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Click on a suggestion to apply it
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

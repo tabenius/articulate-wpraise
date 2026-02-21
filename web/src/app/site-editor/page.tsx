@@ -35,18 +35,18 @@ export default function SiteEditorPage() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [partSearch, setPartSearch] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const templates = useTemplateStore((s) => s.templates);
-  const templateParts = useTemplateStore((s) => s.templateParts);
-  const currentTemplate = useTemplateStore((s) => s.currentTemplate);
-  const favorites = useTemplateStore((s) => s.favorites);
-  const recentTemplates = useTemplateStore((s) => s.recentTemplates);
-  const toggleFavorite = useTemplateStore((s) => s.toggleFavorite);
-  const getPartUsage = useTemplateStore((s) => s.getPartUsage);
-  const setTemplates = useTemplateStore((s) => s.setTemplates);
-  const setTemplateParts = useTemplateStore((s) => s.setTemplateParts);
-  const setCurrentTemplate = useTemplateStore((s) => s.setCurrentTemplate);
-  const isLoading = useTemplateStore((s) => s.isLoading);
-  const setLoading = useTemplateStore((s) => s.setLoading);
+  const templates = useTemplateStore((s: any) => s.templates);
+  const templateParts = useTemplateStore((s: any) => s.templateParts);
+  const currentTemplate = useTemplateStore((s: any) => s.currentTemplate);
+  const favorites = useTemplateStore((s: any) => s.favorites);
+  const recentTemplates = useTemplateStore((s: any) => s.recentTemplates);
+  const toggleFavorite = useTemplateStore((s: any) => s.toggleFavorite);
+  const getPartUsage = useTemplateStore((s: any) => s.getPartUsage);
+  const setTemplates = useTemplateStore((s: any) => s.setTemplates);
+  const setTemplateParts = useTemplateStore((s: any) => s.setTemplateParts);
+  const setCurrentTemplate = useTemplateStore((s: any) => s.setCurrentTemplate);
+  const isLoading = useTemplateStore((s: any) => s.isLoading);
+  const setLoading = useTemplateStore((s: any) => s.setLoading);
   const { toast} = useToast();
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function SiteEditorPage() {
   };
 
   // Filter templates based on search
-  const filteredTemplates = templates.filter((template) => {
+  const filteredTemplates = templates.filter((template: Template) => {
     const searchLower = templateSearch.toLowerCase();
     return (
       template.title.toLowerCase().includes(searchLower) ||
@@ -113,7 +113,7 @@ export default function SiteEditorPage() {
   });
 
   // Filter template parts based on search
-  const filteredTemplateParts = templateParts.filter((part) => {
+  const filteredTemplateParts = templateParts.filter((part: TemplatePart) => {
     const searchLower = partSearch.toLowerCase();
     return (
       part.title.toLowerCase().includes(searchLower) ||
@@ -188,8 +188,8 @@ export default function SiteEditorPage() {
                     </h3>
                     <div className="space-y-2">
                       {templates
-                        .filter((t) => favorites.includes(t.id))
-                        .map((template) => (
+                        .filter((t: Template) => favorites.includes(t.id))
+                        .map((template: Template) => (
                           <div key={template.id} className="relative group">
                             <Button
                               variant={
@@ -238,9 +238,9 @@ export default function SiteEditorPage() {
                   ) : (
                     <div className="space-y-2">
                       {templates
-                        .filter((t) => recentTemplates.includes(t.id))
-                        .sort((a, b) => recentTemplates.indexOf(a.id) - recentTemplates.indexOf(b.id))
-                        .map((template) => (
+                        .filter((t: Template) => recentTemplates.includes(t.id))
+                        .sort((a: Template, b: Template) => recentTemplates.indexOf(a.id) - recentTemplates.indexOf(b.id))
+                        .map((template: Template) => (
                           <div key={template.id} className="relative group">
                             <Button
                               variant={
@@ -335,7 +335,7 @@ export default function SiteEditorPage() {
                   </div>
                 ) : viewMode === "grid" ? (
                   <div className="grid grid-cols-2 gap-3 px-4">
-                    {filteredTemplates.map((template) => (
+                    {filteredTemplates.map((template: Template) => (
                       <div
                         key={template.id}
                         className={`relative group cursor-pointer border rounded-lg p-4 hover:bg-muted/50 transition-colors ${
@@ -386,7 +386,7 @@ export default function SiteEditorPage() {
                   </div>
                 ) : (
                   <div className="space-y-2 px-4">
-                    {filteredTemplates.map((template) => (
+                    {filteredTemplates.map((template: Template) => (
                       <div key={template.id} className="relative group">
                         <Button
                           variant={
@@ -456,7 +456,7 @@ export default function SiteEditorPage() {
                   </div>
                 ) : (
                   <div className="space-y-2 px-4">
-                    {filteredTemplateParts.map((part) => {
+                    {filteredTemplateParts.map((part: TemplatePart) => {
                       const usage = getPartUsage(part.slug);
                       const usageCount = usage.length;
                       return (

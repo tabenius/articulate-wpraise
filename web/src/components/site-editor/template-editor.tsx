@@ -25,19 +25,19 @@ export function TemplateEditor({ templateId, type, onSave }: TemplateEditorProps
   const [isSaving, setIsSaving] = useState(false);
   const [content, setContent] = useState<string>("");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const currentTemplate = useTemplateStore((s) => s.currentTemplate);
-  const templateParts = useTemplateStore((s) => s.templateParts);
-  const updateTemplate = useTemplateStore((s) => s.updateTemplate);
-  const blocks = useEditorStore((s) => s.blocks);
-  const setBlocks = useEditorStore((s) => s.setBlocks);
-  const isDirty = useEditorStore((s) => s.isDirty);
-  const setDirty = useEditorStore((s) => s.setDirty);
+  const currentTemplate = useTemplateStore((s: any) => s.currentTemplate);
+  const templateParts = useTemplateStore((s: any) => s.templateParts);
+  const updateTemplate = useTemplateStore((s: any) => s.updateTemplate);
+  const blocks = useEditorStore((s: any) => s.blocks);
+  const setBlocks = useEditorStore((s: any) => s.setBlocks);
+  const isDirty = useEditorStore((s: any) => s.isDirty);
+  const setDirty = useEditorStore((s: any) => s.setDirty);
   const { toast } = useToast();
 
   // Get the current item (template or template part)
   const currentItem = type === "template"
     ? currentTemplate
-    : templateParts.find(p => p.id === templateId);
+    : templateParts.find((p: any) => p.id === templateId);
 
   // Format time since last save
   const formatTimeSince = (date: Date) => {
