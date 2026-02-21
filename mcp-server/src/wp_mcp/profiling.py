@@ -222,7 +222,8 @@ def profile_mcp_function(
                     import sys
 
                     args_size = sys.getsizeof(args) + sys.getsizeof(kwargs)
-                except:
+                except (TypeError, AttributeError) as e:
+                    logger.debug(f"Failed to measure argument size: {e}")
                     pass
 
             # Execute function
@@ -255,7 +256,8 @@ def profile_mcp_function(
                         process = psutil.Process(os.getpid())
                         memory_after = process.memory_info().rss / (1024 * 1024)
                         memory_mb = memory_after - memory_before
-                    except:
+                    except (ImportError, psutil.Error) as e:
+                        logger.debug(f"Failed to measure memory: {e}")
                         pass
 
                 # Track result size if requested
@@ -263,7 +265,8 @@ def profile_mcp_function(
                 if track_size and result is not None:
                     try:
                         result_size = sys.getsizeof(result)
-                    except:
+                    except (TypeError, AttributeError) as e:
+                        logger.debug(f"Failed to measure result size: {e}")
                         pass
 
                 # Record profiling data (async, don't block)

@@ -56,14 +56,6 @@ export async function POST(request: NextRequest) {
       authHeaders
     );
 
-    // Debug: Write result to temp file
-    try {
-      const fs = require('fs');
-      fs.writeFileSync('/tmp/create_post_result.json', JSON.stringify(result, null, 2));
-    } catch (e) {
-      // Ignore file write errors
-    }
-
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

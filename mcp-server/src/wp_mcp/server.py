@@ -1380,7 +1380,8 @@ async def setup_remote_wordpress_endpoint(request):
         if key_file:
             try:
                 Path(key_file.name).unlink()
-            except:
+            except (OSError, FileNotFoundError) as e:
+                logger.debug(f"Failed to remove temp key file: {e}")
                 pass
 
         if process.returncode != 0:
@@ -1565,7 +1566,8 @@ async def mcp_jsonrpc_endpoint(request):
                                 "content": [{"type": "text", "text": text_content.text}]
                             }
                         })
-                    except:
+                    except json_lib.JSONDecodeError:
+                        # Not valid JSON, return as plain text
                         return StarletteJSONResponse({
                             "jsonrpc": "2.0",
                             "id": request_id,
