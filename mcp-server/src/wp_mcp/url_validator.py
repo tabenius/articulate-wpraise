@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import socket
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -63,13 +64,59 @@ def validate_url(url: str, require_https: bool = False) -> tuple[bool, Optional[
         try:
             ip = ipaddress.ip_address(parsed.hostname)
         except ValueError:
-            # Not an IP address, could be a domain name
-            # For domain names, we can't validate without DNS resolution
-            # which could be slow or unreliable. We'll allow domains but
-            # log them for monitoring.
-            logger.info(f"Allowing domain name URL: {parsed.hostname}")
-            return True, None
-        
+            # Not a direct IP address, perform DNS resolution
+            try:
+                # Resolve domain name to IP addresses
+                addr_info = socket.getaddrinfo(
+                    parsed.hostname,
+                    None,
+                    socket.AF_UNSPEC,
+                    socket.SOCK_STREAM,
+                    0,
+                    socket.AI_ADDRCONFIG
+                )
+
+                # Check all resolved IPs
+                for family, _, _, _, sockaddr in addr_info:
+                    resolved_ip_str = sockaddr[0]
+                    try:
+                        resolved_ip = ipaddress.ip_address(resolved_ip_str)
+
+                        # Check if any resolved IP is in private range
+                        for private_range in PRIVATE_IP_RANGES:
+                            if resolved_ip in private_range:
+                                logger.warning(
+                                    f"Blocked domain {parsed.hostname} resolving to private IP: {resolved_ip}"
+                                )
+                                return False, f"Domain resolves to private IP address: {resolved_ip}"
+
+                        # Check against blocked hosts
+                        if resolved_ip_str in BLOCKED_HOSTS:
+                            logger.warning(
+                                f"Blocked domain {parsed.hostname} resolving to blocked IP: {resolved_ip}"
+                            )
+                            return False, f"Domain resolves to blocked IP address: {resolved_ip}"
+
+                    except ValueError:
+                        # Invalid IP in resolution results
+                        logger.warning(f"Invalid IP in DNS resolution for {parsed.hostname}: {resolved_ip_str}")
+                        continue
+
+                # All resolved IPs are safe
+                logger.debug(f"DNS validation passed for domain: {parsed.hostname}")
+                return True, None
+
+            except socket.gaierror as e:
+                # DNS resolution failed
+                logger.warning(f"DNS resolution failed for {parsed.hostname}: {e}")
+                return False, f"Cannot resolve domain name: {parsed.hostname}"
+            except socket.timeout:
+                logger.warning(f"DNS resolution timeout for {parsed.hostname}")
+                return False, f"DNS resolution timeout for domain: {parsed.hostname}"
+            except Exception as e:
+                logger.error(f"Unexpected DNS resolution error for {parsed.hostname}: {e}")
+                return False, f"DNS resolution error: {str(e)}"
+
         # Check if IP is in private range
         for private_range in PRIVATE_IP_RANGES:
             if ip in private_range:

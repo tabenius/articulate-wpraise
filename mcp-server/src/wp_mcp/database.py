@@ -140,6 +140,67 @@ class Database:
                 await cursor.execute(query, params)
                 return cast(int, cursor.lastrowid)
 
+    def get_pool_metrics(self) -> dict[str, Any]:
+        """Get database connection pool metrics.
+
+        Returns:
+            Dict containing pool statistics:
+            - size: Current pool size
+            - free: Number of free connections
+            - minsize: Configured minimum pool size
+            - maxsize: Configured maximum pool size
+            - connected: Whether pool is connected
+        """
+        if not self.pool:
+            return {
+                "connected": False,
+                "size": 0,
+                "free": 0,
+                "minsize": config.db_pool_minsize,
+                "maxsize": config.db_pool_maxsize,
+            }
+
+        return {
+            "connected": True,
+            "size": self.pool.size(),
+            "free": self.pool.freesize(),
+            "minsize": self.pool.minsize,
+            "maxsize": self.pool.maxsize,
+            "utilization": (self.pool.size() - self.pool.freesize()) / self.pool.maxsize * 100
+            if self.pool.maxsize > 0
+            else 0,
+        }
+
+    async def health_check(self) -> dict[str, Any]:
+        """Perform database health check.
+
+        Returns:
+            Health check result with connection test
+        """
+        try:
+            await self._ensure_connection()
+            assert self.pool is not None
+
+            # Test query
+            async with self.pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+                    await cursor.fetchone()
+
+            metrics = self.get_pool_metrics()
+
+            return {
+                "healthy": True,
+                "metrics": metrics,
+            }
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return {
+                "healthy": False,
+                "error": str(e),
+                "metrics": self.get_pool_metrics(),
+            }
+
 
 # Global database instance
 db = Database()

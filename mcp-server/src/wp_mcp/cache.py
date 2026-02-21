@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import json
 import logging
@@ -37,22 +38,25 @@ class CacheManager:
     def __init__(self) -> None:
         """Initialize Redis connection."""
         self.redis: Optional[redis.Redis] = None
+        self._connect_lock = asyncio.Lock()
 
     async def connect(self) -> None:
-        """Connect to Redis server."""
-        if self.redis is None:
-            try:
-                self.redis = await redis.from_url(
-                    config.redis_url,
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                )
-                # Test connection
-                await self.redis.ping()  # type: ignore[misc]
-                logger.info("Connected to Redis at %s", config.redis_url)
-            except Exception as e:
-                logger.error("Failed to connect to Redis: %s", e)
-                self.redis = None
+        """Connect to Redis server (thread-safe with lock)."""
+        async with self._connect_lock:
+            # Check again after acquiring lock (another coroutine may have connected)
+            if self.redis is None:
+                try:
+                    self.redis = await redis.from_url(
+                        config.redis_url,
+                        decode_responses=True,
+                        socket_connect_timeout=5,
+                    )
+                    # Test connection
+                    await self.redis.ping()  # type: ignore[misc]
+                    logger.info("Connected to Redis at %s", config.redis_url)
+                except Exception as e:
+                    logger.error("Failed to connect to Redis: %s", e)
+                    self.redis = None
 
     async def disconnect(self) -> None:
         """Disconnect from Redis server."""
