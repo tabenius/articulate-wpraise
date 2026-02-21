@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 from wp_mcp.graphql.client import get_graphql_client
 from wp_mcp.context_helper import get_connection_info
 from wp_mcp.nextjs_generator import NextJSGenerator
+from wp_mcp.profiling import profile_mcp_function
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ def register(mcp: FastMCP) -> None:
     """Register export-related tools with the MCP server."""
 
     @mcp.tool()
+    @profile_mcp_function(enabled=True, track_memory=True, track_size=True)
     async def export_site_content(
         include_posts: bool = True,
         include_pages: bool = True,
@@ -444,6 +446,7 @@ def register(mcp: FastMCP) -> None:
             return {"error": f"Manifest generation failed: {str(e)}"}
 
     @mcp.tool()
+    @profile_mcp_function(enabled=True, track_memory=True, track_size=True)
     async def generate_nextjs_site(
         content_format: Literal["react", "blocks", "mdx", "html"] = "react",
         render_strategy: Literal["ssg", "ssr", "isr", "headless"] = "ssg",

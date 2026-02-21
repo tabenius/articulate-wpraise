@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP
 from wp_mcp.graphql.client import get_graphql_client
 from wp_mcp.context_helper import get_connection_info
 from wp_mcp.image_compressor import ImageCompressor
+from wp_mcp.profiling import profile_mcp_function
 import httpx
 import logging
 
@@ -249,6 +250,7 @@ def register(mcp: FastMCP) -> None:
             return {"error": f"Failed to fetch media: {str(e)}"}
 
     @mcp.tool()
+    @profile_mcp_function(enabled=True, track_memory=True)
     async def bulk_optimize_media_library(
         quality_preset: str = "high",
         output_format: str = "webp",
