@@ -180,23 +180,37 @@ def register(mcp: FastMCP) -> None:
         date: str | None = None,
         context: dict | None = None,
     ) -> dict[str, Any]:
-        """Update an existing WordPress post.
+        """Update an existing WordPress post or page.
 
         Args:
-            post_id: The WordPress database ID of the post to update.
+            post_id: The WordPress database ID of the post/page to update.
             title: New title (optional).
             content: New content in WordPress block format (optional).
             status: New status (optional).
             featured_image_id: Database ID of the featured image (optional, use 0 to remove).
-            category_ids: List of category database IDs to assign (optional).
-            tag_ids: List of tag database IDs to assign (optional).
+            category_ids: List of category database IDs to assign (optional, posts only).
+            tag_ids: List of tag database IDs to assign (optional, posts only).
             date: ISO 8601 date string. Future dates schedule the post (optional).
 
         Returns:
-            The updated post object.
+            The updated post/page object.
         """
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
+
+        # First, determine if this is a post or page by trying to fetch it
+        is_page = False
+        try:
+            page_data = await client.query(
+                GET_PAGE,
+                variables={"id": str(post_id)},
+                user_id=user_id,
+            )
+            if page_data.get("page"):
+                is_page = True
+        except Exception:
+            # If page query fails, assume it's a post
+            pass
 
         input_data: dict[str, Any] = {"id": str(post_id)}
         if title is not None:
@@ -207,26 +221,40 @@ def register(mcp: FastMCP) -> None:
             input_data["status"] = status.upper()
         if featured_image_id is not None:
             input_data["featuredImageId"] = str(featured_image_id) if featured_image_id > 0 else None
-        if category_ids is not None:
-            input_data["categories"] = {
-                "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
-            }
-        if tag_ids is not None:
-            input_data["tags"] = {
-                "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
-            }
+
+        # Categories and tags only apply to posts, not pages
+        if not is_page:
+            if category_ids is not None:
+                input_data["categories"] = {
+                    "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
+                }
+            if tag_ids is not None:
+                input_data["tags"] = {
+                    "nodes": [{"id": f"databaseId:{tag_id}"} for tag_id in tag_ids]
+                }
+
         if date is not None:
             input_data["date"] = date
 
+        # Use appropriate mutation based on type
+        if is_page:
+            mutation = UPDATE_PAGE
+            mutation_key = "updatePage"
+            result_key = "page"
+        else:
+            mutation = UPDATE_POST
+            mutation_key = "updatePost"
+            result_key = "post"
+
         data = await client.mutate(
-            UPDATE_POST,
+            mutation,
             variables={"input": input_data},
-            invalidate_patterns=["gql:*post*"],
+            invalidate_patterns=["gql:*post*", "gql:*page*"],
         )
-        post = data.get("updatePost", {}).get("post")
-        if not post:
-            return {"error": f"Failed to update post {post_id}"}
-        return _format_post(post)
+        result = data.get(mutation_key, {}).get(result_key)
+        if not result:
+            return {"error": f"Failed to update {'page' if is_page else 'post'} {post_id}"}
+        return _format_post(result)
 
     @mcp.tool()
     async def delete_post(post_id: int, context: dict | None = None) -> dict[str, Any]:
