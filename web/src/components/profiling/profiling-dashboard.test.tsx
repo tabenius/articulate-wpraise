@@ -36,7 +36,8 @@ describe("ProfilingDashboard", () => {
 
     render(<ProfilingDashboard />);
 
-    expect(screen.getByText("Function Profiling")).toBeInTheDocument();
+    expect(screen.getByText("Total Calls")).toBeInTheDocument();
+    expect(screen.getByText("Avg Execution")).toBeInTheDocument();
   });
 
   it("loads profiling stats on mount", async () => {
