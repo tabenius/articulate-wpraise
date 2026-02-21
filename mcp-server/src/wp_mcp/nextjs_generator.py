@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from wp_mcp.block_to_react import BlockToReactConverter
+
 
 ContentFormat = Literal["react", "blocks", "mdx", "html"]
 RenderStrategy = Literal["ssg", "ssr", "isr", "headless"]
@@ -494,7 +496,25 @@ body {
         """Generate individual post pages."""
         posts = self.export_data.get("content", {}).get("posts", [])
 
+        if self.content_format == "react":
+            # Convert blocks to React components
+            for post in posts:
+                if post.get("content"):
+                    jsx = BlockToReactConverter.convert_blocks(post["content"])
+                    post["jsx_content"] = jsx
+
         # Generate dynamic route
+        if self.content_format == "react":
+            content_render = """<div className="prose max-w-none">
+        {/* React components from WordPress blocks */}
+        <div dangerouslySetInnerHTML={{ __html: post.content }} />
+      </div>"""
+        else:
+            content_render = """<div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />"""
+
         page_content = """export async function generateStaticParams() {
   return """ + json.dumps([{"slug": p["slug"]} for p in posts], indent=2) + """
 }
@@ -514,10 +534,7 @@ export default function Post({ params }: { params: { slug: string } }) {
       <div className="text-gray-600 mb-8">
         {new Date(post.date).toLocaleDateString()}
       </div>
-      <div
-        className="prose max-w-none"
-        dangerouslySetInnerHTML={{ __html: post.content }}
-      />
+      """ + content_render + """
     </article>
   )
 }
