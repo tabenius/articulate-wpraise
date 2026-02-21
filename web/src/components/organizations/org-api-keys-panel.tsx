@@ -21,8 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Key, Copy, Trash2, Download, ExternalLink, Search } from "lucide-react";
+import { Key, Copy, Trash2, Download, ExternalLink, Search, CheckSquare } from "lucide-react";
 import { ApiKeysSkeleton } from "@/components/skeletons/api-keys-skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ApiKey {
   id: number;
@@ -47,6 +48,7 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
   const [description, setDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -151,6 +153,60 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
         description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
+    }
+  }
+
+  async function bulkRevokeKeys() {
+    if (selectedKeys.length === 0) return;
+
+    if (!confirm(`Are you sure you want to revoke ${selectedKeys.length} key(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const sessionId = localStorage.getItem("session_id");
+
+      // Revoke all selected keys in parallel
+      await Promise.all(
+        selectedKeys.map((keyId) =>
+          fetch(
+            `http://localhost:8000/organizations/${organizationId}/api-keys/${keyId}`,
+            {
+              method: "DELETE",
+              headers: { "X-Session-ID": sessionId || "" },
+            }
+          )
+        )
+      );
+
+      setSelectedKeys([]);
+      loadKeys();
+      toast({
+        title: "API Keys Revoked",
+        description: `Successfully revoked ${selectedKeys.length} key(s)`
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to revoke keys",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+
+  function toggleKeySelection(keyId: number) {
+    setSelectedKeys((prev) =>
+      prev.includes(keyId)
+        ? prev.filter((id) => id !== keyId)
+        : [...prev, keyId]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (selectedKeys.length === filteredKeys.filter(k => k.is_active && !k.used_at).length) {
+      setSelectedKeys([]);
+    } else {
+      setSelectedKeys(filteredKeys.filter(k => k.is_active && !k.used_at).map((k) => k.id));
     }
   }
 
@@ -306,6 +362,35 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedKeys.length > 0 && (
+        <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {selectedKeys.length} key{selectedKeys.length !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedKeys([])}
+            >
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={bulkRevokeKeys}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Revoke Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       {keys.length > 0 && (
         <div className="mb-4">
@@ -351,6 +436,13 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedKeys.length > 0 && selectedKeys.length === filteredKeys.filter(k => k.is_active && !k.used_at).length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead>Key</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
@@ -362,8 +454,17 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
             <TableBody>
               {filteredKeys.map((key) => {
                 const status = getKeyStatus(key);
+                const canSelect = key.is_active && !key.used_at;
                 return (
                   <TableRow key={key.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedKeys.includes(key.id)}
+                        onCheckedChange={() => toggleKeySelection(key.id)}
+                        disabled={!canSelect}
+                        aria-label={`Select ${key.key_prefix}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-sm">
                       {key.key_prefix}...
                     </TableCell>
@@ -378,7 +479,7 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
                     </TableCell>
                     <TableCell className="text-sm">{key.created_by}</TableCell>
                     <TableCell>
-                      {key.is_active && !key.used_at && (
+                      {canSelect && (
                         <Button
                           size="sm"
                           variant="ghost"
