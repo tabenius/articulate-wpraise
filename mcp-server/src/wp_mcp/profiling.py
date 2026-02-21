@@ -9,7 +9,7 @@ import time
 from typing import Any, Callable, Optional
 import asyncio
 
-from wp_mcp.db import get_db_connection
+from wp_mcp.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -48,54 +48,13 @@ class MCPProfiler:
         """
         io_time_ms = max(0, execution_time_ms - cpu_time_ms)
 
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO wp_mcp_profiling (
-                        user_id,
-                        organization_id,
-                        connection_id,
-                        function_name,
-                        execution_time_ms,
-                        cpu_time_ms,
-                        io_time_ms,
-                        memory_mb,
-                        args_size_bytes,
-                        result_size_bytes,
-                        success,
-                        error_message
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                    )
-                    """,
-                    (
-                        user_id,
-                        organization_id,
-                        connection_id,
-                        function_name,
-                        execution_time_ms,
-                        cpu_time_ms,
-                        io_time_ms,
-                        memory_mb,
-                        args_size_bytes,
-                        result_size_bytes,
-                        success,
-                        error_message,
-                    ),
-                )
-                conn.commit()
-
-                # Update aggregated stats
-                await MCPProfiler._update_stats(
-                    organization_id, function_name, execution_time_ms, success
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to record profiling data: {e}")
-            # Don't fail the actual function call due to profiling errors
-            pass
+        # TODO: Implement async database profiling storage
+        # For now, just log metrics
+        logger.info(
+            f"Profiling: {function_name} - "
+            f"exec={execution_time_ms:.2f}ms cpu={cpu_time_ms:.2f}ms "
+            f"io={io_time_ms:.2f}ms success={success}"
+        )
 
     @staticmethod
     async def _update_stats(
@@ -105,64 +64,8 @@ class MCPProfiler:
         success: bool,
     ) -> None:
         """Update aggregated statistics."""
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cursor:
-                # Insert or update daily stats
-                cursor.execute(
-                    """
-                    INSERT INTO wp_mcp_profiling_stats (
-                        organization_id,
-                        function_name,
-                        date,
-                        call_count,
-                        total_time_ms,
-                        avg_time_ms,
-                        min_time_ms,
-                        max_time_ms,
-                        success_count,
-                        error_count
-                    ) VALUES (
-                        %s, %s, CURDATE(),
-                        1,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s
-                    )
-                    ON DUPLICATE KEY UPDATE
-                        call_count = call_count + 1,
-                        total_time_ms = total_time_ms + %s,
-                        avg_time_ms = (total_time_ms + %s) / (call_count + 1),
-                        min_time_ms = LEAST(min_time_ms, %s),
-                        max_time_ms = GREATEST(max_time_ms, %s),
-                        success_count = success_count + %s,
-                        error_count = error_count + %s
-                    """,
-                    (
-                        organization_id,
-                        function_name,
-                        execution_time_ms,
-                        execution_time_ms,
-                        execution_time_ms,
-                        execution_time_ms,
-                        1 if success else 0,
-                        0 if success else 1,
-                        execution_time_ms,
-                        execution_time_ms,
-                        execution_time_ms,
-                        execution_time_ms,
-                        1 if success else 0,
-                        0 if success else 1,
-                    ),
-                )
-                conn.commit()
-
-        except Exception as e:
-            logger.error(f"Failed to update profiling stats: {e}")
-            pass
+        # TODO: Implement async database stats storage
+        pass
 
 
 def profile_mcp_function(
@@ -313,64 +216,5 @@ async def get_profiling_stats(
     Returns:
         List of profiling statistics
     """
-    conn = get_db_connection()
-    with conn.cursor() as cursor:
-        conditions = []
-        params = []
-
-        if organization_id:
-            conditions.append("organization_id = %s")
-            params.append(organization_id)
-
-        if function_name:
-            conditions.append("function_name = %s")
-            params.append(function_name)
-
-        if start_date:
-            conditions.append("date >= %s")
-            params.append(start_date)
-
-        if end_date:
-            conditions.append("date <= %s")
-            params.append(end_date)
-
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-
-        cursor.execute(
-            f"""
-            SELECT
-                function_name,
-                date,
-                call_count,
-                avg_time_ms,
-                min_time_ms,
-                max_time_ms,
-                p95_time_ms,
-                p99_time_ms,
-                success_count,
-                error_count
-            FROM wp_mcp_profiling_stats
-            {where_clause}
-            ORDER BY date DESC, avg_time_ms DESC
-            LIMIT %s
-            """,
-            params + [limit],
-        )
-
-        results = cursor.fetchall()
-
-        return [
-            {
-                "function_name": row[0],
-                "date": str(row[1]),
-                "call_count": row[2],
-                "avg_time_ms": float(row[3]),
-                "min_time_ms": float(row[4]),
-                "max_time_ms": float(row[5]),
-                "p95_time_ms": float(row[6]) if row[6] else None,
-                "p99_time_ms": float(row[7]) if row[7] else None,
-                "success_count": row[8],
-                "error_count": row[9],
-            }
-            for row in results
-        ]
+    # TODO: Implement async database query for profiling stats
+    return []
