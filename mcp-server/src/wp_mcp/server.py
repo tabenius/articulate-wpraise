@@ -65,6 +65,9 @@ from wp_mcp.routes.monitoring import (
 )
 from wp_mcp.routes.upload import upload_file_endpoint
 from wp_mcp.routes.mcp import mcp_jsonrpc_endpoint
+from wp_mcp.routes.ai_preferences import (
+    get_ai_preferences_endpoint, update_ai_preferences_endpoint
+)
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -239,6 +242,10 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
 
     # Upload
     Route("/upload", upload_file_endpoint, methods=["POST"]),
+
+    # AI Preferences
+    Route("/ai/preferences", get_ai_preferences_endpoint, methods=["GET"]),
+    Route("/ai/preferences", update_ai_preferences_endpoint, methods=["PUT"]),
 
     # Static files
     Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),
