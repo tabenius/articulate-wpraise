@@ -506,14 +506,14 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
         </h4>
         <ol className="text-sm text-muted-foreground ml-6 list-decimal space-y-1">
           <li>Create an API key above</li>
-          <li>Download the WP-AI Connector plugin</li>
+          <li>Download the Articulate Connector plugin</li>
           <li>Install and activate the plugin on your WordPress site</li>
-          <li>Go to Settings → WP-AI Connector in WordPress admin</li>
+          <li>Go to Settings → Articulate Connector in WordPress admin</li>
           <li>Paste your API key and complete the registration</li>
         </ol>
         <p className="text-sm text-muted-foreground mt-3">
           Once registered, the site will appear in your organization's connections list
-          and can be managed through the WP-AI platform.
+          and can be managed through the Articulate platform.
         </p>
       </div>
     </div>

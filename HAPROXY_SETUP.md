@@ -1,6 +1,6 @@
 # HAProxy Setup for ragbaz.xyz
 
-This guide helps you configure HAProxy for WP-AI production deployment.
+This guide helps you configure HAProxy for Articulate production deployment.
 
 ## Quick Setup
 
@@ -16,7 +16,7 @@ Simply append the content to your existing `/etc/haproxy/haproxy.cfg`:
 # Backup your current config
 sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.backup
 
-# Add WP-AI configuration (edit the file and paste the content)
+# Add Articulate configuration (edit the file and paste the content)
 sudo nano /etc/haproxy/haproxy.cfg
 ```
 
@@ -128,7 +128,7 @@ sudo openssl x509 -in /etc/haproxy/certs/ragbaz.xyz.pem -text -noout
 
 If backends are down:
 ```bash
-# Check if WP-AI containers are running
+# Check if Articulate containers are running
 docker ps --filter "name=wp-ai"
 
 # Check HAProxy can reach backends
@@ -203,7 +203,7 @@ If you already have a frontend handling port 443, you can add ACLs to it instead
 frontend your_existing_frontend
     bind *:443 ssl crt /path/to/certs
 
-    # Add WP-AI ACLs
+    # Add Articulate ACLs
     acl is_wpai hdr(host) -i ragbaz.xyz
     acl is_docs path_beg /docs
     acl is_graphql path_beg /graphql

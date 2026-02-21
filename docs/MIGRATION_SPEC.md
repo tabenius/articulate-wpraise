@@ -23,7 +23,7 @@
 
 ### 1.1 Purpose
 
-Enable users to migrate WordPress content between different WordPress installations through the WP-AI MCP server, with granular control over what content is migrated and how.
+Enable users to migrate WordPress content between different WordPress installations through the Articulate MCP server, with granular control over what content is migrated and how.
 
 ### 1.2 Goals
 

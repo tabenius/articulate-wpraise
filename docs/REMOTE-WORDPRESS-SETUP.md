@@ -1,8 +1,8 @@
-# Remote WordPress Setup for WP-AI
+# Remote WordPress Setup for Articulate
 
 ## Enable GraphQL Introspection
 
-For WP-AI's code generation to work with your remote WordPress site, you need to enable GraphQL introspection.
+For Articulate's code generation to work with your remote WordPress site, you need to enable GraphQL introspection.
 
 ### Option 1: Install MU-Plugin (Recommended)
 
@@ -23,7 +23,7 @@ scp enable-graphql-introspection.php user@yoursite.com:/var/www/html/wp-content/
 Add this to your theme's `functions.php`:
 
 ```php
-// Enable GraphQL introspection for WP-AI
+// Enable GraphQL introspection for Articulate
 add_filter( 'graphql_introspection_enabled_for_public_requests', '__return_true' );
 ```
 
@@ -42,7 +42,7 @@ Enabling public introspection allows anyone to query your GraphQL schema structu
 
 1. **Use authenticated introspection** instead:
    - Don't enable public introspection
-   - Configure WP-AI with WordPress admin credentials
+   - Configure Articulate with WordPress admin credentials
    - Introspection will work only for authenticated users
 
 2. **Disable after code generation**:
@@ -84,18 +84,18 @@ Expected response:
 
 If you see an error about introspection not being allowed, the setup isn't complete yet.
 
-## Connecting to WP-AI
+## Connecting to Articulate
 
-After enabling introspection, configure your remote WordPress connection in WP-AI:
+After enabling introspection, configure your remote WordPress connection in Articulate:
 
-1. Go to **Connections** in WP-AI
+1. Go to **Connections** in Articulate
 2. Click **Add Connection**
 3. Enter your WordPress URL (e.g., `https://yoursite.com`)
 4. Enter WordPress credentials
 5. Click **Test Connection**
 6. If successful, click **Save**
 
-WP-AI will now be able to:
+Articulate will now be able to:
 - Fetch your WordPress GraphQL schema
 - Auto-generate type-safe MCP tools
 - Keep types in sync with your WordPress installation

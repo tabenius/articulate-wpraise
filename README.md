@@ -194,7 +194,7 @@ wp-ai/
 
 ### Deployment Options
 
-WP-AI supports multiple production deployment configurations:
+Articulate supports multiple production deployment configurations:
 
 1. **Caddy** (Easiest - automatic HTTPS) - Recommended for beginners
 2. **Traefik** (Docker-native - automatic HTTPS) - Recommended for Docker deployments
@@ -229,7 +229,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions for each 
 <details>
 <summary>Click to expand HAProxy configuration (for reference)</summary>
 
-This section describes how to deploy WP-AI to a production server using HAProxy as a reverse proxy with SSL termination.
+This section describes how to deploy Articulate to a production server using HAProxy as a reverse proxy with SSL termination.
 
 ### Architecture
 
@@ -252,7 +252,7 @@ Add the following to your `/etc/haproxy/haproxy.cfg`:
 
 ```haproxy
 #---------------------------------------------------------------------
-# WP-AI Project Configuration
+# Articulate Project Configuration
 #---------------------------------------------------------------------
 
 # Frontend for HTTPS (port 443)
@@ -422,7 +422,7 @@ pm2 startup  # Follow instructions to enable on boot
 Create `/etc/systemd/system/wp-ai-web.service`:
 ```ini
 [Unit]
-Description=WP-AI Next.js Frontend
+Description=Articulate Next.js Frontend
 After=network.target
 
 [Service]

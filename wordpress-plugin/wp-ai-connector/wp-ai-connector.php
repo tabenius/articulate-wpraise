@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: WP-AI Connector
+ * Plugin Name: Articulate Connector
  * Plugin URI: https://github.com/tabenius/wpraise
- * Description: Automatically register this WordPress site with WP-AI platform for AI-powered content management
+ * Description: Automatically register this WordPress site with Articulate platform for AI-powered content management
  * Version: 1.0.0
- * Author: WP-AI Team
+ * Author: Articulate Team
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: wp-ai-connector
@@ -37,7 +37,7 @@ class WP_AI_Connector {
         if (version_compare(get_bloginfo('version'), '5.6', '<')) {
             deactivate_plugins(plugin_basename(__FILE__));
             wp_die(
-                __('WP-AI Connector requires WordPress 5.6 or higher for Application Password support.', 'wp-ai-connector'),
+                __('Articulate Connector requires WordPress 5.6 or higher for Application Password support.', 'wp-ai-connector'),
                 __('Plugin Activation Error', 'wp-ai-connector'),
                 ['back_link' => true]
             );
@@ -47,7 +47,7 @@ class WP_AI_Connector {
         if (version_compare(PHP_VERSION, '7.4', '<')) {
             deactivate_plugins(plugin_basename(__FILE__));
             wp_die(
-                __('WP-AI Connector requires PHP 7.4 or higher.', 'wp-ai-connector'),
+                __('Articulate Connector requires PHP 7.4 or higher.', 'wp-ai-connector'),
                 __('Plugin Activation Error', 'wp-ai-connector'),
                 ['back_link' => true]
             );
@@ -57,7 +57,7 @@ class WP_AI_Connector {
         if (!$this->is_wpgraphql_installed()) {
             $this->add_notice(
                 'warning',
-                __('WPGraphQL plugin is required for WP-AI Connector. Please install and activate WPGraphQL.', 'wp-ai-connector')
+                __('WPGraphQL plugin is required for Articulate Connector. Please install and activate WPGraphQL.', 'wp-ai-connector')
             );
         }
     }
@@ -71,8 +71,8 @@ class WP_AI_Connector {
 
     public function add_admin_menu() {
         add_options_page(
-            __('WP-AI Connector', 'wp-ai-connector'),
-            __('WP-AI Connector', 'wp-ai-connector'),
+            __('Articulate Connector', 'wp-ai-connector'),
+            __('Articulate Connector', 'wp-ai-connector'),
             'manage_options',
             'wp-ai-connector',
             [$this, 'render_admin_page']
@@ -111,7 +111,7 @@ class WP_AI_Connector {
 
         ?>
         <div class="wrap">
-            <h1><?php _e('WP-AI Connector', 'wp-ai-connector'); ?></h1>
+            <h1><?php _e('Articulate Connector', 'wp-ai-connector'); ?></h1>
 
             <?php if (!$this->is_wpgraphql_installed()): ?>
                 <div class="notice notice-error">
@@ -130,7 +130,7 @@ class WP_AI_Connector {
             <?php if ($is_registered): ?>
                 <div class="notice notice-success">
                     <p>
-                        <strong><?php _e('✓ Connected to WP-AI', 'wp-ai-connector'); ?></strong><br>
+                        <strong><?php _e('✓ Connected to Articulate', 'wp-ai-connector'); ?></strong><br>
                         <?php
                         printf(
                             __('This site is registered with organization: <strong>%s</strong>', 'wp-ai-connector'),
@@ -164,7 +164,7 @@ class WP_AI_Connector {
                 </table>
 
                 <p class="description">
-                    <?php _e('Your WordPress site is now connected to WP-AI. You can manage content through the WP-AI platform.', 'wp-ai-connector'); ?>
+                    <?php _e('Your WordPress site is now connected to Articulate. You can manage content through the Articulate platform.', 'wp-ai-connector'); ?>
                 </p>
 
                 <hr>
@@ -172,7 +172,7 @@ class WP_AI_Connector {
                 <h2><?php _e('Danger Zone', 'wp-ai-connector'); ?></h2>
                 <p>
                     <button type="button" class="button button-secondary" id="wpai-disconnect">
-                        <?php _e('Disconnect from WP-AI', 'wp-ai-connector'); ?>
+                        <?php _e('Disconnect from Articulate', 'wp-ai-connector'); ?>
                     </button>
                 </p>
 
@@ -191,7 +191,7 @@ class WP_AI_Connector {
                                        placeholder="wpai_org_123_..."
                                        required>
                                 <p class="description">
-                                    <?php _e('Enter the organization API key from your WP-AI dashboard. You can find this in Organization Settings → API Keys.', 'wp-ai-connector'); ?>
+                                    <?php _e('Enter the organization API key from your Articulate dashboard. You can find this in Organization Settings → API Keys.', 'wp-ai-connector'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -223,7 +223,7 @@ class WP_AI_Connector {
                                        value="<?php echo esc_attr(wp_get_current_user()->user_login); ?>"
                                        required>
                                 <p class="description">
-                                    <?php _e('WordPress username for WP-AI to use (must have administrator privileges). An Application Password will be created for this user.', 'wp-ai-connector'); ?>
+                                    <?php _e('WordPress username for Articulate to use (must have administrator privileges). An Application Password will be created for this user.', 'wp-ai-connector'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -231,7 +231,7 @@ class WP_AI_Connector {
 
                     <p class="submit">
                         <button type="submit" class="button button-primary" id="wpai-register-btn">
-                            <?php _e('Register with WP-AI', 'wp-ai-connector'); ?>
+                            <?php _e('Register with Articulate', 'wp-ai-connector'); ?>
                         </button>
                         <span class="spinner" style="float: none; margin: 0 10px;"></span>
                     </p>
@@ -242,10 +242,10 @@ class WP_AI_Connector {
                 <div class="wpai-info-card">
                     <h3><?php _e('How It Works', 'wp-ai-connector'); ?></h3>
                     <ol>
-                        <li><?php _e('Get an organization API key from your WP-AI dashboard (Organization Settings → API Keys)', 'wp-ai-connector'); ?></li>
+                        <li><?php _e('Get an organization API key from your Articulate dashboard (Organization Settings → API Keys)', 'wp-ai-connector'); ?></li>
                         <li><?php _e('This plugin will automatically create an Application Password for secure API access', 'wp-ai-connector'); ?></li>
                         <li><?php _e('Your site will be registered with the organization and appear in the connections list', 'wp-ai-connector'); ?></li>
-                        <li><?php _e('WP-AI can now manage content on this WordPress site via GraphQL', 'wp-ai-connector'); ?></li>
+                        <li><?php _e('Articulate can now manage content on this WordPress site via GraphQL', 'wp-ai-connector'); ?></li>
                     </ol>
 
                     <h4><?php _e('Requirements', 'wp-ai-connector'); ?></h4>
@@ -253,7 +253,7 @@ class WP_AI_Connector {
                         <li>✓ WordPress 5.6+ (for Application Password support)</li>
                         <li><?php echo $this->is_wpgraphql_installed() ? '✓' : '✗'; ?> WPGraphQL plugin installed and activated</li>
                         <li>✓ Administrator account</li>
-                        <li>✓ Organization API key from WP-AI</li>
+                        <li>✓ Organization API key from Articulate</li>
                     </ul>
                 </div>
             <?php endif; ?>
@@ -288,7 +288,7 @@ class WP_AI_Connector {
         }
 
         // Create application password
-        $app_password = $this->create_application_password($user->ID, 'WP-AI Connector');
+        $app_password = $this->create_application_password($user->ID, 'Articulate Connector');
         if (is_wp_error($app_password)) {
             wp_send_json_error(['message' => $app_password->get_error_message()]);
         }
@@ -303,7 +303,7 @@ class WP_AI_Connector {
             'wp_app_password' => $app_password['password'],
         ];
 
-        // Send to WP-AI backend
+        // Send to Articulate backend
         $response = wp_remote_post(self::API_ENDPOINT, [
             'body' => wp_json_encode($registration_data),
             'headers' => [
@@ -341,7 +341,7 @@ class WP_AI_Connector {
         ]);
 
         wp_send_json_success([
-            'message' => $body['message'] ?? __('Successfully registered with WP-AI!', 'wp-ai-connector'),
+            'message' => $body['message'] ?? __('Successfully registered with Articulate!', 'wp-ai-connector'),
             'organization' => $body['organization'],
         ]);
     }
@@ -366,7 +366,7 @@ class WP_AI_Connector {
         // Clear the configuration
         delete_option(self::OPTION_NAME);
 
-        wp_send_json_success(['message' => __('Successfully disconnected from WP-AI.', 'wp-ai-connector')]);
+        wp_send_json_success(['message' => __('Successfully disconnected from Articulate.', 'wp-ai-connector')]);
     }
 
     private function create_application_password($user_id, $name) {

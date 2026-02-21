@@ -25,7 +25,7 @@ export function MessageList() {
         {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Bot className="h-12 w-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-1">WP-AI Assistant</p>
+            <p className="text-lg font-medium mb-1">Articulate Assistant</p>
             <p className="text-sm text-center max-w-sm">
               Ask me to create, edit, or manage your WordPress content.
               I can add blocks, change text, and organize your posts.

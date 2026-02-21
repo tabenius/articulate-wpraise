@@ -1,10 +1,10 @@
-# WP-AI Project Overview
+# Articulate Project Overview
 
 > **Last Updated:** 2026-02-19
 
 ## 📖 Description
 
-WP-AI is an AI-powered WordPress content management platform that bridges Claude AI with WordPress through the Model Context Protocol (MCP). It provides a modern web interface where users can chat with Claude to create, edit, and manage WordPress content using natural language, while Claude directly manipulates WordPress data through a Python MCP server that communicates via GraphQL and REST APIs.
+Articulate is an AI-powered WordPress content management platform that bridges Claude AI with WordPress through the Model Context Protocol (MCP). It provides a modern web interface where users can chat with Claude to create, edit, and manage WordPress content using natural language, while Claude directly manipulates WordPress data through a Python MCP server that communicates via GraphQL and REST APIs.
 
 ## 🎯 Project Aims
 

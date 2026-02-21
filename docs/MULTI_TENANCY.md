@@ -1,6 +1,6 @@
 # Multi-Tenancy Guide
 
-WP-AI supports multiple isolated WordPress instances per user or organization. Each tenant has:
+Articulate supports multiple isolated WordPress instances per user or organization. Each tenant has:
 - Separate WordPress instance
 - Independent user access control
 - Resource quotas and usage tracking
@@ -299,9 +299,9 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 ```
 
 ### "User not found"
-**Cause**: User doesn't exist in WP-AI system.
+**Cause**: User doesn't exist in Articulate system.
 
-**Fix**: User must register/login to WP-AI first before being added to tenants.
+**Fix**: User must register/login to Articulate first before being added to tenants.
 
 ### Migration failures
 **Cause**: Database permissions or connection issues.

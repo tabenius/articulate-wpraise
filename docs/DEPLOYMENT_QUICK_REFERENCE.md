@@ -1,6 +1,6 @@
 # Production Deployment - Quick Reference
 
-One-page cheat sheet for deploying WP-AI to production.
+One-page cheat sheet for deploying Articulate to production.
 
 ## 🚀 Fastest Setup (5 minutes)
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Enable users to configure and manage multiple WordPress site connections from a single WP-AI instance. Each user can:
+Enable users to configure and manage multiple WordPress site connections from a single Articulate instance. Each user can:
 - Add multiple WordPress sites (personal blog, client sites, etc.)
 - Switch between WordPress sites
 - Manage site credentials securely

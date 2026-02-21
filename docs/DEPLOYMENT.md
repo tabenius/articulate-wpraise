@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-Complete guide for deploying WP-AI to production with SSL, reverse proxy, and security hardening.
+Complete guide for deploying Articulate to production with SSL, reverse proxy, and security hardening.
 
 ## Table of Contents
 
@@ -178,7 +178,7 @@ sudo certbot renew --dry-run
 
 - **New HAProxy Setup**: See [README.md](../README.md#production-deployment-with-haproxy)
 - **Existing HAProxy**: See [HAPROXY_WITH_CADDY.md](HAPROXY_WITH_CADDY.md) for integration guide
-  - Option 1: HAProxy routes directly to WP-AI services
+  - Option 1: HAProxy routes directly to Articulate services
   - Option 2: HAProxy + Caddy internal proxy (recommended for cleaner setup)
 
 ```bash
@@ -455,7 +455,7 @@ Create `/etc/systemd/system/wp-ai-web.service`:
 
 ```ini
 [Unit]
-Description=WP-AI Next.js Frontend
+Description=Articulate Next.js Frontend
 After=network.target docker.service
 Requires=docker.service
 

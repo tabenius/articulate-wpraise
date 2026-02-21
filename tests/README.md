@@ -1,4 +1,4 @@
-# WP-AI MCP Server Test Suite
+# Articulate MCP Server Test Suite
 
 Comprehensive pytest-based test suite for all MCP server endpoints.
 

@@ -1,10 +1,10 @@
 # Deployment Configuration Guide
 
-This guide explains how to configure WP-AI for different deployment scenarios.
+This guide explains how to configure Articulate for different deployment scenarios.
 
 ## Understanding the URL Configuration
 
-WP-AI uses different URLs depending on **where** the connections are made from:
+Articulate uses different URLs depending on **where** the connections are made from:
 
 1. **Backend-to-WordPress** (MCP Server → WordPress): Uses Docker internal networking
 2. **Frontend-to-MCP** (Next.js → MCP Server): Can be localhost or remote
@@ -215,7 +215,7 @@ curl -u "admin:xxxx xxxx xxxx xxxx xxxx xxxx" \
 
 ### 3. Test Auto-Setup
 
-1. Register new user in WP-AI
+1. Register new user in Articulate
 2. Login
 3. Check browser console - should see "WordPress connected!" toast
 4. Should immediately see WordPress posts (no manual setup required)

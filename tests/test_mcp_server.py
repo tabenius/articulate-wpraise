@@ -1,5 +1,5 @@
 """
-Comprehensive pytest-based test suite for WP-AI MCP Server.
+Comprehensive pytest-based test suite for Articulate MCP Server.
 
 Tests all endpoints with proper setup/teardown and data cleanup.
 """

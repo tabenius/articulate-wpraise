@@ -1,8 +1,8 @@
-# WP-AI UI Improvement Suggestions
+# Articulate UI Improvement Suggestions
 
 ## Executive Summary
 
-This document outlines UI/UX improvements for the WP-AI application, organized by priority tiers. The current application has a solid foundation with split-view layout, block editor, and chat interface. These suggestions focus on enhancing productivity, discoverability, and user experience.
+This document outlines UI/UX improvements for the Articulate application, organized by priority tiers. The current application has a solid foundation with split-view layout, block editor, and chat interface. These suggestions focus on enhancing productivity, discoverability, and user experience.
 
 ---
 

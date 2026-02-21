@@ -53,7 +53,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure your WP-AI preferences.
+            Configure your Articulate preferences.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,7 +122,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="border-t pt-4">
             <h3 className="text-sm font-medium mb-2">About</h3>
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>WP-AI uses Claude Sonnet 4.5 for AI-assisted content editing.</p>
+              <p>Articulate uses Claude Sonnet 4.5 for AI-assisted content editing.</p>
               <p>WordPress content is managed via WPGraphQL and the MCP protocol.</p>
             </div>
           </div>

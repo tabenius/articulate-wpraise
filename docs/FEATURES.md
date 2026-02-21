@@ -1,4 +1,4 @@
-# WP-AI Feature List
+# Articulate Feature List
 
 > **Last Updated:** 2026-02-19
 

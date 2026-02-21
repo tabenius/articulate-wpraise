@@ -1,4 +1,4 @@
-# WP-AI Future Development Roadmap
+# Articulate Future Development Roadmap
 
 ## Phase 1: Core Feature Enhancements
 
@@ -216,7 +216,7 @@
 - **SDK Development**
   - JavaScript/TypeScript SDK
   - Python SDK improvements
-  - CLI tool for WP-AI
+  - CLI tool for Articulate
 
 ### 7.2 Plugin System
 - **Custom Tool Development**

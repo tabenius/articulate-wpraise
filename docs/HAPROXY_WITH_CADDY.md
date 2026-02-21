@@ -1,6 +1,6 @@
-# Using WP-AI with Existing HAProxy
+# Using Articulate with Existing HAProxy
 
-Guide for integrating WP-AI into an existing HAProxy infrastructure, with options to use Caddy as an internal proxy for simplified routing.
+Guide for integrating Articulate into an existing HAProxy infrastructure, with options to use Caddy as an internal proxy for simplified routing.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ Guide for integrating WP-AI into an existing HAProxy infrastructure, with option
 ### Option 1: HAProxy Direct Routing
 
 ```
-Internet → HAProxy (SSL termination) → WP-AI services directly
+Internet → HAProxy (SSL termination) → Articulate services directly
                                      ├─> Next.js (3000)
                                      ├─> WordPress (8080)
                                      └─> MCP Server (8000)
@@ -27,20 +27,20 @@ Internet → HAProxy (SSL termination) → WP-AI services directly
 
 **Cons:**
 - More complex HAProxy configuration
-- Need to manually configure all WP-AI routes in HAProxy
+- Need to manually configure all Articulate routes in HAProxy
 
 ### Option 2: HAProxy + Caddy Internal Proxy (Recommended)
 
 ```
-Internet → HAProxy (SSL termination) → Caddy (internal routing) → WP-AI services
+Internet → HAProxy (SSL termination) → Caddy (internal routing) → Articulate services
                                                                  ├─> Next.js (3000)
                                                                  ├─> WordPress (8080)
                                                                  └─> MCP Server (8000)
 ```
 
 **Pros:**
-- Cleaner separation: HAProxy for SSL/domains, Caddy for WP-AI routing
-- Easier WP-AI updates (routing logic in Caddy)
+- Cleaner separation: HAProxy for SSL/domains, Caddy for Articulate routing
+- Easier Articulate updates (routing logic in Caddy)
 - Can use Caddy's advanced features (automatic compression, etc.)
 - Caddy config is simpler than HAProxy for app routing
 
@@ -49,9 +49,9 @@ Internet → HAProxy (SSL termination) → Caddy (internal routing) → WP-AI se
 
 ## Option 1: HAProxy Direct Routing
 
-Use this if you want HAProxy to route directly to all WP-AI services.
+Use this if you want HAProxy to route directly to all Articulate services.
 
-### 1. Start WP-AI in Production Mode
+### 1. Start Articulate in Production Mode
 
 ```bash
 # Start without exposed ports
@@ -96,14 +96,14 @@ Add to `/etc/haproxy/haproxy.cfg`:
 
 ```haproxy
 #---------------------------------------------------------------------
-# WP-AI Backend Configuration
+# Articulate Backend Configuration
 #---------------------------------------------------------------------
 
 # ACL rules for routing
 frontend https_front
     # ... your existing config ...
 
-    # WP-AI ACLs
+    # Articulate ACLs
     acl is_wpai_domain hdr(host) -i wpai.yourdomain.com
     acl is_wp_admin path_beg /wp-admin
     acl is_wp_login path_beg /wp-login.php
@@ -111,7 +111,7 @@ frontend https_front
     acl is_graphql path_beg /graphql
     acl is_mcp_api path_beg /api/mcp
 
-    # Route WP-AI traffic
+    # Route Articulate traffic
     use_backend wpai_wordpress if is_wpai_domain is_wp_admin
     use_backend wpai_wordpress if is_wpai_domain is_wp_login
     use_backend wpai_wordpress if is_wpai_domain is_wp_content
@@ -119,7 +119,7 @@ frontend https_front
     use_backend wpai_mcp if is_wpai_domain is_mcp_api
     use_backend wpai_nextjs if is_wpai_domain
 
-# Backend for WP-AI Next.js
+# Backend for Articulate Next.js
 backend wpai_nextjs
     mode http
     balance roundrobin
@@ -132,7 +132,7 @@ backend wpai_nextjs
 
     server nextjs1 127.0.0.1:3000 check
 
-# Backend for WP-AI WordPress
+# Backend for Articulate WordPress
 backend wpai_wordpress
     mode http
     balance roundrobin
@@ -146,7 +146,7 @@ backend wpai_wordpress
 
     server wordpress1 127.0.0.1:8080 check
 
-# Backend for WP-AI MCP Server
+# Backend for Articulate MCP Server
 backend wpai_mcp
     mode http
     balance roundrobin
@@ -175,7 +175,7 @@ sudo systemctl reload haproxy
 
 ## Option 2: HAProxy + Caddy Internal Proxy (Recommended)
 
-Use this for cleaner separation: HAProxy handles SSL and domain routing, Caddy handles WP-AI internal routing.
+Use this for cleaner separation: HAProxy handles SSL and domain routing, Caddy handles Articulate internal routing.
 
 ### 1. Create Internal Caddy Configuration
 
@@ -314,23 +314,23 @@ docker compose -f docker-compose.production.yml up -d
 
 ### 4. Update HAProxy Configuration
 
-Much simpler now - just one backend for all WP-AI traffic:
+Much simpler now - just one backend for all Articulate traffic:
 
 ```haproxy
 #---------------------------------------------------------------------
-# WP-AI Backend Configuration (via internal Caddy)
+# Articulate Backend Configuration (via internal Caddy)
 #---------------------------------------------------------------------
 
 frontend https_front
     # ... your existing config ...
 
-    # WP-AI ACL
+    # Articulate ACL
     acl is_wpai_domain hdr(host) -i wpai.yourdomain.com
 
-    # Route all WP-AI traffic to Caddy (Caddy handles internal routing)
+    # Route all Articulate traffic to Caddy (Caddy handles internal routing)
     use_backend wpai_caddy if is_wpai_domain
 
-# Backend for WP-AI (Caddy internal proxy)
+# Backend for Articulate (Caddy internal proxy)
 backend wpai_caddy
     mode http
     balance roundrobin
@@ -360,7 +360,7 @@ sudo systemctl reload haproxy
 
 ### Multi-Domain Setup
 
-If you want WP-AI on a subdomain alongside other services:
+If you want Articulate on a subdomain alongside other services:
 
 ```haproxy
 frontend https_front
@@ -370,7 +370,7 @@ frontend https_front
     acl is_main_site hdr(host) -i yourdomain.com
     acl is_blog hdr(host) -i blog.yourdomain.com
 
-    # WP-AI on subdomain
+    # Articulate on subdomain
     acl is_wpai hdr(host) -i wpai.yourdomain.com
 
     # Routing
@@ -383,7 +383,7 @@ frontend https_front
 
 ### Path-Based Routing
 
-If you want WP-AI on a path like `/wpai`:
+If you want Articulate on a path like `/wpai`:
 
 ```haproxy
 frontend https_front
@@ -392,7 +392,7 @@ frontend https_front
     acl is_main_domain hdr(host) -i yourdomain.com
     acl is_wpai_path path_beg /wpai
 
-    # Route /wpai path to WP-AI
+    # Route /wpai path to Articulate
     use_backend wpai_caddy if is_main_domain is_wpai_path
 
 # Backend needs path stripping
@@ -512,9 +512,9 @@ docker exec wp-ai-wordpress wp option update siteurl "https://wpai.yourdomain.co
 
 **When to use Option 2:**
 - ✅ Cleaner separation of concerns
-- ✅ Easier WP-AI routing updates (no HAProxy reload)
+- ✅ Easier Articulate routing updates (no HAProxy reload)
 - ✅ Want to use Caddy's features (compression, etc.)
-- ✅ Multiple WP-AI instances (Caddy can route between them)
+- ✅ Multiple Articulate instances (Caddy can route between them)
 
 **When to use Option 1:**
 - ✅ Absolute minimum latency required
@@ -523,7 +523,7 @@ docker exec wp-ai-wordpress wp option update siteurl "https://wpai.yourdomain.co
 
 ## Migration from Standalone to HAProxy
 
-If you're already running WP-AI standalone and want to migrate:
+If you're already running Articulate standalone and want to migrate:
 
 ```bash
 # 1. Stop standalone deployment
@@ -549,7 +549,7 @@ curl -I https://wpai.yourdomain.com
 
 ### HAProxy Stats
 
-Add WP-AI backends to your HAProxy stats page:
+Add Articulate backends to your HAProxy stats page:
 ```
 http://yourserver:8404/stats
 ```
@@ -585,14 +585,14 @@ Access metrics: `curl http://localhost:9090/metrics`
 
 For most users integrating into existing HAProxy:
 - ✅ Use **Option 2** (HAProxy + Caddy internal proxy)
-- ✅ Caddy handles all WP-AI routing complexity
+- ✅ Caddy handles all Articulate routing complexity
 - ✅ HAProxy just forwards to one backend (Caddy)
 - ✅ Easy to update and maintain
 - ✅ Minimal performance impact (~1ms)
 
 **Configuration Files:**
 - HAProxy: Simple backend pointing to Caddy (port 8090)
-- Caddy: Internal routing logic for WP-AI services
+- Caddy: Internal routing logic for Articulate services
 - Docker Compose: Include Caddy service with port 8090
 
 **Next Steps:**
