@@ -33,6 +33,7 @@ interface TemplateState {
   setError: (error: string | null) => void;
   toggleFavorite: (id: number) => void;
   addToRecent: (id: number) => void;
+  getPartUsage: (partSlug: string) => Template[];
 }
 
 // Load favorites and recents from localStorage
@@ -112,4 +113,17 @@ export const useTemplateStore = create<TemplateState>((set) => ({
       localStorage.setItem("template-recents", JSON.stringify(newRecents));
       return { recentTemplates: newRecents };
     }),
+
+  getPartUsage: (partSlug: string) => {
+    const state = useTemplateStore.getState();
+    // Find templates that reference this part in their content
+    return state.templates.filter((template) => {
+      const content = template.content || "";
+      // Check for WordPress template part block references
+      return (
+        content.includes(`"slug":"${partSlug}"`) ||
+        content.includes(`wp:template-part`) && content.includes(partSlug)
+      );
+    });
+  },
 }));
