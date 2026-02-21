@@ -1,7 +1,7 @@
 #!/bin/bash
 # Migration 010: MCP Function Profiling Tables
 
-mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'EOSQL'
+mariadb -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'EOSQL'
 
 -- MCP function profiling table
 CREATE TABLE IF NOT EXISTS wp_mcp_profiling (
