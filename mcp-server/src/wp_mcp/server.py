@@ -821,6 +821,158 @@ async def get_organization_activities_endpoint(request):
         return JSONResponse({"error": "Failed to get activities"}, status_code=500)
 
 
+@require_auth
+async def create_org_api_key_endpoint(request):
+    """Create organization API key for remote WordPress registration."""
+    from wp_mcp.org_api_key_manager import OrgApiKeyManager
+
+    try:
+        user = request.state.user
+        org_id = int(request.path_params.get("id"))
+        data = await request.json()
+
+        key_data = await OrgApiKeyManager.create_api_key(
+            organization_id=org_id,
+            created_by=user["id"],
+            description=data.get("description"),
+            expiry_days=data.get("expiry_days", 7),
+        )
+        return JSONResponse(sanitize_for_json(key_data), status_code=201)
+    except ValueError as e:
+        logger.warning("Create API key error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Create API key error: %s", e, exc_info=True)
+        return JSONResponse({"error": "Failed to create API key"}, status_code=500)
+
+
+@require_auth
+async def list_org_api_keys_endpoint(request):
+    """List organization API keys."""
+    from wp_mcp.org_api_key_manager import OrgApiKeyManager
+
+    try:
+        user = request.state.user
+        org_id = int(request.path_params.get("id"))
+
+        keys = await OrgApiKeyManager.list_keys(org_id, user["id"])
+        return JSONResponse(sanitize_for_json(keys))
+    except ValueError as e:
+        logger.warning("List API keys error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=403)
+    except Exception as e:
+        logger.error("List API keys error: %s", e, exc_info=True)
+        return JSONResponse({"error": "Failed to list API keys"}, status_code=500)
+
+
+@require_auth
+async def revoke_org_api_key_endpoint(request):
+    """Revoke organization API key."""
+    from wp_mcp.org_api_key_manager import OrgApiKeyManager
+
+    try:
+        user = request.state.user
+        org_id = int(request.path_params.get("id"))
+        key_id = int(request.path_params.get("key_id"))
+
+        await OrgApiKeyManager.revoke_key(key_id, org_id, user["id"])
+        return JSONResponse({"success": True})
+    except ValueError as e:
+        logger.warning("Revoke API key error: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Revoke API key error: %s", e, exc_info=True)
+        return JSONResponse({"error": "Failed to revoke API key"}, status_code=500)
+
+
+async def register_remote_wordpress_endpoint(request):
+    """Register a remote WordPress site using organization API key (PUBLIC endpoint)."""
+    from wp_mcp.org_api_key_manager import OrgApiKeyManager
+    from wp_mcp.connection_manager import connection_manager
+    from wp_mcp.audit import AuditLog
+
+    client_ip = request.client.host if request.client else None
+
+    try:
+        data = await request.json()
+        api_key = data.get("api_key")
+        site_name = data.get("site_name")
+        wp_url = data.get("wp_url")
+        wp_graphql_endpoint = data.get("wp_graphql_endpoint")
+        wp_user = data.get("wp_user")
+        wp_app_password = data.get("wp_app_password")
+
+        # Validate required fields
+        if not all([api_key, site_name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password]):
+            return JSONResponse(
+                {"error": "Missing required fields: api_key, site_name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password"},
+                status_code=400
+            )
+
+        # Validate and consume API key (single-use)
+        org_data = await OrgApiKeyManager.validate_and_consume_key(api_key)
+        if not org_data:
+            await AuditLog.log_access_denied(
+                user_id=None,
+                resource_type="api_registration",
+                resource_id="wordpress_connection",
+                reason="Invalid or expired API key",
+                ip_address=client_ip,
+            )
+            return JSONResponse(
+                {"error": "Invalid, expired, or already used API key"},
+                status_code=401
+            )
+
+        # Create organization connection
+        connection = await connection_manager.add_org_connection(
+            organization_id=org_data["organization_id"],
+            name=site_name,
+            wp_url=wp_url,
+            wp_graphql_endpoint=wp_graphql_endpoint,
+            wp_user=wp_user,
+            wp_app_password=wp_app_password,
+        )
+
+        # Log successful registration
+        await AuditLog.log_access_granted(
+            user_id=None,
+            resource_type="api_registration",
+            resource_id=str(connection["id"]),
+            action="create_org_connection",
+            ip_address=client_ip,
+            metadata={
+                "organization_id": org_data["organization_id"],
+                "site_name": site_name,
+            }
+        )
+
+        logger.info(
+            f"Remote WordPress registered: {site_name} for org {org_data['organization_id']}"
+        )
+
+        return JSONResponse({
+            "success": True,
+            "connection_id": connection["id"],
+            "organization": {
+                "id": org_data["organization_id"],
+                "name": org_data["organization_name"],
+                "slug": org_data["organization_slug"],
+            },
+            "message": f"Successfully registered with {org_data['organization_name']}"
+        }, status_code=201)
+
+    except ValueError as e:
+        logger.warning(f"Registration validation error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error(f"Registration error: {e}", exc_info=True)
+        return JSONResponse(
+            {"error": "Registration failed. Please check your WordPress configuration."},
+            status_code=500
+        )
+
+
 async def get_activity_feed_endpoint(request):
     """Get activity feed for the current user."""
     from wp_mcp.user_manager import UserManager
@@ -1489,6 +1641,12 @@ mcp._app.routes.extend(  # type: ignore[attr-defined]
         Route("/activities", get_user_activities_endpoint, methods=["GET"]),
         Route("/activities/feed", get_activity_feed_endpoint, methods=["GET"]),
         Route("/organizations/{id:int}/activities", get_organization_activities_endpoint, methods=["GET"]),
+        # Organization API Keys
+        Route("/organizations/{id:int}/api-keys", create_org_api_key_endpoint, methods=["POST"]),
+        Route("/organizations/{id:int}/api-keys", list_org_api_keys_endpoint, methods=["GET"]),
+        Route("/organizations/{id:int}/api-keys/{key_id:int}", revoke_org_api_key_endpoint, methods=["DELETE"]),
+        # Public WordPress registration
+        Route("/api/register-wordpress", register_remote_wordpress_endpoint, methods=["POST"]),
         # Connection routes
         Route("/connections", get_connections_endpoint, methods=["GET"]),
         Route("/connections", add_connection_endpoint, methods=["POST"]),

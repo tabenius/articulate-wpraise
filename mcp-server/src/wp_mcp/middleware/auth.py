@@ -56,6 +56,7 @@ class AuthMiddleware:
             "/login",
             "/me",
             "/organizations/search",  # Public organization search
+            "/api/register-wordpress",  # Public WordPress registration with API key
         ]
 
         # Public GET endpoints (read-only access)

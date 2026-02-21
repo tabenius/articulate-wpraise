@@ -390,6 +390,132 @@ class ConnectionManager:
         logger.info("Connection %d deleted for user %d", connection_id, user_id)
         return True
 
+    async def add_org_connection(
+        self,
+        organization_id: int,
+        name: str,
+        wp_url: str,
+        wp_graphql_endpoint: str,
+        wp_user: str,
+        wp_app_password: str,
+    ) -> dict:
+        """Add a new WordPress connection for an organization.
+
+        Args:
+            organization_id: Organization database ID
+            name: Connection name (e.g., "Production Site")
+            wp_url: WordPress site URL
+            wp_graphql_endpoint: GraphQL endpoint URL
+            wp_user: WordPress username
+            wp_app_password: WordPress application password
+
+        Returns:
+            Connection dict
+
+        Raises:
+            ValueError: If connection exists, org not found, or URL validation fails
+        """
+        # Validate URLs to prevent SSRF
+        is_valid, error = validate_wordpress_url(wp_url)
+        if not is_valid:
+            raise ValueError(f"Invalid WordPress URL: {error}")
+
+        is_valid, error = validate_wordpress_url(wp_graphql_endpoint)
+        if not is_valid:
+            raise ValueError(f"Invalid GraphQL endpoint URL: {error}")
+
+        # Get organization owner for user_id FK constraint
+        org = await db.fetchone(
+            "SELECT owner_id FROM wp_organizations WHERE id = %s",
+            (organization_id,),
+        )
+        if not org:
+            raise ValueError("Organization not found")
+
+        # Check for duplicate name within organization
+        existing = await db.fetchone(
+            """
+            SELECT id FROM wp_wordpress_connections
+            WHERE organization_id = %s AND name = %s
+            """,
+            (organization_id, name),
+        )
+        if existing:
+            raise ValueError(
+                f"Connection '{name}' already exists for this organization"
+            )
+
+        # Encrypt app password
+        encrypted_password = self._encrypt(wp_app_password)
+
+        # Insert connection (not active by default for org connections)
+        connection_id = await db.insert(
+            """
+            INSERT INTO wp_wordpress_connections
+            (user_id, organization_id, name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 0)
+            """,
+            (
+                org["owner_id"],  # Nominal user for FK constraint
+                organization_id,
+                name,
+                wp_url,
+                wp_graphql_endpoint,
+                wp_user,
+                encrypted_password,
+            ),
+        )
+
+        logger.info(
+            "Org connection added: %s for org %d (ID: %d)",
+            name,
+            organization_id,
+            connection_id,
+        )
+
+        return {
+            "id": connection_id,
+            "organization_id": organization_id,
+            "name": name,
+            "wp_url": wp_url,
+            "wp_graphql_endpoint": wp_graphql_endpoint,
+            "wp_user": wp_user,
+            "is_active": False,
+        }
+
+    async def get_org_connections(self, organization_id: int) -> list[dict]:
+        """Get all WordPress connections for an organization.
+
+        Args:
+            organization_id: Organization database ID
+
+        Returns:
+            List of connection dicts (without passwords)
+        """
+        connections = await db.fetchall(
+            """
+            SELECT id, name, wp_url, wp_graphql_endpoint, wp_user, is_active, created_at
+            FROM wp_wordpress_connections
+            WHERE organization_id = %s
+            ORDER BY created_at DESC
+            """,
+            (organization_id,),
+        )
+
+        return [
+            {
+                "id": conn["id"],
+                "organization_id": organization_id,
+                "name": conn["name"],
+                "wp_url": conn["wp_url"],
+                "wp_graphql_endpoint": conn["wp_graphql_endpoint"],
+                "wp_user": conn["wp_user"],
+                "is_active": bool(conn["is_active"]),
+                "created_at": conn["created_at"].isoformat(),
+            }
+            for conn in connections
+        ]
+
 
 # Global connection manager instance
 connection_manager = ConnectionManager()
