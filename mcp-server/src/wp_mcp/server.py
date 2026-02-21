@@ -83,7 +83,7 @@ logger = logging.getLogger("wp-mcp")
 
 # Initialize MCP server with transport security settings
 mcp = FastMCP(
-    "WordPress MCP Server",
+    "Articulate MCP Server",
     instructions=(
         "This server provides tools for managing WordPress content via WPGraphQL. "
         "You can create, read, update, and delete posts and pages. "
@@ -130,7 +130,7 @@ seo_tools.register(mcp)
 export_tools.register(mcp)
 generated.register(mcp)
 
-logger.info("WordPress MCP Server initialized")
+logger.info("Articulate MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
 logger.info("WordPress URL: %s", config.wp_url)
 

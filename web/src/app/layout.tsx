@@ -10,7 +10,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WP-AI - AI-Powered WordPress Editor",
+  title: "Articulate - AI-Powered WordPress Editor",
   description:
     "Create and edit WordPress content with an AI chat assistant and visual block editor.",
 };

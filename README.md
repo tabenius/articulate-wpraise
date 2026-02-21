@@ -1,4 +1,4 @@
-# WP-AI
+# Articulate
 
 AI-powered WordPress content editor. Chat with Claude to create and edit WordPress posts using a block editor, or edit blocks directly in a split-view interface.
 

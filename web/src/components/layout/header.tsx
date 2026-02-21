@@ -57,7 +57,7 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
   return (
     <header className="flex items-center justify-between h-14 px-4 border-b bg-background">
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold tracking-tight">WP-AI</h1>
+        <h1 className="text-lg font-semibold tracking-tight">Articulate</h1>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
