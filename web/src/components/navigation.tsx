@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { Notifications } from "./notifications";
+import { OrganizationSwitcher } from "./header/organization-switcher";
 import { Button } from "./ui/button";
 import { Home, Users, UserCircle, Mail, BookOpen, Layout } from "lucide-react";
 
@@ -56,6 +57,7 @@ export function Navigation() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <OrganizationSwitcher />
             <Notifications />
             <ThemeToggle />
           </div>

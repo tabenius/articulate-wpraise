@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileCode2, Layout, Palette, Search } from "lucide-react";
+import { FileCode2, Layout, Palette, Search, Star, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTemplateStore } from "@/stores/template-store";
 import { TemplateEditor } from "@/components/site-editor/template-editor";
@@ -29,13 +29,16 @@ interface TemplatePart {
 }
 
 export default function SiteEditorPage() {
-  const [activeTab, setActiveTab] = useState<"templates" | "parts" | "styles">("templates");
+  const [activeTab, setActiveTab] = useState<"recent" | "templates" | "parts" | "styles">("recent");
   const [currentTemplatePart, setCurrentTemplatePart] = useState<TemplatePart | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [partSearch, setPartSearch] = useState("");
   const templates = useTemplateStore((s) => s.templates);
   const templateParts = useTemplateStore((s) => s.templateParts);
   const currentTemplate = useTemplateStore((s) => s.currentTemplate);
+  const favorites = useTemplateStore((s) => s.favorites);
+  const recentTemplates = useTemplateStore((s) => s.recentTemplates);
+  const toggleFavorite = useTemplateStore((s) => s.toggleFavorite);
   const setTemplates = useTemplateStore((s) => s.setTemplates);
   const setTemplateParts = useTemplateStore((s) => s.setTemplateParts);
   const setCurrentTemplate = useTemplateStore((s) => s.setCurrentTemplate);
@@ -161,23 +164,134 @@ export default function SiteEditorPage() {
         <div className="w-80 border-r bg-muted/10">
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as "templates" | "parts" | "styles")}
+            onValueChange={(value) => setActiveTab(value as "recent" | "templates" | "parts" | "styles")}
             className="h-full flex flex-col"
           >
-            <TabsList className="mx-4 mt-4 grid grid-cols-3">
+            <TabsList className="mx-4 mt-4 grid grid-cols-4">
+              <TabsTrigger value="recent">
+                <Clock className="h-4 w-4 mr-1" />
+                Recent
+              </TabsTrigger>
               <TabsTrigger value="templates">
-                <Layout className="h-4 w-4 mr-2" />
+                <Layout className="h-4 w-4 mr-1" />
                 Templates
               </TabsTrigger>
               <TabsTrigger value="parts">
-                <FileCode2 className="h-4 w-4 mr-2" />
+                <FileCode2 className="h-4 w-4 mr-1" />
                 Parts
               </TabsTrigger>
               <TabsTrigger value="styles">
-                <Palette className="h-4 w-4 mr-2" />
+                <Palette className="h-4 w-4 mr-1" />
                 Styles
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="recent" className="flex-1 mt-4">
+              <ScrollArea className="h-full">
+                {/* Favorites Section */}
+                {favorites.length > 0 && (
+                  <div className="px-4 mb-6">
+                    <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-current" />
+                      FAVORITES
+                    </h3>
+                    <div className="space-y-2">
+                      {templates
+                        .filter((t) => favorites.includes(t.id))
+                        .map((template) => (
+                          <div key={template.id} className="relative group">
+                            <Button
+                              variant={
+                                currentTemplate?.id === template.id
+                                  ? "default"
+                                  : "ghost"
+                              }
+                              className="w-full justify-start pr-8"
+                              onClick={() => handleSelectTemplate(template)}
+                            >
+                              <Layout className="h-4 w-4 mr-2" />
+                              <div className="flex-1 text-left truncate">
+                                <div className="font-medium truncate">
+                                  {template.title}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {template.slug}
+                                </div>
+                              </div>
+                            </Button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(template.id);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-100"
+                            >
+                              <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Section */}
+                <div className="px-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    RECENTLY EDITED
+                  </h3>
+                  {recentTemplates.length === 0 ? (
+                    <div className="text-sm text-muted-foreground py-4">
+                      No recent templates yet
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {templates
+                        .filter((t) => recentTemplates.includes(t.id))
+                        .sort((a, b) => recentTemplates.indexOf(a.id) - recentTemplates.indexOf(b.id))
+                        .map((template) => (
+                          <div key={template.id} className="relative group">
+                            <Button
+                              variant={
+                                currentTemplate?.id === template.id
+                                  ? "default"
+                                  : "ghost"
+                              }
+                              className="w-full justify-start pr-8"
+                              onClick={() => handleSelectTemplate(template)}
+                            >
+                              <Layout className="h-4 w-4 mr-2" />
+                              <div className="flex-1 text-left truncate">
+                                <div className="font-medium truncate">
+                                  {template.title}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {template.slug}
+                                </div>
+                              </div>
+                            </Button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(template.id);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Star
+                                className={`h-4 w-4 ${
+                                  favorites.includes(template.id)
+                                    ? "fill-yellow-500 text-yellow-500"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
 
             <TabsContent value="templates" className="flex-1 mt-4">
               <div className="px-4 pb-3">
@@ -209,26 +323,42 @@ export default function SiteEditorPage() {
                 ) : (
                   <div className="space-y-2 px-4">
                     {filteredTemplates.map((template) => (
-                      <Button
-                        key={template.id}
-                        variant={
-                          currentTemplate?.id === template.id
-                            ? "default"
-                            : "ghost"
-                        }
-                        className="w-full justify-start"
-                        onClick={() => handleSelectTemplate(template)}
-                      >
-                        <Layout className="h-4 w-4 mr-2" />
-                        <div className="flex-1 text-left truncate">
-                          <div className="font-medium truncate">
-                            {template.title}
+                      <div key={template.id} className="relative group">
+                        <Button
+                          variant={
+                            currentTemplate?.id === template.id
+                              ? "default"
+                              : "ghost"
+                          }
+                          className="w-full justify-start pr-8"
+                          onClick={() => handleSelectTemplate(template)}
+                        >
+                          <Layout className="h-4 w-4 mr-2" />
+                          <div className="flex-1 text-left truncate">
+                            <div className="font-medium truncate">
+                              {template.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {template.slug}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {template.slug}
-                          </div>
-                        </div>
-                      </Button>
+                        </Button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(template.id);
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Star
+                            className={`h-4 w-4 ${
+                              favorites.includes(template.id)
+                                ? "fill-yellow-500 text-yellow-500"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
