@@ -12,7 +12,7 @@ export function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "Home", icon: Home },
+    { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/site-editor", label: "Site Editor", icon: Layout },
     { href: "/media-optimizer", label: "Media Optimizer", icon: Zap },
     { href: "/export", label: "Export to Next.js", icon: Rocket },
@@ -27,7 +27,7 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/" className="font-bold text-xl">
+            <Link href="/dashboard" className="font-bold text-xl">
               Articulate
             </Link>
             <div className="hidden md:flex gap-4">

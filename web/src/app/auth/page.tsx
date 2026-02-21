@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
-export default function AuthPage() {
+function AuthContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/dashboard";
   const { login, register } = useAuth();
   const { toast } = useToast();
 
@@ -34,7 +36,7 @@ export default function AuthPage() {
         title: "Login successful",
         description: "Welcome back!",
       });
-      router.push("/");
+      router.push(redirect);
     } catch (error) {
       toast({
         title: "Login failed",
@@ -58,7 +60,7 @@ export default function AuthPage() {
       });
       // Auto-login after registration
       await login(registerEmail, registerPassword);
-      router.push("/");
+      router.push(redirect);
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -169,5 +171,22 @@ export default function AuthPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Articulate</CardTitle>
+            <CardDescription>Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <AuthContent />
+    </Suspense>
   );
 }
