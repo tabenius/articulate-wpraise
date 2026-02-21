@@ -82,6 +82,16 @@ export function ProfilingDashboard() {
   }
 
   // Aggregate stats across all dates for each function
+  interface AggregatedStats {
+    function_name: string;
+    total_calls: number;
+    total_time: number;
+    avg_time: number;
+    max_time: number;
+    total_success: number;
+    total_errors: number;
+  }
+
   const functionStats = stats.reduce((acc, stat) => {
     if (!acc[stat.function_name]) {
       acc[stat.function_name] = {
@@ -102,15 +112,15 @@ export function ProfilingDashboard() {
     acc[stat.function_name].total_errors += stat.error_count;
 
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, AggregatedStats>);
 
   // Calculate average for each function
-  Object.values(functionStats).forEach((stat: any) => {
+  Object.values(functionStats).forEach((stat) => {
     stat.avg_time = stat.total_calls > 0 ? stat.total_time / stat.total_calls : 0;
   });
 
   const sortedFunctions = Object.values(functionStats).sort(
-    (a: any, b: any) => b.avg_time - a.avg_time
+    (a, b) => b.avg_time - a.avg_time
   );
 
   // Get unique function names for filter
@@ -264,7 +274,7 @@ export function ProfilingDashboard() {
             <CardContent>
               <ScrollArea className="h-[400px]">
                 <div className="space-y-3">
-                  {sortedFunctions.map((func: any) => (
+                  {sortedFunctions.map((func) => (
                     <div
                       key={func.function_name}
                       className="flex items-center justify-between p-3 border rounded-lg"

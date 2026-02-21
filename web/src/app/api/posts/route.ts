@@ -41,17 +41,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, content, status, type } = body;
 
-    if (!title) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    // Validate required fields
+    if (!title || typeof title !== "string") {
+      return NextResponse.json({ error: "Title is required and must be a string" }, { status: 400 });
+    }
+
+    // Validate optional fields
+    if (content && typeof content !== "string") {
+      return NextResponse.json({ error: "Content must be a string" }, { status: 400 });
+    }
+
+    // Validate status enum
+    const validStatuses = ["draft", "publish", "pending", "private"];
+    const postStatus = status || "draft";
+    if (!validStatuses.includes(postStatus)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate type enum
+    const validTypes = ["post", "page"];
+    const postType = type || "post";
+    if (!validTypes.includes(postType)) {
+      return NextResponse.json(
+        { error: `Invalid type. Must be one of: ${validTypes.join(", ")}` },
+        { status: 400 }
+      );
     }
 
     const result = await callMCPTool(
       "create_post",
       {
-        title,
-        content: content || "",
-        status: status || "draft",
-        post_type: type || "post",
+        title: title.trim(),
+        content: content?.trim() || "",
+        status: postStatus,
+        post_type: postType,
       },
       authHeaders
     );
