@@ -61,7 +61,7 @@ describe("ImageOptimizer", () => {
     await user.click(bulkTab);
 
     // Bulk tab content should be visible
-    expect(screen.getByText(/optimize multiple images/i)).toBeInTheDocument();
+    expect(screen.getByText(/Load Media Library/i)).toBeInTheDocument();
   });
 
   it("handles single image URL input", async () => {
