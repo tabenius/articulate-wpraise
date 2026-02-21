@@ -37,10 +37,22 @@ interface HeaderProps {
 export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts, onCreatePost, onCreatePage }: HeaderProps) {
   const currentPost = usePostStore((s) => s.currentPost);
   const isDirty = useEditorStore((s) => s.isDirty);
+  const blocks = useEditorStore((s) => s.blocks);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
   const historyIndex = useEditorStore((s) => s.historyIndex);
   const historyLength = useEditorStore((s) => s.history.length);
+
+  // Calculate content statistics
+  const blockCount = blocks.length;
+
+  const wordCount = blocks.reduce((total, block) => {
+    const text = block.attributes?.content || "";
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    return total + words;
+  }, 0);
+
+  const readTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
 
   return (
     <header className="flex items-center justify-between h-14 px-4 border-b bg-background">
@@ -83,9 +95,24 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
         </Link>
 
         {currentPost && (
-          <Badge variant={isDirty ? "destructive" : "secondary"}>
-            {isDirty ? "Unsaved" : currentPost.status}
-          </Badge>
+          <>
+            <Badge variant={isDirty ? "destructive" : "secondary"}>
+              {isDirty ? "Unsaved" : currentPost.status}
+            </Badge>
+            {blockCount > 0 && (
+              <div className="text-xs text-muted-foreground flex items-center gap-3 px-3 py-1 rounded-md bg-muted/50">
+                <span>{blockCount} block{blockCount !== 1 ? 's' : ''}</span>
+                <span>•</span>
+                <span>{wordCount} word{wordCount !== 1 ? 's' : ''}</span>
+                {wordCount > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>{readTime} min read</span>
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -324,26 +324,68 @@ export default function SiteEditorPage() {
             }}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground max-w-md">
-              <Palette className="h-16 w-16 mx-auto mb-4 opacity-40" />
-              <h3 className="text-lg font-semibold mb-2">
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-2xl">
+              <div className="mb-6 relative">
+                <Palette className="h-20 w-20 mx-auto text-primary/20" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Layout className="h-10 w-10 text-primary/40" />
+                </div>
+              </div>
+
+              <h3 className="text-2xl font-bold mb-3 text-foreground">
                 WordPress Site Editor
               </h3>
-              <p className="text-sm">
-                Select a template or template part from the sidebar to start
-                editing.
+              <p className="text-base text-muted-foreground mb-8">
+                Build and customize your WordPress theme with a visual editor for templates, template parts, and global styles.
               </p>
-              <div className="mt-6 text-xs space-y-1">
-                <p>
-                  <strong>Templates</strong> control the layout of different page
-                  types
-                </p>
-                <p>
-                  <strong>Template Parts</strong> are reusable components like
-                  headers and footers
-                </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="p-4 rounded-lg bg-muted/30 border border-muted text-left">
+                  <Layout className="h-6 w-6 text-primary mb-2" />
+                  <h4 className="font-semibold text-sm mb-1">Templates</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Control the layout of different page types like homepage, blog posts, and pages
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30 border border-muted text-left">
+                  <FileCode2 className="h-6 w-6 text-primary mb-2" />
+                  <h4 className="font-semibold text-sm mb-1">Template Parts</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Create reusable components like headers, footers, and sidebars
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30 border border-muted text-left">
+                  <Palette className="h-6 w-6 text-primary mb-2" />
+                  <h4 className="font-semibold text-sm mb-1">Global Styles</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Customize theme colors, typography, spacing, and design settings
+                  </p>
+                </div>
               </div>
+
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  variant="default"
+                  onClick={() => setActiveTab("templates")}
+                  className="gap-2"
+                >
+                  <Layout className="h-4 w-4" />
+                  Browse Templates
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab("styles")}
+                  className="gap-2"
+                >
+                  <Palette className="h-4 w-4" />
+                  Edit Global Styles
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-6">
+                💡 <strong>Tip:</strong> Use the search bar to quickly find templates, or create a new one with the "+" button
+              </p>
             </div>
           </div>
         )}

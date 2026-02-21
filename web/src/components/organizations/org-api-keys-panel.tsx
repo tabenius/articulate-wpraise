@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Key, Copy, Trash2, Download, ExternalLink } from "lucide-react";
+import { Key, Copy, Trash2, Download, ExternalLink, Search } from "lucide-react";
 import { ApiKeysSkeleton } from "@/components/skeletons/api-keys-skeleton";
 
 interface ApiKey {
@@ -46,6 +46,7 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
   const [newKeyData, setNewKeyData] = useState<{ key: string } | null>(null);
   const [description, setDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -176,6 +177,16 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
     return { label: "Active", className: "text-blue-600" };
   }
 
+  // Filter keys based on search
+  const filteredKeys = keys.filter((key) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      key.key_prefix.toLowerCase().includes(searchLower) ||
+      (key.description && key.description.toLowerCase().includes(searchLower)) ||
+      key.created_by.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -295,6 +306,27 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Search */}
+      {keys.length > 0 && (
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search API keys..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {searchQuery && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {filteredKeys.length} key{filteredKeys.length !== 1 ? 's' : ''} found
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Keys List */}
       {isLoading ? (
         <ApiKeysSkeleton />
@@ -307,6 +339,12 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             Create Your First API Key
           </Button>
+        </div>
+      ) : filteredKeys.length === 0 ? (
+        <div className="text-center py-8 border rounded-lg border-dashed">
+          <p className="text-muted-foreground">
+            No API keys match &quot;{searchQuery}&quot;
+          </p>
         </div>
       ) : (
         <div className="border rounded-lg">
@@ -322,7 +360,7 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {keys.map((key) => {
+              {filteredKeys.map((key) => {
                 const status = getKeyStatus(key);
                 return (
                   <TableRow key={key.id}>
