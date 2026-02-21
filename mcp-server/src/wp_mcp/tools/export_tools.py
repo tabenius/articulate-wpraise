@@ -482,7 +482,7 @@ def register(mcp: FastMCP) -> None:
                 media_strategy=media_strategy,
             )
 
-            result = generator.generate()
+            result = await generator.generate()
 
             if result.get("success"):
                 # Create zip archive

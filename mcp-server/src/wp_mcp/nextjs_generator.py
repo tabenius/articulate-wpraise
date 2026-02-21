@@ -7,8 +7,10 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
+import asyncio
 
 from wp_mcp.block_to_react import BlockToReactConverter
+from wp_mcp.media_migrator import migrate_media_for_export
 
 
 ContentFormat = Literal["react", "blocks", "mdx", "html"]
@@ -42,7 +44,7 @@ class NextJSGenerator:
         self.render_strategy = render_strategy
         self.media_strategy = media_strategy
 
-    def generate(self) -> dict[str, Any]:
+    async def generate(self) -> dict[str, Any]:
         """Generate the complete Next.js project.
 
         Returns:
@@ -53,6 +55,22 @@ class NextJSGenerator:
         # Create project structure
         self._create_directory_structure()
         files_created.extend(self._get_directory_list())
+
+        # Migrate media files
+        media_list = self.export_data.get("media", [])
+        media_result = None
+        if media_list and self.media_strategy in ["download", "next_image"]:
+            media_result = await migrate_media_for_export(
+                media_list=media_list,
+                output_dir=self.output_dir,
+                strategy=self.media_strategy,
+            )
+            if media_result.get("success"):
+                files_created.append(f"{media_result['files_migrated']} media files")
+
+            # Update content URLs if media was migrated
+            if media_result and media_result.get("url_map"):
+                self._update_content_urls(media_result["url_map"])
 
         # Generate configuration files
         files_created.append(self._generate_package_json())
@@ -83,11 +101,16 @@ class NextJSGenerator:
         # Generate styles
         files_created.append(self._generate_globals_css())
 
+        # Generate deployment configs
+        deployment_files = self._generate_deployment_configs()
+        files_created.extend(deployment_files)
+
         return {
             "success": True,
             "output_dir": str(self.output_dir),
             "files_created": len(files_created),
             "files": files_created,
+            "media_migrated": media_result.get("files_migrated", 0) if media_result else 0,
         }
 
     def _create_directory_structure(self) -> None:
@@ -592,3 +615,157 @@ export default function Page({ params }: { params: { slug?: string[] } }) {
         """Generate library/utility files."""
         # For now, placeholder
         return []
+
+    def _update_content_urls(self, url_map: dict[str, str]) -> None:
+        """Update media URLs in exported content.
+
+        Args:
+            url_map: Mapping of old URLs to new URLs
+        """
+        # Update URLs in posts
+        for post in self.export_data.get("content", {}).get("posts", []):
+            if post.get("content"):
+                for old_url, new_url in url_map.items():
+                    post["content"] = post["content"].replace(old_url, new_url)
+
+        # Update URLs in pages
+        for page in self.export_data.get("content", {}).get("pages", []):
+            if page.get("content"):
+                for old_url, new_url in url_map.items():
+                    page["content"] = page["content"].replace(old_url, new_url)
+
+    def _generate_deployment_configs(self) -> list[str]:
+        """Generate deployment configuration files."""
+        files = []
+
+        # Vercel config
+        files.append(self._generate_vercel_config())
+
+        # Netlify config
+        files.append(self._generate_netlify_config())
+
+        # Docker config (if applicable)
+        if self.render_strategy in ["ssr", "isr", "headless"]:
+            files.append(self._generate_dockerfile())
+            files.append(self._generate_docker_compose())
+
+        return files
+
+    def _generate_vercel_config(self) -> str:
+        """Generate vercel.json configuration."""
+        config = {
+            "buildCommand": "npm run build",
+            "outputDirectory": ".next" if self.render_strategy != "ssg" else "out",
+            "framework": "nextjs",
+        }
+
+        if self.render_strategy == "ssg":
+            config["installCommand"] = "npm install"
+
+        file_path = self.output_dir / "vercel.json"
+        with open(file_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+        return "vercel.json"
+
+    def _generate_netlify_config(self) -> str:
+        """Generate netlify.toml configuration."""
+        config_lines = [
+            "[build]",
+            '  command = "npm run build"',
+        ]
+
+        if self.render_strategy == "ssg":
+            config_lines.append('  publish = "out"')
+        else:
+            config_lines.append('  publish = ".next"')
+
+        config_lines.extend([
+            "",
+            "[[plugins]]",
+            '  package = "@netlify/plugin-nextjs"',
+        ])
+
+        file_path = self.output_dir / "netlify.toml"
+        with open(file_path, "w") as f:
+            f.write("\n".join(config_lines))
+
+        return "netlify.toml"
+
+    def _generate_dockerfile(self) -> str:
+        """Generate Dockerfile for SSR/ISR deployment."""
+        dockerfile = """FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN npm run build
+
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+
+# Set the correct permission for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Automatically leverage output traces to reduce image size
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server.js"]
+"""
+
+        file_path = self.output_dir / "Dockerfile"
+        with open(file_path, "w") as f:
+            f.write(dockerfile)
+
+        return "Dockerfile"
+
+    def _generate_docker_compose(self) -> str:
+        """Generate docker-compose.yml."""
+        site_title = self.export_data.get("site", {}).get("title", "nextjs-site")
+        service_name = site_title.lower().replace(" ", "-")
+
+        compose = f"""version: '3.8'
+
+services:
+  {service_name}:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+"""
+
+        file_path = self.output_dir / "docker-compose.yml"
+        with open(file_path, "w") as f:
+            f.write(compose)
+
+        return "docker-compose.yml"

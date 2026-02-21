@@ -1661,6 +1661,8 @@ mcp._app.routes.extend(  # type: ignore[attr-defined]
         # Audit logs routes (require authentication)
         Route("/audit/logs", audit_logs_endpoint, methods=["GET"]),
         Route("/audit/summary", audit_summary_endpoint, methods=["GET"]),
+        # Profiling routes (require authentication)
+        Route("/profiling/stats", profiling_stats_endpoint, methods=["POST"]),
         # Static files
         Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),
     ]
@@ -1680,6 +1682,35 @@ logger.info("Request logging middleware enabled")
 @bare_starlette_app.on_event("startup")
 async def on_startup():
     await startup()
+
+
+async def profiling_stats_endpoint(request):
+    """Get profiling statistics endpoint."""
+    from wp_mcp.profiling import get_profiling_stats
+
+    try:
+        data = await request.json()
+        organization_id = data.get("organization_id")
+        function_name = data.get("function_name")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        limit = data.get("limit", 100)
+
+        stats = await get_profiling_stats(
+            organization_id=organization_id,
+            function_name=function_name,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+        )
+
+        return JSONResponse({
+            "success": True,
+            "stats": stats,
+        })
+    except Exception as e:
+        logger.error(f"Failed to get profiling stats: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 async def startup():
