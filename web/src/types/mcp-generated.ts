@@ -257,36 +257,6 @@ export type PostsResponse = Record<string, unknown>;
 export type CreatePageResponse = Record<string, unknown>;
 
 /**
- * Response from createPost
- * The createPost mutation
- */
-export type CreatePostResponse = Record<string, unknown>;
-
-/**
- * Response from deletePage
- * The deletePage mutation
- */
-export type DeletePageResponse = Record<string, unknown>;
-
-/**
- * Response from deletePost
- * The deletePost mutation
- */
-export type DeletePostResponse = Record<string, unknown>;
-
-/**
- * Response from updatePage
- * The updatePage mutation
- */
-export type UpdatePageResponse = Record<string, unknown>;
-
-/**
- * Response from updatePost
- * The updatePost mutation
- */
-export type UpdatePostResponse = Record<string, unknown>;
-
-/**
  * All available MCP tool names
  */
 export type MCPToolName = "get_posts" | "get_post" | "create_post" | "update_post" | "delete_post" | "get_blocks" | "update_blocks" | "insert_block" | "remove_block" | "move_block" | "get_media" | "get_media_item" | "upload_media" | "get_categories" | "get_tags" | "create_category" | "create_tag" | "list_menus" | "get_menu_items" | "add_page_to_menu" | "remove_page_from_menu" | "get_front_page_settings" | "set_front_page" | "unset_front_page" | "contentNode" | "page" | "pages" | "post" | "posts" | "createPage" | "createPost" | "deletePage" | "deletePost" | "updatePage" | "updatePost";

@@ -49,7 +49,7 @@ const loadRecents = (): number[] => {
   return saved ? JSON.parse(saved) : [];
 };
 
-export const useTemplateStore = create<TemplateState>((set) => ({
+export const useTemplateStore: any = create<TemplateState>((set: any) => ({
   templates: [],
   templateParts: [],
   currentTemplate: null,
@@ -67,10 +67,10 @@ export const useTemplateStore = create<TemplateState>((set) => ({
     set({ currentTemplate: template });
     // Add to recent when template is selected
     if (template) {
-      set((state) => {
+      set((state: any) => {
         const newRecents = [
           template.id,
-          ...state.recentTemplates.filter((id) => id !== template.id),
+          ...state.recentTemplates.filter((id: number) => id !== template.id),
         ].slice(0, 10); // Keep only 10 most recent
         localStorage.setItem("template-recents", JSON.stringify(newRecents));
         return { recentTemplates: newRecents };
@@ -81,8 +81,8 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setCurrentTemplatePart: (part) => set({ currentTemplatePart: part }),
 
   updateTemplate: (id, updates) =>
-    set((state) => ({
-      templates: state.templates.map((t) =>
+    set((state: any) => ({
+      templates: state.templates.map((t: any) =>
         t.id === id ? { ...t, ...updates } : t
       ),
       currentTemplate:
@@ -96,19 +96,19 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setError: (error) => set({ error }),
 
   toggleFavorite: (id) =>
-    set((state) => {
+    set((state: any) => {
       const newFavorites = state.favorites.includes(id)
-        ? state.favorites.filter((fid) => fid !== id)
+        ? state.favorites.filter((fid: number) => fid !== id)
         : [...state.favorites, id];
       localStorage.setItem("template-favorites", JSON.stringify(newFavorites));
       return { favorites: newFavorites };
     }),
 
   addToRecent: (id) =>
-    set((state) => {
+    set((state: any) => {
       const newRecents = [
         id,
-        ...state.recentTemplates.filter((rid) => rid !== id),
+        ...state.recentTemplates.filter((rid: number) => rid !== id),
       ].slice(0, 10);
       localStorage.setItem("template-recents", JSON.stringify(newRecents));
       return { recentTemplates: newRecents };
@@ -117,7 +117,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   getPartUsage: (partSlug: string) => {
     const state = useTemplateStore.getState();
     // Find templates that reference this part in their content
-    return state.templates.filter((template) => {
+    return state.templates.filter((template: any) => {
       const content = template.content || "";
       // Check for WordPress template part block references
       return (
