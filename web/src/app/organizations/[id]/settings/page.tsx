@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Trash2, AlertTriangle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ImageUpload } from "@/components/profile/image-upload";
+import { OrgApiKeysPanel } from "@/components/organizations/org-api-keys-panel";
 
 interface Organization {
   id: number;
@@ -221,6 +222,7 @@ export default function OrganizationSettingsPage() {
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
@@ -291,6 +293,14 @@ export default function OrganizationSettingsPage() {
                 <Save className="mr-2 h-4 w-4" />
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="api-keys" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <OrgApiKeysPanel organizationId={organization.id} />
             </CardContent>
           </Card>
         </TabsContent>
