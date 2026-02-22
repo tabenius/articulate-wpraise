@@ -2,15 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:8000";
 import { callMCPTool } from "@/lib/mcp-client";
+import { getSessionHeaders } from "@/lib/server-auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const perPage = parseInt(
       request.nextUrl.searchParams.get("per_page") || "20",
       10
     );
 
-    const result = await callMCPTool("get_media", { per_page: perPage });
+    const result = await callMCPTool("get_media", { per_page: perPage }, authHeaders);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -20,6 +29,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authHeaders = await getSessionHeaders();
+    if (!authHeaders) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const contentType = request.headers.get("content-type") || "";
 
     // Handle FormData (file upload)
@@ -49,7 +66,7 @@ export async function POST(request: NextRequest) {
         file_url: dataUrl,
         title,
         alt_text,
-      }) as { error?: string; id?: number; url?: string };
+      }, authHeaders) as { error?: string; id?: number; url?: string };
 
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: 500 });
@@ -73,7 +90,7 @@ export async function POST(request: NextRequest) {
       file_url,
       title: title || "",
       alt_text: alt_text || "",
-    }) as { error?: string; id?: number; url?: string };
+    }, authHeaders) as { error?: string; id?: number; url?: string };
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 500 });
