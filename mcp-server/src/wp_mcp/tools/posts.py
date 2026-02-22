@@ -16,6 +16,9 @@ from wp_mcp.graphql.mutations import (
     UPDATE_PAGE,
 )
 from wp_mcp.context_helper import get_connection_info
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP) -> None:
@@ -206,11 +209,27 @@ def register(mcp: FastMCP) -> None:
                 variables={"id": str(post_id)},
                 user_id=user_id,
             )
+            logger.info(f"GET_PAGE query result for {post_id}: {page_data}")
             if page_data.get("page"):
                 is_page = True
-        except Exception:
-            # If page query fails, assume it's a post
-            pass
+                logger.info(f"Detected {post_id} as page")
+        except Exception as e:
+            logger.info(f"GET_PAGE query failed for {post_id}: {e}")
+            # If page query fails, try fetching as post
+            try:
+                post_data = await client.query(
+                    GET_POST,
+                    variables={"id": str(post_id)},
+                    user_id=user_id,
+                )
+                logger.info(f"GET_POST query result for {post_id}: {post_data}")
+                if not post_data.get("post"):
+                    return {"error": f"Post/page {post_id} not found"}
+            except Exception as e2:
+                logger.error(f"GET_POST query also failed for {post_id}: {e2}")
+                return {"error": f"Post/page {post_id} not found"}
+
+        logger.info(f"Updating {post_id} as {'page' if is_page else 'post'}")
 
         input_data: dict[str, Any] = {"id": str(post_id)}
         if title is not None:
