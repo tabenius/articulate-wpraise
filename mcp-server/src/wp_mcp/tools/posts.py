@@ -238,11 +238,11 @@ def register(mcp: FastMCP) -> None:
             input_data["content"] = content
         if status is not None:
             input_data["status"] = status.upper()
-        if featured_image_id is not None:
-            input_data["featuredImageId"] = str(featured_image_id) if featured_image_id > 0 else None
 
-        # Categories and tags only apply to posts, not pages
+        # Featured image, categories and tags only apply to posts, not pages
         if not is_page:
+            if featured_image_id is not None:
+                input_data["featuredImageId"] = str(featured_image_id) if featured_image_id > 0 else None
             if category_ids is not None:
                 input_data["categories"] = {
                     "nodes": [{"id": f"databaseId:{cat_id}"} for cat_id in category_ids]
