@@ -62,8 +62,11 @@ services:
         define('FORCE_SSL_ADMIN', true);
     volumes:
       - wp_data:/var/www/html
+      - ssh_keys:/home/wpuser/.ssh
+      - dropbear_keys:/etc/dropbear
     ports:
       - "127.0.0.1:8080:80"  # Only accessible from localhost for reverse proxy
+      - "127.0.0.1:2222:2222"  # SSH via dropbear, localhost only
     networks:
       - wp-ai-internal
       - wp-ai-proxy
@@ -242,3 +245,5 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  ssh_keys:
+  dropbear_keys:

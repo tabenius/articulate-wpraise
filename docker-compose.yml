@@ -37,8 +37,11 @@ services:
       WORDPRESS_DB_COLLATE: utf8mb4_unicode_ci
     volumes:
       - wp_data:/var/www/html
+      - ssh_keys:/home/wpuser/.ssh
+      - dropbear_keys:/etc/dropbear
     ports:
       - "8080:80"
+      - "2222:2222"
 
   wp-setup:
     build:
@@ -151,3 +154,5 @@ volumes:
   db_data:
   wp_data:
   redis_data:
+  ssh_keys:
+  dropbear_keys:
