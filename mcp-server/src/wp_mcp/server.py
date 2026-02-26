@@ -73,6 +73,8 @@ from wp_mcp.routes.image_alt_text import generate_alt_text_endpoint
 from wp_mcp.routes.content_assistant import (
     analyze_content_endpoint, improve_content_endpoint
 )
+from wp_mcp.routes import tenants as tenant_routes
+from wp_mcp.routes import routing as routing_routes
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -261,6 +263,20 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     # AI Content Assistant
     Route("/ai/analyze-content", analyze_content_endpoint, methods=["POST"]),
     Route("/ai/improve-content", improve_content_endpoint, methods=["POST"]),
+
+    # Tenant Management
+    Route("/tenants", tenant_routes.create_tenant_endpoint, methods=["POST"]),
+    Route("/tenants", tenant_routes.list_tenants_endpoint, methods=["GET"]),
+    Route("/tenants/{tenant_id}", tenant_routes.get_tenant_endpoint, methods=["GET"]),
+    Route("/tenants/{tenant_id}", tenant_routes.delete_tenant_endpoint, methods=["DELETE"]),
+    Route("/tenants/{tenant_id}/default-view", tenant_routes.update_default_view_endpoint, methods=["PUT"]),
+    Route("/tenants/{tenant_id}/domains", tenant_routes.add_domain_endpoint, methods=["POST"]),
+    Route("/tenants/{tenant_id}/domains/{domain_id:int}", tenant_routes.remove_domain_endpoint, methods=["DELETE"]),
+    Route("/tenants/{tenant_id}/domains/{domain_id:int}/verify", tenant_routes.verify_domain_endpoint, methods=["POST"]),
+
+    # Caddy Routing (no auth required)
+    Route("/routing/resolve", routing_routes.resolve_upstream, methods=["GET"]),
+    Route("/routing/tls-check", routing_routes.tls_check, methods=["GET"]),
 
     # Static files
     Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),
