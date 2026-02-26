@@ -6,13 +6,14 @@ import { ThemeToggle } from "./theme-toggle";
 import { Notifications } from "./notifications";
 import { OrganizationSwitcher } from "./header/organization-switcher";
 import { Button } from "./ui/button";
-import { Home, Users, UserCircle, Mail, BookOpen, Layout, Zap, Rocket, Activity } from "lucide-react";
+import { Home, Users, UserCircle, Mail, BookOpen, Layout, Zap, Rocket, Activity, Globe } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: "/sites", label: "Sites", icon: Globe },
     { href: "/site-editor", label: "Site Editor", icon: Layout },
     { href: "/media-optimizer", label: "Media Optimizer", icon: Zap },
     { href: "/export", label: "Export to Next.js", icon: Rocket },
