@@ -106,7 +106,7 @@ def require_org_member(role: Optional[str] = None) -> Callable:
             # Check membership and role
             member = await db.fetchone(
                 """
-                SELECT role FROM wp_organization_members
+                SELECT role FROM articulate_organization_members
                 WHERE organization_id = %s AND user_id = %s
                 """,
                 (org_id, user["id"]),

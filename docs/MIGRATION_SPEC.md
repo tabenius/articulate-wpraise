@@ -163,9 +163,9 @@ CREATE TABLE wp_migration_jobs (
     completed_at TIMESTAMP NULL,
 
     -- Foreign keys
-    FOREIGN KEY (user_id) REFERENCES wp_users_auth(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_connection_id) REFERENCES wp_wordpress_connections(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_connection_id) REFERENCES wp_wordpress_connections(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES articulate_users_auth(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_connection_id) REFERENCES articulate_wordpress_connections(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_connection_id) REFERENCES articulate_wordpress_connections(id) ON DELETE CASCADE,
 
     -- Indexes
     INDEX idx_user_status (user_id, status),

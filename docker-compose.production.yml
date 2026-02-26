@@ -152,11 +152,11 @@ services:
       - proxy_net
       - control_net
 
-  celery-worker:
+  articulate-worker:
     build:
       context: .
       dockerfile: docker/mcp-server/Dockerfile
-    container_name: articulate-celery
+    container_name: articulate-worker
     restart: unless-stopped
     depends_on:
       - redis
@@ -175,11 +175,11 @@ services:
     networks:
       - articulate-internal
 
-  celery-beat:
+  articulate-beat:
     build:
       context: .
       dockerfile: docker/mcp-server/Dockerfile
-    container_name: articulate-celery-beat
+    container_name: articulate-beat
     restart: unless-stopped
     depends_on:
       - redis

@@ -4,7 +4,7 @@
 mariadb -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'EOSQL'
 
 -- MCP function profiling table
-CREATE TABLE IF NOT EXISTS wp_mcp_profiling (
+CREATE TABLE IF NOT EXISTS articulate_profiling (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
   organization_id BIGINT UNSIGNED NULL,
@@ -29,12 +29,12 @@ CREATE TABLE IF NOT EXISTS wp_mcp_profiling (
   INDEX idx_org_function (organization_id, function_name),
 
   FOREIGN KEY (user_id) REFERENCES wp_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE SET NULL,
-  FOREIGN KEY (connection_id) REFERENCES wp_wordpress_connections(id) ON DELETE SET NULL
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE SET NULL,
+  FOREIGN KEY (connection_id) REFERENCES articulate_wordpress_connections(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Aggregated profiling statistics (for faster queries)
-CREATE TABLE IF NOT EXISTS wp_mcp_profiling_stats (
+CREATE TABLE IF NOT EXISTS articulate_profiling_stats (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   organization_id BIGINT UNSIGNED NULL,
   function_name VARCHAR(255) NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS wp_mcp_profiling_stats (
   INDEX idx_date (date),
   INDEX idx_avg_time (avg_time_ms),
 
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE CASCADE
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 EOSQL

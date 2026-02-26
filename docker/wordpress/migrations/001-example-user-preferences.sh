@@ -3,15 +3,15 @@
 # This migration demonstrates how to create custom tables for user preferences
 #
 # ROLLBACK: To rollback, run:
-#   wp db query "DROP TABLE IF EXISTS wp_user_preferences;" --allow-root
+#   wp db query "DROP TABLE IF EXISTS articulate_user_preferences;" --allow-root
 
 set -e
 
-echo "Creating wp_user_preferences table..."
+echo "Creating articulate_user_preferences table..."
 
 # Create custom user preferences table
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_user_preferences (
+CREATE TABLE IF NOT EXISTS articulate_user_preferences (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id BIGINT(20) UNSIGNED NOT NULL,
   preference_key VARCHAR(255) NOT NULL,

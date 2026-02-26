@@ -49,7 +49,7 @@ class InviteManager:
         # Check if inviter has permission (owner or admin)
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, inviter_id),
@@ -59,12 +59,12 @@ class InviteManager:
 
         # Check if user is already a member
         invitee = await db.fetchone(
-            "SELECT id FROM wp_users_auth WHERE email = %s", (invitee_email,)
+            "SELECT id FROM articulate_users_auth WHERE email = %s", (invitee_email,)
         )
         if invitee:
             existing_member = await db.fetchone(
                 """
-                SELECT id FROM wp_organization_members
+                SELECT id FROM articulate_organization_members
                 WHERE organization_id = %s AND user_id = %s
                 """,
                 (org_id, invitee["id"]),
@@ -75,7 +75,7 @@ class InviteManager:
         # Check if there's already a pending invite
         existing_invite = await db.fetchone(
             """
-            SELECT id FROM wp_organization_invites
+            SELECT id FROM articulate_organization_invites
             WHERE organization_id = %s AND invitee_email = %s AND status = 'pending'
             """,
             (org_id, invitee_email),
@@ -90,7 +90,7 @@ class InviteManager:
         # Create invite
         invite_id = await db.insert(
             """
-            INSERT INTO wp_organization_invites
+            INSERT INTO articulate_organization_invites
             (organization_id, inviter_id, invitee_email, invitee_id, role, token, expires_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
@@ -101,7 +101,7 @@ class InviteManager:
 
         # Log activity
         from articulate_mcp.activity_manager import ActivityManager
-        org_info = await db.fetchone("SELECT name FROM wp_organizations WHERE id = %s", (org_id,))
+        org_info = await db.fetchone("SELECT name FROM articulate_organizations WHERE id = %s", (org_id,))
         await ActivityManager.log_activity(
             inviter_id,
             ActivityManager.INVITE_SENT,
@@ -127,9 +127,9 @@ class InviteManager:
             """
             SELECT i.*, o.name as org_name, o.avatar as org_avatar,
                    u.name as inviter_name, u.email as inviter_email
-            FROM wp_organization_invites i
-            INNER JOIN wp_organizations o ON o.id = i.organization_id
-            INNER JOIN wp_users_auth u ON u.id = i.inviter_id
+            FROM articulate_organization_invites i
+            INNER JOIN articulate_organizations o ON o.id = i.organization_id
+            INNER JOIN articulate_users_auth u ON u.id = i.inviter_id
             WHERE i.id = %s
             """,
             (invite_id,),
@@ -150,9 +150,9 @@ class InviteManager:
             """
             SELECT i.*, o.name as org_name, o.avatar as org_avatar, o.bio as org_bio,
                    u.name as inviter_name, u.email as inviter_email
-            FROM wp_organization_invites i
-            INNER JOIN wp_organizations o ON o.id = i.organization_id
-            INNER JOIN wp_users_auth u ON u.id = i.inviter_id
+            FROM articulate_organization_invites i
+            INNER JOIN articulate_organizations o ON o.id = i.organization_id
+            INNER JOIN articulate_users_auth u ON u.id = i.inviter_id
             WHERE i.token = %s
             """,
             (token,),
@@ -176,7 +176,7 @@ class InviteManager:
         # Check permission
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, user_id),
@@ -187,8 +187,8 @@ class InviteManager:
         invites = await db.fetchall(
             """
             SELECT i.*, u.name as inviter_name
-            FROM wp_organization_invites i
-            INNER JOIN wp_users_auth u ON u.id = i.inviter_id
+            FROM articulate_organization_invites i
+            INNER JOIN articulate_users_auth u ON u.id = i.inviter_id
             WHERE i.organization_id = %s
             ORDER BY i.created_at DESC
             """,
@@ -210,9 +210,9 @@ class InviteManager:
             """
             SELECT i.*, o.name as org_name, o.avatar as org_avatar, o.bio as org_bio,
                    u.name as inviter_name, u.email as inviter_email
-            FROM wp_organization_invites i
-            INNER JOIN wp_organizations o ON o.id = i.organization_id
-            INNER JOIN wp_users_auth u ON u.id = i.inviter_id
+            FROM articulate_organization_invites i
+            INNER JOIN articulate_organizations o ON o.id = i.organization_id
+            INNER JOIN articulate_users_auth u ON u.id = i.inviter_id
             WHERE i.invitee_email = %s AND i.status = 'pending'
             ORDER BY i.created_at DESC
             """,
@@ -269,7 +269,7 @@ class InviteManager:
 
         # Check if user email matches
         user = await db.fetchone(
-            "SELECT email FROM wp_users_auth WHERE id = %s", (user_id,)
+            "SELECT email FROM articulate_users_auth WHERE id = %s", (user_id,)
         )
         if not user or user["email"] != invite["invitee_email"]:
             raise ValueError("This invite is for a different email address")
@@ -277,7 +277,7 @@ class InviteManager:
         # Check if already a member
         existing_member = await db.fetchone(
             """
-            SELECT id FROM wp_organization_members
+            SELECT id FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (invite["organization_id"], user_id),
@@ -288,7 +288,7 @@ class InviteManager:
         # Add user as member
         await db.insert(
             """
-            INSERT INTO wp_organization_members (organization_id, user_id, role)
+            INSERT INTO articulate_organization_members (organization_id, user_id, role)
             VALUES (%s, %s, %s)
             """,
             (invite["organization_id"], user_id, invite["role"]),
@@ -297,7 +297,7 @@ class InviteManager:
         # Mark invite as accepted
         await db.execute(
             """
-            UPDATE wp_organization_invites
+            UPDATE articulate_organization_invites
             SET status = 'accepted', responded_at = %s, invitee_id = %s
             WHERE id = %s
             """,
@@ -353,7 +353,7 @@ class InviteManager:
 
         # Check if user email matches
         user = await db.fetchone(
-            "SELECT email FROM wp_users_auth WHERE id = %s", (user_id,)
+            "SELECT email FROM articulate_users_auth WHERE id = %s", (user_id,)
         )
         if not user or user["email"] != invite["invitee_email"]:
             raise ValueError("This invite is for a different email address")
@@ -361,7 +361,7 @@ class InviteManager:
         # Mark invite as rejected
         await db.execute(
             """
-            UPDATE wp_organization_invites
+            UPDATE articulate_organization_invites
             SET status = 'rejected', responded_at = %s, invitee_id = %s
             WHERE id = %s
             """,
@@ -393,7 +393,7 @@ class InviteManager:
         # Check permission
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (invite["organization_id"], user_id),
@@ -402,7 +402,7 @@ class InviteManager:
             raise ValueError("Unauthorized: Only owners and admins can cancel invites")
 
         # Delete invite
-        await db.execute("DELETE FROM wp_organization_invites WHERE id = %s", (invite_id,))
+        await db.execute("DELETE FROM articulate_organization_invites WHERE id = %s", (invite_id,))
 
         logger.info(f"Invite {invite_id} canceled by user {user_id}")
         return True
@@ -411,6 +411,6 @@ class InviteManager:
     async def _mark_expired(invite_id: int) -> None:
         """Mark an invite as expired."""
         await db.execute(
-            "UPDATE wp_organization_invites SET status = 'expired' WHERE id = %s",
+            "UPDATE articulate_organization_invites SET status = 'expired' WHERE id = %s",
             (invite_id,),
         )

@@ -27,7 +27,7 @@ class ProfileManager:
         profile = await db.fetchone(
             """
             SELECT id, email, username, name, avatar, banner, bio, visibility, created_at, updated_at
-            FROM wp_users_auth
+            FROM articulate_users_auth
             WHERE id = %s
             """,
             (user_id,),
@@ -75,7 +75,7 @@ class ProfileManager:
 
             # Check if username is already taken by another user
             existing = await db.fetchone(
-                "SELECT id FROM wp_users_auth WHERE username = %s AND id != %s",
+                "SELECT id FROM articulate_users_auth WHERE username = %s AND id != %s",
                 (username, user_id),
             )
             if existing:
@@ -121,7 +121,7 @@ class ProfileManager:
             return profile
 
         params.append(user_id)
-        query = f"UPDATE wp_users_auth SET {', '.join(updates)} WHERE id = %s"
+        query = f"UPDATE articulate_users_auth SET {', '.join(updates)} WHERE id = %s"
 
         await db.execute(query, tuple(params))
         logger.info(f"Profile updated for user {user_id}")
@@ -148,7 +148,7 @@ class ProfileManager:
         profile = await db.fetchone(
             """
             SELECT id, email, username, name, avatar, banner, bio, visibility, created_at
-            FROM wp_users_auth
+            FROM articulate_users_auth
             WHERE username = %s
             """,
             (username,),
@@ -182,7 +182,7 @@ class ProfileManager:
         """
         # Get profile visibility
         result = await db.fetchone(
-            "SELECT visibility FROM wp_users_auth WHERE id = %s",
+            "SELECT visibility FROM articulate_users_auth WHERE id = %s",
             (profile_user_id,),
         )
 

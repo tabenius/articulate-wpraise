@@ -3,20 +3,20 @@ set -e
 
 echo "[Migration 005] Adding profiles and organizations..."
 
-# Add profile fields to wp_users_auth
+# Add profile fields to articulate_users_auth
 wp db query "
-ALTER TABLE wp_users_auth
+ALTER TABLE articulate_users_auth
   ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE AFTER email,
   ADD COLUMN IF NOT EXISTS avatar VARCHAR(500) AFTER name,
   ADD COLUMN IF NOT EXISTS banner VARCHAR(500) AFTER avatar,
   ADD COLUMN IF NOT EXISTS bio TEXT AFTER banner;
 " --allow-root
 
-echo "Added profile fields to wp_users_auth"
+echo "Added profile fields to articulate_users_auth"
 
 # Create organizations table
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_organizations (
+CREATE TABLE IF NOT EXISTS articulate_organizations (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(100) NOT NULL UNIQUE,
@@ -29,15 +29,15 @@ CREATE TABLE IF NOT EXISTS wp_organizations (
   PRIMARY KEY (id),
   UNIQUE KEY slug (slug),
   KEY idx_owner (owner_id),
-  CONSTRAINT fk_org_owner FOREIGN KEY (owner_id) REFERENCES wp_users_auth(id) ON DELETE CASCADE
+  CONSTRAINT fk_org_owner FOREIGN KEY (owner_id) REFERENCES articulate_users_auth(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 " --allow-root
 
-echo "Created wp_organizations table"
+echo "Created articulate_organizations table"
 
 # Create organization members table (many-to-many)
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_organization_members (
+CREATE TABLE IF NOT EXISTS articulate_organization_members (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   organization_id BIGINT(20) UNSIGNED NOT NULL,
   user_id BIGINT(20) UNSIGNED NOT NULL,
@@ -47,16 +47,16 @@ CREATE TABLE IF NOT EXISTS wp_organization_members (
   UNIQUE KEY unique_org_user (organization_id, user_id),
   KEY idx_org (organization_id),
   KEY idx_user (user_id),
-  CONSTRAINT fk_orgmember_org FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_orgmember_user FOREIGN KEY (user_id) REFERENCES wp_users_auth(id) ON DELETE CASCADE
+  CONSTRAINT fk_orgmember_org FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_orgmember_user FOREIGN KEY (user_id) REFERENCES articulate_users_auth(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 " --allow-root
 
-echo "Created wp_organization_members table"
+echo "Created articulate_organization_members table"
 
 # Create organization invites table
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_organization_invites (
+CREATE TABLE IF NOT EXISTS articulate_organization_invites (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   organization_id BIGINT(20) UNSIGNED NOT NULL,
   inviter_id BIGINT(20) UNSIGNED NOT NULL,
@@ -76,12 +76,12 @@ CREATE TABLE IF NOT EXISTS wp_organization_invites (
   KEY idx_invitee_id (invitee_id),
   KEY idx_token (token),
   KEY idx_status (status),
-  CONSTRAINT fk_invite_org FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_invite_inviter FOREIGN KEY (inviter_id) REFERENCES wp_users_auth(id) ON DELETE CASCADE,
-  CONSTRAINT fk_invite_invitee FOREIGN KEY (invitee_id) REFERENCES wp_users_auth(id) ON DELETE SET NULL
+  CONSTRAINT fk_invite_org FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_invite_inviter FOREIGN KEY (inviter_id) REFERENCES articulate_users_auth(id) ON DELETE CASCADE,
+  CONSTRAINT fk_invite_invitee FOREIGN KEY (invitee_id) REFERENCES articulate_users_auth(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 " --allow-root
 
-echo "Created wp_organization_invites table"
+echo "Created articulate_organization_invites table"
 
 echo "[Migration 005] Profiles and organizations created successfully"

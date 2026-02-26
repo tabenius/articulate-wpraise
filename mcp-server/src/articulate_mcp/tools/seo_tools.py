@@ -70,27 +70,27 @@ def register(mcp: FastMCP) -> None:
                 "post_excerpt": post["excerpt"],
 
                 # General SEO
-                "seo_title": meta_dict.get("_wp_ai_seo_title", ""),
-                "meta_description": meta_dict.get("_wp_ai_seo_description", ""),
-                "focus_keyword": meta_dict.get("_wp_ai_seo_focus_keyword", ""),
-                "canonical_url": meta_dict.get("_wp_ai_seo_canonical", ""),
-                "meta_robots": meta_dict.get("_wp_ai_seo_robots", ""),
+                "seo_title": meta_dict.get("_articulate_seo_title", ""),
+                "meta_description": meta_dict.get("_articulate_seo_description", ""),
+                "focus_keyword": meta_dict.get("_articulate_seo_focus_keyword", ""),
+                "canonical_url": meta_dict.get("_articulate_seo_canonical", ""),
+                "meta_robots": meta_dict.get("_articulate_seo_robots", ""),
 
                 # Open Graph
-                "og_title": meta_dict.get("_wp_ai_og_title", ""),
-                "og_description": meta_dict.get("_wp_ai_og_description", ""),
-                "og_image": meta_dict.get("_wp_ai_og_image", ""),
-                "og_type": meta_dict.get("_wp_ai_og_type", "article"),
+                "og_title": meta_dict.get("_articulate_og_title", ""),
+                "og_description": meta_dict.get("_articulate_og_description", ""),
+                "og_image": meta_dict.get("_articulate_og_image", ""),
+                "og_type": meta_dict.get("_articulate_og_type", "article"),
 
                 # Twitter Cards
-                "twitter_card": meta_dict.get("_wp_ai_twitter_card", "summary_large_image"),
-                "twitter_title": meta_dict.get("_wp_ai_twitter_title", ""),
-                "twitter_description": meta_dict.get("_wp_ai_twitter_description", ""),
-                "twitter_image": meta_dict.get("_wp_ai_twitter_image", ""),
+                "twitter_card": meta_dict.get("_articulate_twitter_card", "summary_large_image"),
+                "twitter_title": meta_dict.get("_articulate_twitter_title", ""),
+                "twitter_description": meta_dict.get("_articulate_twitter_description", ""),
+                "twitter_image": meta_dict.get("_articulate_twitter_image", ""),
 
                 # Advanced
-                "breadcrumb_title": meta_dict.get("_wp_ai_seo_breadcrumb_title", ""),
-                "schema_type": meta_dict.get("_wp_ai_schema_type", "Article"),
+                "breadcrumb_title": meta_dict.get("_articulate_seo_breadcrumb_title", ""),
+                "schema_type": meta_dict.get("_articulate_schema_type", "Article"),
             }
 
             return {"success": True, "seo": seo_data}
@@ -157,35 +157,35 @@ def register(mcp: FastMCP) -> None:
             meta_updates = []
 
             if seo_title is not None:
-                meta_updates.append({"key": "_wp_ai_seo_title", "value": seo_title})
+                meta_updates.append({"key": "_articulate_seo_title", "value": seo_title})
             if meta_description is not None:
-                meta_updates.append({"key": "_wp_ai_seo_description", "value": meta_description})
+                meta_updates.append({"key": "_articulate_seo_description", "value": meta_description})
             if focus_keyword is not None:
-                meta_updates.append({"key": "_wp_ai_seo_focus_keyword", "value": focus_keyword})
+                meta_updates.append({"key": "_articulate_seo_focus_keyword", "value": focus_keyword})
             if canonical_url is not None:
-                meta_updates.append({"key": "_wp_ai_seo_canonical", "value": canonical_url})
+                meta_updates.append({"key": "_articulate_seo_canonical", "value": canonical_url})
             if meta_robots is not None:
-                meta_updates.append({"key": "_wp_ai_seo_robots", "value": meta_robots})
+                meta_updates.append({"key": "_articulate_seo_robots", "value": meta_robots})
             if og_title is not None:
-                meta_updates.append({"key": "_wp_ai_og_title", "value": og_title})
+                meta_updates.append({"key": "_articulate_og_title", "value": og_title})
             if og_description is not None:
-                meta_updates.append({"key": "_wp_ai_og_description", "value": og_description})
+                meta_updates.append({"key": "_articulate_og_description", "value": og_description})
             if og_image is not None:
-                meta_updates.append({"key": "_wp_ai_og_image", "value": og_image})
+                meta_updates.append({"key": "_articulate_og_image", "value": og_image})
             if og_type is not None:
-                meta_updates.append({"key": "_wp_ai_og_type", "value": og_type})
+                meta_updates.append({"key": "_articulate_og_type", "value": og_type})
             if twitter_card is not None:
-                meta_updates.append({"key": "_wp_ai_twitter_card", "value": twitter_card})
+                meta_updates.append({"key": "_articulate_twitter_card", "value": twitter_card})
             if twitter_title is not None:
-                meta_updates.append({"key": "_wp_ai_twitter_title", "value": twitter_title})
+                meta_updates.append({"key": "_articulate_twitter_title", "value": twitter_title})
             if twitter_description is not None:
-                meta_updates.append({"key": "_wp_ai_twitter_description", "value": twitter_description})
+                meta_updates.append({"key": "_articulate_twitter_description", "value": twitter_description})
             if twitter_image is not None:
-                meta_updates.append({"key": "_wp_ai_twitter_image", "value": twitter_image})
+                meta_updates.append({"key": "_articulate_twitter_image", "value": twitter_image})
             if breadcrumb_title is not None:
-                meta_updates.append({"key": "_wp_ai_seo_breadcrumb_title", "value": breadcrumb_title})
+                meta_updates.append({"key": "_articulate_seo_breadcrumb_title", "value": breadcrumb_title})
             if schema_type is not None:
-                meta_updates.append({"key": "_wp_ai_schema_type", "value": schema_type})
+                meta_updates.append({"key": "_articulate_schema_type", "value": schema_type})
 
             if not meta_updates:
                 return {"error": "No SEO fields provided to update"}

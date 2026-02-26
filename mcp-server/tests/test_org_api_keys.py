@@ -21,7 +21,7 @@ async def setup_db():
 async def test_user(setup_db):
     """Create a test user."""
     # Cleanup existing
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("apitest@example.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("apitest@example.com",))
 
     # Create user
     user = await UserManager.register_user(
@@ -33,19 +33,19 @@ async def test_user(setup_db):
     yield user
 
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("apitest@example.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("apitest@example.com",))
 
 
 @pytest.fixture
 async def test_organization(test_user):
     """Create a test organization."""
     # Cleanup existing
-    await db.execute("DELETE FROM wp_organizations WHERE slug = %s", ("test-org-api",))
+    await db.execute("DELETE FROM articulate_organizations WHERE slug = %s", ("test-org-api",))
 
     # Create organization
     org_id = await db.insert(
         """
-        INSERT INTO wp_organizations (name, slug, owner_id)
+        INSERT INTO articulate_organizations (name, slug, owner_id)
         VALUES (%s, %s, %s)
         """,
         ("Test Org API", "test-org-api", test_user["id"])
@@ -54,7 +54,7 @@ async def test_organization(test_user):
     # Add user as owner
     await db.insert(
         """
-        INSERT INTO wp_organization_members (organization_id, user_id, role)
+        INSERT INTO articulate_organization_members (organization_id, user_id, role)
         VALUES (%s, %s, %s)
         """,
         (org_id, test_user["id"], "owner")
@@ -63,7 +63,7 @@ async def test_organization(test_user):
     yield {"id": org_id, "name": "Test Org API", "slug": "test-org-api"}
 
     # Cleanup (cascade will handle members)
-    await db.execute("DELETE FROM wp_organizations WHERE id = %s", (org_id,))
+    await db.execute("DELETE FROM articulate_organizations WHERE id = %s", (org_id,))
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_create_api_key(test_organization, test_user):
 
     # Verify key was stored in database
     stored_key = await db.fetchone(
-        "SELECT * FROM wp_org_api_keys WHERE id = %s",
+        "SELECT * FROM articulate_org_api_keys WHERE id = %s",
         (key_data["id"],)
     )
     assert stored_key is not None
@@ -97,7 +97,7 @@ async def test_create_api_key(test_organization, test_user):
     assert stored_key["used_at"] is None
 
     # Cleanup
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id = %s", (key_data["id"],))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id = %s", (key_data["id"],))
 
 
 @pytest.mark.asyncio
@@ -115,7 +115,7 @@ async def test_api_key_permissions(test_organization, test_user):
     # Add as member (not owner/admin)
     await db.insert(
         """
-        INSERT INTO wp_organization_members (organization_id, user_id, role)
+        INSERT INTO articulate_organization_members (organization_id, user_id, role)
         VALUES (%s, %s, %s)
         """,
         (org_id, member_user["id"], "member")
@@ -130,7 +130,7 @@ async def test_api_key_permissions(test_organization, test_user):
         )
 
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("member@example.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("member@example.com",))
 
 
 @pytest.mark.asyncio
@@ -158,7 +158,7 @@ async def test_validate_and_consume_key(test_organization, test_user):
 
     # Verify key is marked as used
     used_key = await db.fetchone(
-        "SELECT * FROM wp_org_api_keys WHERE id = %s",
+        "SELECT * FROM articulate_org_api_keys WHERE id = %s",
         (key_data["id"],)
     )
     assert used_key["used_at"] is not None
@@ -168,7 +168,7 @@ async def test_validate_and_consume_key(test_organization, test_user):
     assert org_data_retry is None  # Already used
 
     # Cleanup
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id = %s", (key_data["id"],))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id = %s", (key_data["id"],))
 
 
 @pytest.mark.asyncio
@@ -189,7 +189,7 @@ async def test_expired_key_rejected(test_organization, test_user):
 
     # Set expiry to past
     await db.execute(
-        "UPDATE wp_org_api_keys SET expires_at = %s WHERE id = %s",
+        "UPDATE articulate_org_api_keys SET expires_at = %s WHERE id = %s",
         (datetime.now(timezone.utc) - timedelta(days=1), key_data["id"])
     )
 
@@ -198,7 +198,7 @@ async def test_expired_key_rejected(test_organization, test_user):
     assert org_data is None  # Expired
 
     # Cleanup
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id = %s", (key_data["id"],))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id = %s", (key_data["id"],))
 
 
 @pytest.mark.asyncio
@@ -222,7 +222,7 @@ async def test_revoke_api_key(test_organization, test_user):
 
     # Verify key is inactive
     revoked_key = await db.fetchone(
-        "SELECT * FROM wp_org_api_keys WHERE id = %s",
+        "SELECT * FROM articulate_org_api_keys WHERE id = %s",
         (key_id,)
     )
     assert revoked_key["is_active"] == 0
@@ -232,7 +232,7 @@ async def test_revoke_api_key(test_organization, test_user):
     assert org_data is None  # Revoked
 
     # Cleanup
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id = %s", (key_id,))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id = %s", (key_id,))
 
 
 @pytest.mark.asyncio
@@ -268,7 +268,7 @@ async def test_list_api_keys(test_organization, test_user):
         assert "key_prefix" in key
 
     # Cleanup
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id IN (%s, %s)", (key1["id"], key2["id"]))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id IN (%s, %s)", (key1["id"], key2["id"]))
 
 
 @pytest.mark.asyncio
@@ -294,7 +294,7 @@ async def test_org_connection_creation(test_organization, test_user):
 
     # Verify in database
     stored_conn = await db.fetchone(
-        "SELECT * FROM wp_wordpress_connections WHERE id = %s",
+        "SELECT * FROM articulate_wordpress_connections WHERE id = %s",
         (connection["id"],)
     )
     assert stored_conn is not None
@@ -307,7 +307,7 @@ async def test_org_connection_creation(test_organization, test_user):
     assert any(c["id"] == connection["id"] for c in org_connections)
 
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id = %s", (connection["id"],))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id = %s", (connection["id"],))
 
 
 @pytest.mark.asyncio
@@ -351,5 +351,5 @@ async def test_full_registration_flow(test_organization, test_user):
     assert any(c["id"] == connection["id"] for c in org_connections)
 
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id = %s", (connection["id"],))
-    await db.execute("DELETE FROM wp_org_api_keys WHERE id = %s", (key_data["id"],))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id = %s", (connection["id"],))
+    await db.execute("DELETE FROM articulate_org_api_keys WHERE id = %s", (key_data["id"],))

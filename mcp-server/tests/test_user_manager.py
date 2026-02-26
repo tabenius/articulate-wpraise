@@ -19,7 +19,7 @@ async def setup_db():
 async def test_user_registration(setup_db):
     """Test user registration with password hashing."""
     # Cleanup any existing user from previous runs
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("test@example.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("test@example.com",))
 
     # Register a new user
     user = await UserManager.register_user(
@@ -35,21 +35,21 @@ async def test_user_registration(setup_db):
     
     # Verify user was stored in database
     stored_user = await db.fetchone(
-        "SELECT * FROM wp_users_auth WHERE email = %s",
+        "SELECT * FROM articulate_users_auth WHERE email = %s",
         ("test@example.com",)
     )
     assert stored_user is not None
     assert stored_user["password_hash"].startswith("$2b$")  # bcrypt hash
     
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("test@example.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("test@example.com",))
 
 
 @pytest.mark.asyncio
 async def test_duplicate_registration(setup_db):
     """Test that duplicate email registration fails."""
     # Cleanup any existing user from previous runs
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("duplicate@test.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("duplicate@test.com",))
 
     # Register first user
     await UserManager.register_user("duplicate@test.com", "password123", "User 1")
@@ -59,7 +59,7 @@ async def test_duplicate_registration(setup_db):
         await UserManager.register_user("duplicate@test.com", "password456", "User 2")
     
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("duplicate@test.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("duplicate@test.com",))
 
 
 @pytest.mark.asyncio
@@ -79,15 +79,15 @@ async def test_authentication_success(setup_db):
     
     # Verify session was created
     session = await db.fetchone(
-        "SELECT * FROM wp_sessions WHERE id = %s",
+        "SELECT * FROM articulate_sessions WHERE id = %s",
         (result["session_id"],)
     )
     assert session is not None
     assert session["user_id"] == result["user"]["id"]
     
     # Cleanup
-    await db.execute("DELETE FROM wp_sessions WHERE id = %s", (result["session_id"],))
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("auth@test.com",))
+    await db.execute("DELETE FROM articulate_sessions WHERE id = %s", (result["session_id"],))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("auth@test.com",))
 
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_authentication_failure(setup_db):
     assert result is None
     
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("wrong@test.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("wrong@test.com",))
 
 
 @pytest.mark.asyncio
@@ -124,8 +124,8 @@ async def test_get_user_from_session(setup_db):
     assert user["name"] == "Session User"
     
     # Cleanup
-    await db.execute("DELETE FROM wp_sessions WHERE id = %s", (session_id,))
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("session@test.com",))
+    await db.execute("DELETE FROM articulate_sessions WHERE id = %s", (session_id,))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("session@test.com",))
 
 
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ async def test_expired_session(setup_db):
     # Manually expire the session
     expired_time = datetime.now(timezone.utc) - timedelta(days=1)
     await db.execute(
-        "UPDATE wp_sessions SET expires_at = %s WHERE id = %s",
+        "UPDATE articulate_sessions SET expires_at = %s WHERE id = %s",
         (expired_time, session_id)
     )
     
@@ -149,13 +149,13 @@ async def test_expired_session(setup_db):
     
     # Verify session was deleted
     session = await db.fetchone(
-        "SELECT * FROM wp_sessions WHERE id = %s",
+        "SELECT * FROM articulate_sessions WHERE id = %s",
         (session_id,)
     )
     assert session is None
     
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("expired@test.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("expired@test.com",))
 
 
 @pytest.mark.asyncio
@@ -172,7 +172,7 @@ async def test_logout(setup_db):
     
     # Verify session was deleted
     session = await db.fetchone(
-        "SELECT * FROM wp_sessions WHERE id = %s",
+        "SELECT * FROM articulate_sessions WHERE id = %s",
         (session_id,)
     )
     assert session is None
@@ -182,4 +182,4 @@ async def test_logout(setup_db):
     assert success is False
     
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE email = %s", ("logout@test.com",))
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("logout@test.com",))

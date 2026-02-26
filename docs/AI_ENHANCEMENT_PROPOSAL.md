@@ -567,14 +567,14 @@ CREATE TABLE wp_org_ai_settings (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE CASCADE,
   UNIQUE KEY unique_org (organization_id)
 );
 ```
 
 ### AI Usage Tracking
 ```sql
-CREATE TABLE wp_ai_usage (
+CREATE TABLE articulate_ai_usage (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
   organization_id BIGINT UNSIGNED,
@@ -592,7 +592,7 @@ CREATE TABLE wp_ai_usage (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
   FOREIGN KEY (user_id) REFERENCES wp_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE SET NULL,
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE SET NULL,
 
   INDEX idx_user_date (user_id, created_at),
   INDEX idx_org_date (organization_id, created_at)

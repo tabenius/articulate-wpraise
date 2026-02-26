@@ -93,14 +93,14 @@ def main():
         with conn.cursor() as cursor:
             # Check if connection exists
             cursor.execute(
-                "SELECT id FROM wp_wordpress_connections WHERE name = 'Local WordPress' LIMIT 1"
+                "SELECT id FROM articulate_wordpress_connections WHERE name = 'Local WordPress' LIMIT 1"
             )
             result = cursor.fetchone()
 
             if result:
                 # Update existing connection
                 cursor.execute(
-                    "UPDATE wp_wordpress_connections SET wp_app_password = %s WHERE id = %s",
+                    "UPDATE articulate_wordpress_connections SET wp_app_password = %s WHERE id = %s",
                     (encrypted_password, result[0])
                 )
                 print(f"✓ Updated existing connection (ID: {result[0]})")

@@ -56,7 +56,7 @@ class OrganizationManager:
 
         # Check if slug is already taken
         existing = await db.fetchone(
-            "SELECT id FROM wp_organizations WHERE slug = %s", (slug,)
+            "SELECT id FROM articulate_organizations WHERE slug = %s", (slug,)
         )
         if existing:
             raise ValueError("Organization slug already taken")
@@ -68,7 +68,7 @@ class OrganizationManager:
         # Create organization
         org_id = await db.insert(
             """
-            INSERT INTO wp_organizations (owner_id, name, slug, avatar, banner, bio)
+            INSERT INTO articulate_organizations (owner_id, name, slug, avatar, banner, bio)
             VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (owner_id, name, slug, avatar, banner, bio),
@@ -77,7 +77,7 @@ class OrganizationManager:
         # Add owner as member with owner role
         await db.insert(
             """
-            INSERT INTO wp_organization_members (organization_id, user_id, role)
+            INSERT INTO articulate_organization_members (organization_id, user_id, role)
             VALUES (%s, %s, 'owner')
             """,
             (org_id, owner_id),
@@ -102,8 +102,8 @@ class OrganizationManager:
         org = await db.fetchone(
             """
             SELECT o.*, COUNT(DISTINCT m.user_id) as member_count
-            FROM wp_organizations o
-            LEFT JOIN wp_organization_members m ON m.organization_id = o.id
+            FROM articulate_organizations o
+            LEFT JOIN articulate_organization_members m ON m.organization_id = o.id
             WHERE o.id = %s
             GROUP BY o.id
             """,
@@ -124,9 +124,9 @@ class OrganizationManager:
         orgs = await db.fetchall(
             """
             SELECT o.*, m.role as user_role, COUNT(DISTINCT m2.user_id) as member_count
-            FROM wp_organizations o
-            INNER JOIN wp_organization_members m ON m.organization_id = o.id
-            LEFT JOIN wp_organization_members m2 ON m2.organization_id = o.id
+            FROM articulate_organizations o
+            INNER JOIN articulate_organization_members m ON m.organization_id = o.id
+            LEFT JOIN articulate_organization_members m2 ON m2.organization_id = o.id
             WHERE m.user_id = %s
             GROUP BY o.id, m.role
             ORDER BY o.created_at DESC
@@ -163,7 +163,7 @@ class OrganizationManager:
         # Check if user has permission (owner or admin)
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, user_id),
@@ -202,7 +202,7 @@ class OrganizationManager:
             return org
 
         params.append(org_id)
-        query = f"UPDATE wp_organizations SET {', '.join(updates)} WHERE id = %s"
+        query = f"UPDATE articulate_organizations SET {', '.join(updates)} WHERE id = %s"
 
         await db.execute(query, tuple(params))
         logger.info(f"Organization {org_id} updated by user {user_id}")
@@ -228,7 +228,7 @@ class OrganizationManager:
         # Check if user is owner
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, user_id),
@@ -237,7 +237,7 @@ class OrganizationManager:
             raise ValueError("Unauthorized: Only the owner can delete the organization")
 
         # Delete organization (cascade will delete members and invites)
-        await db.execute("DELETE FROM wp_organizations WHERE id = %s", (org_id,))
+        await db.execute("DELETE FROM articulate_organizations WHERE id = %s", (org_id,))
         logger.info(f"Organization {org_id} deleted by user {user_id}")
 
         return True
@@ -255,8 +255,8 @@ class OrganizationManager:
         members = await db.fetchall(
             """
             SELECT m.*, u.email, u.username, u.name, u.avatar
-            FROM wp_organization_members m
-            INNER JOIN wp_users_auth u ON u.id = m.user_id
+            FROM articulate_organization_members m
+            INNER JOIN articulate_users_auth u ON u.id = m.user_id
             WHERE m.organization_id = %s
             ORDER BY
                 CASE m.role
@@ -292,7 +292,7 @@ class OrganizationManager:
         # Check requester permission
         requester = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, requester_user_id),
@@ -311,7 +311,7 @@ class OrganizationManager:
         # Update role
         rows_affected = await db.execute(
             """
-            UPDATE wp_organization_members
+            UPDATE articulate_organization_members
             SET role = %s
             WHERE organization_id = %s AND user_id = %s AND role != 'owner'
             """,
@@ -346,7 +346,7 @@ class OrganizationManager:
         # Check requester permission
         requester = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, requester_user_id),
@@ -357,7 +357,7 @@ class OrganizationManager:
         # Can't remove owner
         target = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, target_user_id),
@@ -370,7 +370,7 @@ class OrganizationManager:
         # Remove member
         await db.execute(
             """
-            DELETE FROM wp_organization_members
+            DELETE FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, target_user_id),
@@ -404,7 +404,7 @@ class OrganizationManager:
         """
         # Verify current owner
         org = await db.fetchone(
-            "SELECT owner_id FROM wp_organizations WHERE id = %s",
+            "SELECT owner_id FROM articulate_organizations WHERE id = %s",
             (org_id,),
         )
         if not org or org["owner_id"] != current_owner_id:
@@ -413,7 +413,7 @@ class OrganizationManager:
         # Verify password
         import bcrypt
         user = await db.fetchone(
-            "SELECT password_hash FROM wp_users_auth WHERE id = %s",
+            "SELECT password_hash FROM articulate_users_auth WHERE id = %s",
             (current_owner_id,),
         )
         if not user:
@@ -425,7 +425,7 @@ class OrganizationManager:
         # Verify new owner is an admin
         new_owner_member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, new_owner_id),
@@ -438,14 +438,14 @@ class OrganizationManager:
         # Perform transfer in transaction
         # 1. Update organization owner_id
         await db.execute(
-            "UPDATE wp_organizations SET owner_id = %s WHERE id = %s",
+            "UPDATE articulate_organizations SET owner_id = %s WHERE id = %s",
             (new_owner_id, org_id),
         )
 
         # 2. Change current owner to admin
         await db.execute(
             """
-            UPDATE wp_organization_members
+            UPDATE articulate_organization_members
             SET role = 'admin'
             WHERE organization_id = %s AND user_id = %s
             """,
@@ -455,7 +455,7 @@ class OrganizationManager:
         # 3. Change new owner to owner role
         await db.execute(
             """
-            UPDATE wp_organization_members
+            UPDATE articulate_organization_members
             SET role = 'owner'
             WHERE organization_id = %s AND user_id = %s
             """,
@@ -515,8 +515,8 @@ class OrganizationManager:
                 o.visibility,
                 o.created_at,
                 COUNT(DISTINCT m.user_id) as member_count
-            FROM wp_organizations o
-            LEFT JOIN wp_organization_members m ON m.organization_id = o.id
+            FROM articulate_organizations o
+            LEFT JOIN articulate_organization_members m ON m.organization_id = o.id
             {where_clause}
             GROUP BY o.id
             ORDER BY o.created_at DESC
@@ -543,7 +543,7 @@ class OrganizationManager:
         """
         # Check if organization is public
         org = await db.fetchone(
-            "SELECT visibility, owner_id FROM wp_organizations WHERE id = %s",
+            "SELECT visibility, owner_id FROM articulate_organizations WHERE id = %s",
             (org_id,),
         )
         if not org:
@@ -555,7 +555,7 @@ class OrganizationManager:
         # Check if already a member
         existing = await db.fetchone(
             """
-            SELECT id FROM wp_organization_members
+            SELECT id FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (org_id, user_id),
@@ -565,13 +565,13 @@ class OrganizationManager:
 
         # Check if already has a pending invite/request
         user = await db.fetchone(
-            "SELECT email FROM wp_users_auth WHERE id = %s",
+            "SELECT email FROM articulate_users_auth WHERE id = %s",
             (user_id,),
         )
         assert user is not None, "User should exist"
         existing_invite = await db.fetchone(
             """
-            SELECT id FROM wp_organization_invites
+            SELECT id FROM articulate_organization_invites
             WHERE organization_id = %s AND invitee_email = %s AND status = 'pending'
             """,
             (org_id, user["email"]),
@@ -583,7 +583,7 @@ class OrganizationManager:
         # For now, auto-accept join requests for public orgs
         await db.insert(
             """
-            INSERT INTO wp_organization_members (organization_id, user_id, role)
+            INSERT INTO articulate_organization_members (organization_id, user_id, role)
             VALUES (%s, %s, 'member')
             """,
             (org_id, user_id),
@@ -593,7 +593,7 @@ class OrganizationManager:
 
         # Log activity
         from articulate_mcp.activity_manager import ActivityManager
-        org_info = await db.fetchone("SELECT name FROM wp_organizations WHERE id = %s", (org_id,))
+        org_info = await db.fetchone("SELECT name FROM articulate_organizations WHERE id = %s", (org_id,))
         await ActivityManager.log_activity(
             user_id,
             ActivityManager.ORGANIZATION_JOINED,

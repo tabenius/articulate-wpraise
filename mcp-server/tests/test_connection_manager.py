@@ -25,7 +25,7 @@ async def test_user(setup_db):
     )
     yield user
     # Cleanup
-    await db.execute("DELETE FROM wp_users_auth WHERE id = %s", (user["id"],))
+    await db.execute("DELETE FROM articulate_users_auth WHERE id = %s", (user["id"],))
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_add_connection(test_user):
     assert "wp_app_password" not in connection  # Password not returned
     
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id = %s", (connection["id"],))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id = %s", (connection["id"],))
 
 
 @pytest.mark.asyncio
@@ -64,7 +64,7 @@ async def test_connection_password_encryption(test_user):
     
     # Check encrypted password in database
     stored = await db.fetchone(
-        "SELECT wp_app_password FROM wp_wordpress_connections WHERE id = %s",
+        "SELECT wp_app_password FROM articulate_wordpress_connections WHERE id = %s",
         (connection["id"],)
     )
     assert stored["wp_app_password"] != "my_secret_password"  # Should be encrypted
@@ -78,7 +78,7 @@ async def test_connection_password_encryption(test_user):
     assert decrypted_conn["wp_app_password"] == "my_secret_password"
     
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id = %s", (connection["id"],))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id = %s", (connection["id"],))
 
 
 @pytest.mark.asyncio
@@ -115,7 +115,7 @@ async def test_get_connections(test_user):
         assert "wp_app_password" not in conn
     
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id IN (%s, %s)", (conn1["id"], conn2["id"]))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id IN (%s, %s)", (conn1["id"], conn2["id"]))
 
 
 @pytest.mark.asyncio
@@ -153,7 +153,7 @@ async def test_active_connection(test_user):
     assert active["name"] == "Second"
     
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id IN (%s, %s)", (conn1["id"], conn2["id"]))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id IN (%s, %s)", (conn1["id"], conn2["id"]))
 
 
 @pytest.mark.asyncio
@@ -193,7 +193,7 @@ async def test_url_validation(test_user):
     assert conn["id"] > 0
     
     # Cleanup
-    await db.execute("DELETE FROM wp_wordpress_connections WHERE id = %s", (conn["id"],))
+    await db.execute("DELETE FROM articulate_wordpress_connections WHERE id = %s", (conn["id"],))
 
 
 @pytest.mark.asyncio

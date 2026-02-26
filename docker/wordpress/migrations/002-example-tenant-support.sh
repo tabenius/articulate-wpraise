@@ -4,7 +4,7 @@
 #
 # ROLLBACK: To rollback, run:
 #   wp db query "ALTER TABLE wp_posts DROP COLUMN IF EXISTS tenant_id;" --allow-root
-#   wp db query "DROP TABLE IF EXISTS wp_tenants;" --allow-root
+#   wp db query "DROP TABLE IF EXISTS articulate_tenants;" --allow-root
 
 set -e
 
@@ -12,7 +12,7 @@ echo "Adding tenant support..."
 
 # Create tenants table
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_tenants (
+CREATE TABLE IF NOT EXISTS articulate_tenants (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL,

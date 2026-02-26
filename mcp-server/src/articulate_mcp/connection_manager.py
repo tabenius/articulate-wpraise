@@ -122,7 +122,7 @@ class ConnectionManager:
 
         # Check for duplicate name
         existing = await db.fetchone(
-            "SELECT id FROM wp_wordpress_connections WHERE user_id = %s AND name = %s",
+            "SELECT id FROM articulate_wordpress_connections WHERE user_id = %s AND name = %s",
             (user_id, name),
         )
         if existing:
@@ -133,7 +133,7 @@ class ConnectionManager:
 
         # Check if user has no connections (make this first one active)
         has_connections = await db.fetchone(
-            "SELECT id FROM wp_wordpress_connections WHERE user_id = %s LIMIT 1",
+            "SELECT id FROM articulate_wordpress_connections WHERE user_id = %s LIMIT 1",
             (user_id,),
         )
         is_active = 1 if not has_connections else 0
@@ -141,7 +141,7 @@ class ConnectionManager:
         # Insert connection
         connection_id = await db.insert(
             """
-            INSERT INTO wp_wordpress_connections
+            INSERT INTO articulate_wordpress_connections
             (user_id, name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password, is_active)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
@@ -182,7 +182,7 @@ class ConnectionManager:
         connections = await db.fetchall(
             """
             SELECT id, name, wp_url, wp_graphql_endpoint, wp_user, is_active, created_at
-            FROM wp_wordpress_connections
+            FROM articulate_wordpress_connections
             WHERE user_id = %s
             ORDER BY created_at DESC
             """,
@@ -216,7 +216,7 @@ class ConnectionManager:
             """
             SELECT id, user_id, name, wp_url, wp_graphql_endpoint, wp_user,
                    wp_app_password, is_active, created_at
-            FROM wp_wordpress_connections
+            FROM articulate_wordpress_connections
             WHERE id = %s AND user_id = %s
             """,
             (connection_id, user_id),
@@ -240,7 +240,7 @@ class ConnectionManager:
             """
             SELECT id, user_id, name, wp_url, wp_graphql_endpoint, wp_user,
                    wp_app_password, is_active
-            FROM wp_wordpress_connections
+            FROM articulate_wordpress_connections
             WHERE user_id = %s AND is_active = 1
             LIMIT 1
             """,
@@ -267,7 +267,7 @@ class ConnectionManager:
         """
         # Verify connection exists and belongs to user
         connection = await db.fetchone(
-            "SELECT id FROM wp_wordpress_connections WHERE id = %s AND user_id = %s",
+            "SELECT id FROM articulate_wordpress_connections WHERE id = %s AND user_id = %s",
             (connection_id, user_id),
         )
 
@@ -276,13 +276,13 @@ class ConnectionManager:
 
         # Deactivate all connections for user
         await db.execute(
-            "UPDATE wp_wordpress_connections SET is_active = 0 WHERE user_id = %s",
+            "UPDATE articulate_wordpress_connections SET is_active = 0 WHERE user_id = %s",
             (user_id,),
         )
 
         # Activate selected connection
         await db.execute(
-            "UPDATE wp_wordpress_connections SET is_active = 1 WHERE id = %s",
+            "UPDATE articulate_wordpress_connections SET is_active = 1 WHERE id = %s",
             (connection_id,),
         )
 
@@ -329,7 +329,7 @@ class ConnectionManager:
 
         # Verify connection exists and belongs to user
         connection = await db.fetchone(
-            "SELECT id FROM wp_wordpress_connections WHERE id = %s AND user_id = %s",
+            "SELECT id FROM articulate_wordpress_connections WHERE id = %s AND user_id = %s",
             (connection_id, user_id),
         )
 
@@ -360,7 +360,7 @@ class ConnectionManager:
             return True  # Nothing to update
 
         params.append(connection_id)
-        query = f"UPDATE wp_wordpress_connections SET {', '.join(updates)} WHERE id = %s"
+        query = f"UPDATE articulate_wordpress_connections SET {', '.join(updates)} WHERE id = %s"
 
         await db.execute(query, tuple(params))
         logger.info("Connection %d updated for user %d", connection_id, user_id)
@@ -380,7 +380,7 @@ class ConnectionManager:
             ValueError: If connection not found or unauthorized
         """
         result = await db.execute(
-            "DELETE FROM wp_wordpress_connections WHERE id = %s AND user_id = %s",
+            "DELETE FROM articulate_wordpress_connections WHERE id = %s AND user_id = %s",
             (connection_id, user_id),
         )
 
@@ -426,7 +426,7 @@ class ConnectionManager:
 
         # Get organization owner for user_id FK constraint
         org = await db.fetchone(
-            "SELECT owner_id FROM wp_organizations WHERE id = %s",
+            "SELECT owner_id FROM articulate_organizations WHERE id = %s",
             (organization_id,),
         )
         if not org:
@@ -435,7 +435,7 @@ class ConnectionManager:
         # Check for duplicate name within organization
         existing = await db.fetchone(
             """
-            SELECT id FROM wp_wordpress_connections
+            SELECT id FROM articulate_wordpress_connections
             WHERE organization_id = %s AND name = %s
             """,
             (organization_id, name),
@@ -451,7 +451,7 @@ class ConnectionManager:
         # Insert connection (not active by default for org connections)
         connection_id = await db.insert(
             """
-            INSERT INTO wp_wordpress_connections
+            INSERT INTO articulate_wordpress_connections
             (user_id, organization_id, name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password, is_active)
             VALUES (%s, %s, %s, %s, %s, %s, %s, 0)
             """,
@@ -495,7 +495,7 @@ class ConnectionManager:
         connections = await db.fetchall(
             """
             SELECT id, name, wp_url, wp_graphql_endpoint, wp_user, is_active, created_at
-            FROM wp_wordpress_connections
+            FROM articulate_wordpress_connections
             WHERE organization_id = %s
             ORDER BY created_at DESC
             """,

@@ -76,7 +76,7 @@ class AuditLog:
             # Insert audit log entry
             result = await db.execute(
                 """
-                INSERT INTO wp_audit_log (
+                INSERT INTO articulate_audit_log (
                     event_type, event_category, severity,
                     user_id, ip_address, user_agent,
                     resource_type, resource_id, action, status,
@@ -245,7 +245,7 @@ class AuditLog:
         Returns:
             List of audit log entries
         """
-        query = "SELECT * FROM wp_audit_log WHERE 1=1"
+        query = "SELECT * FROM articulate_audit_log WHERE 1=1"
         params: list[Any] = []
 
         if user_id is not None:
@@ -293,7 +293,7 @@ class AuditLog:
         severity_counts = await db.fetchall(
             """
             SELECT severity, COUNT(*) as count
-            FROM wp_audit_log
+            FROM articulate_audit_log
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
             GROUP BY severity
             """,
@@ -304,7 +304,7 @@ class AuditLog:
         failed_auth = await db.fetchone(
             """
             SELECT COUNT(*) as count
-            FROM wp_audit_log
+            FROM articulate_audit_log
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
             AND event_category = 'auth'
             AND status = 'failure'
@@ -316,7 +316,7 @@ class AuditLog:
         rate_limits = await db.fetchone(
             """
             SELECT COUNT(*) as count
-            FROM wp_audit_log
+            FROM articulate_audit_log
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
             AND event_type = 'rate_limit_exceeded'
             """,
@@ -327,7 +327,7 @@ class AuditLog:
         access_denied = await db.fetchone(
             """
             SELECT COUNT(*) as count
-            FROM wp_audit_log
+            FROM articulate_audit_log
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
             AND event_type = 'access_denied'
             """,
@@ -338,7 +338,7 @@ class AuditLog:
         top_ips = await db.fetchall(
             """
             SELECT ip_address, COUNT(*) as count
-            FROM wp_audit_log
+            FROM articulate_audit_log
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s HOUR)
             AND severity IN ('warning', 'error', 'critical')
             AND ip_address IS NOT NULL

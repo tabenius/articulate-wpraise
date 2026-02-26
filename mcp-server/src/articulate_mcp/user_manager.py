@@ -44,7 +44,7 @@ class UserManager:
 
         # Check if email already exists
         existing = await db.fetchone(
-            "SELECT id FROM wp_users_auth WHERE email = %s", (email,)
+            "SELECT id FROM articulate_users_auth WHERE email = %s", (email,)
         )
         if existing:
             raise ValueError("Email already registered")
@@ -60,7 +60,7 @@ class UserManager:
 
         # Insert user (unverified)
         user_id = await db.insert(
-            """INSERT INTO wp_users_auth (email, password_hash, name, email_verified,
+            """INSERT INTO articulate_users_auth (email, password_hash, name, email_verified,
                    email_verify_token, email_verify_expires)
                VALUES (%s, %s, %s, FALSE, %s, %s)""",
             (email, password_hash, name, verify_token, verify_expires),
@@ -101,7 +101,7 @@ class UserManager:
 
         # Get user
         user = await db.fetchone(
-            "SELECT id, email, password_hash FROM wp_users_auth WHERE id = %s",
+            "SELECT id, email, password_hash FROM articulate_users_auth WHERE id = %s",
             (user_id,),
         )
 
@@ -119,10 +119,10 @@ class UserManager:
         sole_owner_orgs = await db.fetchall(
             """
             SELECT o.id, o.name
-            FROM wp_organizations o
+            FROM articulate_organizations o
             WHERE o.owner_id = %s
             AND NOT EXISTS (
-                SELECT 1 FROM wp_organization_members m
+                SELECT 1 FROM articulate_organization_members m
                 WHERE m.organization_id = o.id
                 AND m.user_id != %s
                 AND m.role IN ('owner', 'admin')
@@ -142,49 +142,49 @@ class UserManager:
         try:
             # Delete user sessions (will cascade via FK)
             rows = await db.execute(
-                "DELETE FROM wp_sessions WHERE user_id = %s",
+                "DELETE FROM articulate_sessions WHERE user_id = %s",
                 (user_id,),
             )
             logger.info(f"Deleted {rows} sessions for user {user_id}")
 
             # Delete organization memberships (will cascade via FK)
             rows = await db.execute(
-                "DELETE FROM wp_organization_members WHERE user_id = %s",
+                "DELETE FROM articulate_organization_members WHERE user_id = %s",
                 (user_id,),
             )
             logger.info(f"Deleted {rows} organization memberships for user {user_id}")
 
             # Delete pending invites created by user
             rows = await db.execute(
-                "DELETE FROM wp_organization_invites WHERE inviter_id = %s AND status = 'pending'",
+                "DELETE FROM articulate_organization_invites WHERE inviter_id = %s AND status = 'pending'",
                 (user_id,),
             )
             logger.info(f"Deleted {rows} pending invites created by user {user_id}")
 
             # Nullify invitee_id in invites (FK is SET NULL)
             rows = await db.execute(
-                "UPDATE wp_organization_invites SET invitee_id = NULL WHERE invitee_id = %s",
+                "UPDATE articulate_organization_invites SET invitee_id = NULL WHERE invitee_id = %s",
                 (user_id,),
             )
             logger.info(f"Nullified {rows} invite references for user {user_id}")
 
             # Delete WordPress connections (will cascade via FK)
             rows = await db.execute(
-                "DELETE FROM wp_wordpress_connections WHERE user_id = %s",
+                "DELETE FROM articulate_wordpress_connections WHERE user_id = %s",
                 (user_id,),
             )
             logger.info(f"Deleted {rows} WordPress connections for user {user_id}")
 
             # Delete audit logs (if they exist and reference the user)
             rows = await db.execute(
-                "UPDATE wp_audit_log SET user_id = NULL WHERE user_id = %s",
+                "UPDATE articulate_audit_log SET user_id = NULL WHERE user_id = %s",
                 (user_id,),
             )
             logger.info(f"Nullified {rows} audit log references for user {user_id}")
 
             # Finally, delete the user
             rows = await db.execute(
-                "DELETE FROM wp_users_auth WHERE id = %s",
+                "DELETE FROM articulate_users_auth WHERE id = %s",
                 (user_id,),
             )
 
@@ -211,7 +211,7 @@ class UserManager:
         """
         # Get user
         user = await db.fetchone(
-            "SELECT id, email, password_hash, name, email_verified FROM wp_users_auth WHERE email = %s",
+            "SELECT id, email, password_hash, name, email_verified FROM articulate_users_auth WHERE email = %s",
             (email,),
         )
 
@@ -236,7 +236,7 @@ class UserManager:
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
         await db.execute(
-            "INSERT INTO wp_sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
+            "INSERT INTO articulate_sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
             (session_id, user["id"], expires_at),
         )
 
@@ -269,8 +269,8 @@ class UserManager:
         session = await db.fetchone(
             """
             SELECT s.user_id, s.expires_at, u.email, u.name
-            FROM wp_sessions s
-            JOIN wp_users_auth u ON s.user_id = u.id
+            FROM articulate_sessions s
+            JOIN articulate_users_auth u ON s.user_id = u.id
             WHERE s.id = %s
             """,
             (session_id,),
@@ -287,7 +287,7 @@ class UserManager:
 
         if expires_at < datetime.now(timezone.utc):
             # Delete expired session
-            await db.execute("DELETE FROM wp_sessions WHERE id = %s", (session_id,))
+            await db.execute("DELETE FROM articulate_sessions WHERE id = %s", (session_id,))
             logger.info("Session expired: %s", session_id)
             return None
 
@@ -307,7 +307,7 @@ class UserManager:
         Returns:
             True if session was deleted
         """
-        result = await db.execute("DELETE FROM wp_sessions WHERE id = %s", (session_id,))
+        result = await db.execute("DELETE FROM articulate_sessions WHERE id = %s", (session_id,))
         if result > 0:
             logger.info("User logged out: session %s", session_id)
             return True
@@ -324,7 +324,7 @@ class UserManager:
             User dict or None
         """
         user = await db.fetchone(
-            "SELECT id, email, name, created_at FROM wp_users_auth WHERE id = %s",
+            "SELECT id, email, name, created_at FROM articulate_users_auth WHERE id = %s",
             (user_id,),
         )
 
@@ -342,7 +342,7 @@ class UserManager:
     async def cleanup_expired_sessions() -> None:
         """Remove expired sessions from database."""
         result = await db.execute(
-            "DELETE FROM wp_sessions WHERE expires_at < %s", (datetime.now(timezone.utc),)
+            "DELETE FROM articulate_sessions WHERE expires_at < %s", (datetime.now(timezone.utc),)
         )
         if result > 0:
             logger.info("Cleaned up %d expired sessions", result)
@@ -351,7 +351,7 @@ class UserManager:
     async def verify_email(token: str) -> bool:
         """Verify a user's email address using the verification token."""
         user = await db.fetchone(
-            "SELECT id, email_verify_expires FROM wp_users_auth WHERE email_verify_token = %s",
+            "SELECT id, email_verify_expires FROM articulate_users_auth WHERE email_verify_token = %s",
             (token,),
         )
         if not user:
@@ -362,7 +362,7 @@ class UserManager:
             return False
 
         await db.execute(
-            "UPDATE wp_users_auth SET email_verified = TRUE, email_verify_token = NULL, email_verify_expires = NULL WHERE id = %s",
+            "UPDATE articulate_users_auth SET email_verified = TRUE, email_verify_token = NULL, email_verify_expires = NULL WHERE id = %s",
             (user["id"],),
         )
         logger.info("Email verified for user %d", user["id"])
@@ -372,7 +372,7 @@ class UserManager:
     async def resend_verification(email: str) -> bool:
         """Resend verification email. Returns True if sent."""
         user = await db.fetchone(
-            "SELECT id, name, email_verified FROM wp_users_auth WHERE email = %s",
+            "SELECT id, name, email_verified FROM articulate_users_auth WHERE email = %s",
             (email,),
         )
         if not user or user["email_verified"]:
@@ -382,7 +382,7 @@ class UserManager:
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
 
         await db.execute(
-            "UPDATE wp_users_auth SET email_verify_token = %s, email_verify_expires = %s WHERE id = %s",
+            "UPDATE articulate_users_auth SET email_verify_token = %s, email_verify_expires = %s WHERE id = %s",
             (token, expires, user["id"]),
         )
         send_verification_email(email, user["name"] or "", token)
@@ -393,7 +393,7 @@ class UserManager:
     async def request_password_reset(email: str) -> bool:
         """Generate a password reset token and send email. Always returns True to not leak user existence."""
         user = await db.fetchone(
-            "SELECT id, name, email_verified FROM wp_users_auth WHERE email = %s",
+            "SELECT id, name, email_verified FROM articulate_users_auth WHERE email = %s",
             (email,),
         )
         if not user or not user["email_verified"]:
@@ -403,7 +403,7 @@ class UserManager:
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
         await db.insert(
-            "INSERT INTO wp_password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)",
+            "INSERT INTO articulate_password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)",
             (user["id"], token, expires),
         )
         send_password_reset_email(email, user["name"] or "", token)
@@ -417,7 +417,7 @@ class UserManager:
             raise ValueError("Password must be at least 8 characters")
 
         row = await db.fetchone(
-            "SELECT id, user_id, expires_at, used_at FROM wp_password_reset_tokens WHERE token = %s",
+            "SELECT id, user_id, expires_at, used_at FROM articulate_password_reset_tokens WHERE token = %s",
             (token,),
         )
         if not row or row["used_at"]:
@@ -430,16 +430,16 @@ class UserManager:
         password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         await db.execute(
-            "UPDATE wp_users_auth SET password_hash = %s WHERE id = %s",
+            "UPDATE articulate_users_auth SET password_hash = %s WHERE id = %s",
             (password_hash, row["user_id"]),
         )
         await db.execute(
-            "UPDATE wp_password_reset_tokens SET used_at = NOW() WHERE id = %s",
+            "UPDATE articulate_password_reset_tokens SET used_at = NOW() WHERE id = %s",
             (row["id"],),
         )
         # Invalidate all sessions for this user
         await db.execute(
-            "DELETE FROM wp_sessions WHERE user_id = %s",
+            "DELETE FROM articulate_sessions WHERE user_id = %s",
             (row["user_id"],),
         )
         logger.info("Password reset completed for user %d", row["user_id"])
@@ -452,7 +452,7 @@ class UserManager:
         expires = datetime.now(timezone.utc) + timedelta(minutes=5)
 
         await db.insert(
-            "INSERT INTO wp_login_tokens (user_id, tenant_id, token, expires_at) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO articulate_login_tokens (user_id, tenant_id, token, expires_at) VALUES (%s, %s, %s, %s)",
             (user_id, tenant_id, token, expires),
         )
         return token
@@ -463,7 +463,7 @@ class UserManager:
         row = await db.fetchone(
             """SELECT t.id, t.user_id, t.tenant_id, t.expires_at, t.used_at,
                       tn.name as tenant_name, tn.domain as tenant_domain
-               FROM wp_login_tokens t
+               FROM articulate_login_tokens t
                JOIN tenants tn ON t.tenant_id = tn.id
                WHERE t.token = %s""",
             (token,),
@@ -477,7 +477,7 @@ class UserManager:
 
         # Mark as used
         await db.execute(
-            "UPDATE wp_login_tokens SET used_at = NOW() WHERE id = %s",
+            "UPDATE articulate_login_tokens SET used_at = NOW() WHERE id = %s",
             (row["id"],),
         )
 

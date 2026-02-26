@@ -3,14 +3,14 @@
 # Description: Create test table for migration system verification
 #
 # ROLLBACK: To rollback, run:
-#   wp db query "DROP TABLE IF EXISTS wp_migration_test;" --allow-root
+#   wp db query "DROP TABLE IF EXISTS articulate_migration_test;" --allow-root
 
 set -e
 
 echo "Running migration 003: test-migration..."
 
 wp db query "
-CREATE TABLE IF NOT EXISTS wp_migration_test (
+CREATE TABLE IF NOT EXISTS articulate_migration_test (
   id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   test_data VARCHAR(255) NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -22,7 +22,7 @@ This happens when MCP server tries to connect to `localhost:8080` from inside th
 WordPress connections must use internal Docker hostnames:
 
 ```sql
-UPDATE wp_wordpress_connections
+UPDATE articulate_wordpress_connections
 SET wp_url='http://wordpress:80',
     wp_graphql_endpoint='http://wordpress:80/graphql'
 WHERE wp_url LIKE '%localhost%';

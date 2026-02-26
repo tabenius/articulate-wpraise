@@ -344,7 +344,7 @@ class AIPreferencesManager:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
                         """
-                        INSERT INTO wp_ai_usage
+                        INSERT INTO articulate_ai_usage
                         (user_id, organization_id, feature, model, input_tokens, output_tokens, cost_usd, request_data, response_data)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,

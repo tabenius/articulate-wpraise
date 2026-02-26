@@ -12,7 +12,7 @@ The MCP server currently has **two conflicting authentication systems** for Word
 
 ### 2. Modern System (Database Connections)
 - **Location**: `mcp-server/src/wp_mcp/connection_manager.py`
-- **Source**: `wp_wordpress_connections` database table
+- **Source**: `articulate_wordpress_connections` database table
 - **Usage**: Per-user connections with encrypted credentials
 - **Scope**: Multi-tenant, each user can have multiple WordPress sites
 

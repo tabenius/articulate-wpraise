@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS wp_org_ai_settings (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE CASCADE,
   UNIQUE KEY unique_org (organization_id),
   INDEX idx_org (organization_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS articulate_ai_usage (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
   FOREIGN KEY (user_id) REFERENCES wp_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (organization_id) REFERENCES wp_organizations(id) ON DELETE SET NULL,
+  FOREIGN KEY (organization_id) REFERENCES articulate_organizations(id) ON DELETE SET NULL,
 
   INDEX idx_user_date (user_id, created_at),
   INDEX idx_org_date (organization_id, created_at),

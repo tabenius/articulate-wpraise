@@ -69,7 +69,7 @@ class OrgApiKeyManager:
         # Check if user has permission (owner or admin)
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (organization_id, created_by),
@@ -92,7 +92,7 @@ class OrgApiKeyManager:
         # Insert into database
         key_id = await db.insert(
             """
-            INSERT INTO wp_org_api_keys
+            INSERT INTO articulate_org_api_keys
             (organization_id, created_by, key_hash, key_prefix, description, expires_at)
             VALUES (%s, %s, %s, %s, %s, %s)
             """,
@@ -147,8 +147,8 @@ class OrgApiKeyManager:
                 k.expires_at,
                 o.name as org_name,
                 o.slug as org_slug
-            FROM wp_org_api_keys k
-            INNER JOIN wp_organizations o ON o.id = k.organization_id
+            FROM articulate_org_api_keys k
+            INNER JOIN articulate_organizations o ON o.id = k.organization_id
             WHERE k.key_hash = %s
             """,
             (key_hash,),
@@ -187,7 +187,7 @@ class OrgApiKeyManager:
         # Mark as used (single-use)
         await db.execute(
             """
-            UPDATE wp_org_api_keys
+            UPDATE articulate_org_api_keys
             SET used_at = %s
             WHERE id = %s
             """,
@@ -225,7 +225,7 @@ class OrgApiKeyManager:
         # Check membership
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (organization_id, user_id),
@@ -246,8 +246,8 @@ class OrgApiKeyManager:
                 k.is_active,
                 k.created_at,
                 u.username as created_by_username
-            FROM wp_org_api_keys k
-            INNER JOIN wp_users_auth u ON u.id = k.created_by
+            FROM articulate_org_api_keys k
+            INNER JOIN articulate_users_auth u ON u.id = k.created_by
             WHERE k.organization_id = %s
             ORDER BY k.created_at DESC
             """,
@@ -290,7 +290,7 @@ class OrgApiKeyManager:
         # Check permission (owner or admin)
         member = await db.fetchone(
             """
-            SELECT role FROM wp_organization_members
+            SELECT role FROM articulate_organization_members
             WHERE organization_id = %s AND user_id = %s
             """,
             (organization_id, user_id),
@@ -302,7 +302,7 @@ class OrgApiKeyManager:
         # Revoke key
         rows = await db.execute(
             """
-            UPDATE wp_org_api_keys
+            UPDATE articulate_org_api_keys
             SET is_active = 0
             WHERE id = %s AND organization_id = %s
             """,

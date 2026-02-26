@@ -47,7 +47,7 @@ class ActivityManager:
 
         result = await db.execute(
             """
-            INSERT INTO wp_activities (user_id, organization_id, activity_type, metadata)
+            INSERT INTO articulate_activities (user_id, organization_id, activity_type, metadata)
             VALUES (%s, %s, %s, %s)
             """,
             (user_id, organization_id, activity_type, metadata_json),
@@ -87,9 +87,9 @@ class ActivityManager:
                 u.avatar as user_avatar,
                 o.name as organization_name,
                 o.slug as organization_slug
-            FROM wp_activities a
-            JOIN wp_users_auth u ON a.user_id = u.id
-            LEFT JOIN wp_organizations o ON a.organization_id = o.id
+            FROM articulate_activities a
+            JOIN articulate_users_auth u ON a.user_id = u.id
+            LEFT JOIN articulate_organizations o ON a.organization_id = o.id
             WHERE a.user_id = %s
             ORDER BY a.created_at DESC
             LIMIT %s OFFSET %s
@@ -134,9 +134,9 @@ class ActivityManager:
                 u.avatar as user_avatar,
                 o.name as organization_name,
                 o.slug as organization_slug
-            FROM wp_activities a
-            JOIN wp_users_auth u ON a.user_id = u.id
-            LEFT JOIN wp_organizations o ON a.organization_id = o.id
+            FROM articulate_activities a
+            JOIN articulate_users_auth u ON a.user_id = u.id
+            LEFT JOIN articulate_organizations o ON a.organization_id = o.id
             WHERE a.organization_id = %s
             ORDER BY a.created_at DESC
             LIMIT %s OFFSET %s
@@ -181,14 +181,14 @@ class ActivityManager:
                 u.avatar as user_avatar,
                 o.name as organization_name,
                 o.slug as organization_slug
-            FROM wp_activities a
-            JOIN wp_users_auth u ON a.user_id = u.id
-            LEFT JOIN wp_organizations o ON a.organization_id = o.id
+            FROM articulate_activities a
+            JOIN articulate_users_auth u ON a.user_id = u.id
+            LEFT JOIN articulate_organizations o ON a.organization_id = o.id
             WHERE
                 a.user_id = %s
                 OR a.organization_id IN (
                     SELECT organization_id
-                    FROM wp_organization_members
+                    FROM articulate_organization_members
                     WHERE user_id = %s
                 )
             ORDER BY a.created_at DESC
