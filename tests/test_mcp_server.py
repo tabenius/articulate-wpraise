@@ -1054,7 +1054,7 @@ class TestImageCompression:
 
     def test_image_compressor_class(self):
         """Test ImageCompressor class methods directly."""
-        from wp_mcp.image_compressor import ImageCompressor
+        from articulate_mcp.image_compressor import ImageCompressor
 
         # Check availability
         assert ImageCompressor.is_available()
@@ -1082,7 +1082,7 @@ class TestImageCompression:
 
     def test_image_info(self):
         """Test get_image_info method."""
-        from wp_mcp.image_compressor import ImageCompressor
+        from articulate_mcp.image_compressor import ImageCompressor
 
         test_image = self.create_test_image(format="PNG", size=(150, 200))
         image_data = test_image.getvalue()
@@ -1097,7 +1097,7 @@ class TestImageCompression:
 
     def test_compression_formats(self):
         """Test all supported compression formats."""
-        from wp_mcp.image_compressor import ImageCompressor
+        from articulate_mcp.image_compressor import ImageCompressor
 
         test_image = self.create_test_image(format="PNG", size=(100, 100))
         image_data = test_image.getvalue()

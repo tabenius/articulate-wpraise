@@ -23,7 +23,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   useEffect(() => {
     if (open) {
-      const stored = localStorage.getItem("wp-ai-api-key") || "";
+      const stored = localStorage.getItem("articulate-api-key") || "";
       setApiKey(stored);
       setSaved(false);
     }
@@ -31,9 +31,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleSave = () => {
     if (apiKey.trim()) {
-      localStorage.setItem("wp-ai-api-key", apiKey.trim());
+      localStorage.setItem("articulate-api-key", apiKey.trim());
     } else {
-      localStorage.removeItem("wp-ai-api-key");
+      localStorage.removeItem("articulate-api-key");
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -41,7 +41,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleClear = () => {
     setApiKey("");
-    localStorage.removeItem("wp-ai-api-key");
+    localStorage.removeItem("articulate-api-key");
     setSaved(false);
   };
 

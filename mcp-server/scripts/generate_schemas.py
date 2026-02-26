@@ -9,7 +9,7 @@ from pathlib import Path
 # Suppress logging output
 logging.basicConfig(level=logging.CRITICAL)
 
-# Add parent directory to path to import wp_mcp
+# Add parent directory to path to import articulate_mcp
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from mcp.server.fastmcp import FastMCP
@@ -21,7 +21,7 @@ def generate_schemas():
     mcp = FastMCP("schema-generator")
 
     # Import and register all tools
-    from wp_mcp.tools import (
+    from articulate_mcp.tools import (
         posts,
         blocks,
         media,

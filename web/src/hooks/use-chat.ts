@@ -32,7 +32,7 @@ export function useChat() {
       try {
         const storedKey =
           typeof window !== "undefined"
-            ? localStorage.getItem("wp-ai-api-key")
+            ? localStorage.getItem("articulate-api-key")
             : null;
 
         const response = await fetch("/api/chat", {

@@ -122,8 +122,8 @@ if __name__ == "__main__":
 PYTHON_SCRIPT
 
 # Copy script to MCP container and execute it
-docker cp /tmp/update_mcp_connection.py wp-ai-mcp:/tmp/
-docker exec wp-ai-mcp python3 /tmp/update_mcp_connection.py "$APP_PASSWORD"
+docker cp /tmp/update_mcp_connection.py articulate-mcp:/tmp/
+docker exec articulate-mcp python3 /tmp/update_mcp_connection.py "$APP_PASSWORD"
 
 log_info "Connection update complete!"
 echo ""

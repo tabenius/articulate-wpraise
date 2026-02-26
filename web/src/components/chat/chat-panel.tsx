@@ -62,7 +62,7 @@ export function ChatPanel() {
         // Get API key from localStorage (BYOK)
         const storedKey =
           typeof window !== "undefined"
-            ? localStorage.getItem("wp-ai-api-key")
+            ? localStorage.getItem("articulate-api-key")
             : null;
 
         const response = await fetch("/api/chat", {

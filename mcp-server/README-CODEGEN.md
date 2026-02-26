@@ -34,15 +34,15 @@ define( 'GRAPHQL_DEBUG', true );
 
 ```bash
 # Step 1: Fetch WordPress GraphQL schema
-docker exec wp-ai-mcp python3 /app/scripts/introspect_graphql.py http://wordpress:80/graphql > mcp-server/schema.json
+docker exec articulate-mcp python3 /app/scripts/introspect_graphql.py http://wordpress:80/graphql > mcp-server/schema.json
 
 # Step 2: Generate Python MCP tools from schema
-docker exec wp-ai-mcp python3 /app/scripts/generate_mcp_from_graphql.py \
+docker exec articulate-mcp python3 /app/scripts/generate_mcp_from_graphql.py \
   --schema /app/schema.json \
-  --output /app/src/wp_mcp/tools/generated
+  --output /app/src/articulate_mcp/tools/generated
 
 # Step 3: Generate JSON schemas from Python tools
-docker exec wp-ai-mcp python3 /app/scripts/generate_schemas.py > schemas/mcp-tools.json
+docker exec articulate-mcp python3 /app/scripts/generate_schemas.py > schemas/mcp-tools.json
 
 # Step 4: Generate TypeScript types from JSON schemas
 cd web && npm run generate-types
@@ -53,8 +53,8 @@ cd web && npm run generate-types
 Register the generated tools in your MCP server:
 
 ```python
-# In src/wp_mcp/server.py
-from wp_mcp.tools import generated as generated_tools
+# In src/articulate_mcp/server.py
+from articulate_mcp.tools import generated as generated_tools
 
 # Register generated tools
 generated_tools.register(mcp)

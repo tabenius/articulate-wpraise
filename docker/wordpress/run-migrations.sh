@@ -8,7 +8,7 @@ echo "Running database migrations..."
 
 # Get current migration version from WordPress options table
 # Default to 0 if option doesn't exist yet
-CURRENT_VERSION=$(wp option get wp_ai_migration_version --allow-root 2>/dev/null || echo "0")
+CURRENT_VERSION=$(wp option get articulate_migration_version --allow-root 2>/dev/null || echo "0")
 echo "Current migration version: $CURRENT_VERSION"
 
 # Track if any migrations were applied
@@ -31,7 +31,7 @@ if [ -d "/usr/local/migrations" ]; then
       # Execute the migration script
       if bash "$migration"; then
         # Update the migration version in WordPress
-        wp option update wp_ai_migration_version "$MIGRATION_NUMBER" --allow-root
+        wp option update articulate_migration_version "$MIGRATION_NUMBER" --allow-root
         echo "✓ Migration $MIGRATION_NAME applied successfully"
         MIGRATIONS_APPLIED=$((MIGRATIONS_APPLIED + 1))
       else

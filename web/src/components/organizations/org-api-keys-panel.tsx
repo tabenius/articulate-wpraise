@@ -217,7 +217,7 @@ export function OrgApiKeysPanel({ organizationId }: OrgApiKeysPanelProps) {
 
   function downloadPlugin() {
     // Trigger download of plugin ZIP
-    window.open("/downloads/wp-ai-connector.zip", "_blank");
+    window.open("/downloads/articulate-connector.zip", "_blank");
   }
 
   function getKeyStatus(key: ApiKey) {

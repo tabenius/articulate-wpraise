@@ -24,7 +24,7 @@ done
 # Generate user SSH key pair if it doesn't exist
 if [ ! -f "$SSH_DIR/id_ed25519" ]; then
     echo "[SSH] Generating user key pair..."
-    ssh-keygen -t ed25519 -f "$SSH_DIR/id_ed25519" -N "" -C "${SSH_USER}@wp-ai-wordpress" -q
+    ssh-keygen -t ed25519 -f "$SSH_DIR/id_ed25519" -N "" -C "${SSH_USER}@articulate-wordpress" -q
     cp "$SSH_DIR/id_ed25519.pub" "$SSH_DIR/authorized_keys"
 fi
 
@@ -61,9 +61,9 @@ cat "$SSH_DIR/id_ed25519.pub"
 echo "========================================="
 echo ""
 echo "  To connect, extract the private key:"
-echo "    docker cp wp-ai-wordpress:${SSH_DIR}/id_ed25519 /tmp/wp-ai-key"
-echo "    chmod 600 /tmp/wp-ai-key"
-echo "    ssh -i /tmp/wp-ai-key -p 2222 ${SSH_USER}@localhost"
+echo "    docker cp articulate-wordpress:${SSH_DIR}/id_ed25519 /tmp/articulate-key"
+echo "    chmod 600 /tmp/articulate-key"
+echo "    ssh -i /tmp/articulate-key -p 2222 ${SSH_USER}@localhost"
 echo ""
 echo "  WP-CLI is available inside the container:"
 echo "    wp --allow-root <command>"

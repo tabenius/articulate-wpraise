@@ -11,14 +11,14 @@ from cryptography.fernet import Fernet
 @pytest.fixture
 def manager():
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-    with patch("wp_mcp.tenants.manager.default_db") as mock_db, \
-         patch("wp_mcp.tenants.manager.TenantDockerOps") as mock_docker_cls:
+    with patch("articulate_mcp.tenants.manager.default_db") as mock_db, \
+         patch("articulate_mcp.tenants.manager.TenantDockerOps") as mock_docker_cls:
         mock_db.fetchone = AsyncMock(return_value=None)
         mock_db.fetchall = AsyncMock(return_value=[])
         mock_db.execute = AsyncMock(return_value=1)
         mock_db.insert = AsyncMock(return_value=1)
 
-        from wp_mcp.tenants.manager import TenantManager
+        from articulate_mcp.tenants.manager import TenantManager
         mgr = TenantManager(
             encryption_key=os.environ["ENCRYPTION_KEY"],
             template_dir=os.path.join(os.path.dirname(__file__), "..", "..", "templates"),

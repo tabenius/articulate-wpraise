@@ -1,9 +1,9 @@
 """Test script for user management and WordPress connections."""
 
 import asyncio
-from wp_mcp.user_manager import UserManager
-from wp_mcp.connection_manager import connection_manager
-from wp_mcp.database import db
+from articulate_mcp.user_manager import UserManager
+from articulate_mcp.connection_manager import connection_manager
+from articulate_mcp.database import db
 
 
 async def test_user_management():

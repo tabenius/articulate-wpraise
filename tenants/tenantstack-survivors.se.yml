@@ -1,0 +1,114 @@
+
+# TEMPLATE: docker-compose-tenant.yml
+# DOMAIN: survivors.se
+# ID: 7a8c93c7f97c54937444ea97f3951f21
+ 
+version: "3.9"
+
+name: tenant_7a8c93c7f97c54937444ea97f3951f21
+
+services:
+
+  wordpress:
+    image: wordpress:6.4-php8.2-fpm-alpine
+    container_name: tenant_7a8c93c7f97c54937444ea97f3951f21_wordpress
+    restart: unless-stopped
+
+    depends_on:
+      - mariadb
+
+    networks:
+      - proxy_net
+      - tenant_net
+      - control_net
+
+    volumes:
+      - wp_data:/var/www/html
+
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: wp
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: 2dc508f1334bdf307d389123bc304e68
+
+    # Resource controls
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+
+    # Security hardening
+    read_only: false
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    tmpfs:
+      - /tmp
+
+    # Caddy integration (example via labels if using docker discovery)
+    labels:
+      caddy: survivors.se
+      caddy.reverse_proxy: "tenant_7a8c93c7f97c54937444ea97f3951f21_wordpress:9000"
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: tenant_7a8c93c7f97c54937444ea97f3951f21_mariadb
+    restart: unless-stopped
+
+    networks:
+      - tenant_net
+      - control_net
+
+    volumes:
+      - db_data:/var/lib/mysql
+
+    environment:
+      MYSQL_ROOT_PASSWORD: 210efc8d6a3b343c09cf58a3e2f072de
+      MYSQL_DATABASE: wp
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: 2dc508f1334bdf307d389123bc304e68
+
+    command:
+      - --transaction-isolation=READ-COMMITTED
+      - --binlog-format=ROW
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=50
+
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    tmpfs:
+      - /tmp
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+networks:
+
+  proxy_net:
+    external: true
+
+  control_net:
+    external: true
+
+  tenant_net:
+    driver: bridge
+    internal: true
+
+volumes:
+
+  wp_data:
+    name: tenant_7a8c93c7f97c54937444ea97f3951f21_wp_data
+
+  db_data:
+    name: tenant_7a8c93c7f97c54937444ea97f3951f21_db_data

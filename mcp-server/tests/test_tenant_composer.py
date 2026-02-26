@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture
 def composer():
-    from wp_mcp.tenants.composer import TenantComposer
+    from articulate_mcp.tenants.composer import TenantComposer
     template_dir = os.path.join(os.path.dirname(__file__), "..", "..", "templates")
     return TenantComposer(template_dir=template_dir)
 

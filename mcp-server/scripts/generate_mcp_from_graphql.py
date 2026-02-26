@@ -7,7 +7,7 @@ This script analyzes the WordPress GraphQL schema and automatically generates:
 - Response type mappings
 
 Usage:
-    python generate_mcp_from_graphql.py [--schema schema.json] [--output src/wp_mcp/tools/generated]
+    python generate_mcp_from_graphql.py [--schema schema.json] [--output src/articulate_mcp/tools/generated]
 """
 
 import json
@@ -204,8 +204,8 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from wp_mcp.graphql.client import get_graphql_client
-from wp_mcp.context_helper import get_connection_info
+from articulate_mcp.graphql.client import get_graphql_client
+from articulate_mcp.context_helper import get_connection_info
 
 
 def register(mcp: FastMCP) -> None:
@@ -234,7 +234,7 @@ def register(mcp: FastMCP) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Generate MCP tools from WordPress GraphQL schema")
     parser.add_argument("--schema", default="schema.json", help="Path to GraphQL schema JSON file")
-    parser.add_argument("--output", default="src/wp_mcp/tools/generated", help="Output directory")
+    parser.add_argument("--output", default="src/articulate_mcp/tools/generated", help="Output directory")
     parser.add_argument("--graphql-url", help="WordPress GraphQL endpoint URL (for live introspection)")
 
     args = parser.parse_args()

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from wp_mcp.tools.preview import get_preview_html, register
+from articulate_mcp.tools.preview import get_preview_html, register
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_successful_preview_fetch(self, mock_mcp, mock_config):
         """Test successful preview HTML fetching."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             # Mock HTTP response
             mock_response = Mock()
             mock_response.json.return_value = {
@@ -66,7 +66,7 @@ class TestPreviewTool:
         mock_cfg.wp_url = "http://wordpress:80"
         mock_cfg.wp_auth = None  # No authentication
 
-        with patch("wp_mcp.tools.preview.config", mock_cfg):
+        with patch("articulate_mcp.tools.preview.config", mock_cfg):
             result = await get_preview_html(post_id=1)
 
             assert "error" in result
@@ -75,7 +75,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_not_found(self, mock_mcp, mock_config):
         """Test preview fetch for non-existent post."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             # Mock 404 response
             mock_response = Mock()
             mock_response.status_code = 404
@@ -102,7 +102,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_unauthorized(self, mock_mcp, mock_config):
         """Test preview fetch with invalid credentials."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             # Mock 401 response
             mock_response = Mock()
             mock_response.status_code = 401
@@ -130,7 +130,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_server_error(self, mock_mcp, mock_config):
         """Test preview fetch with server error."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             # Mock 500 response
             mock_response = Mock()
             mock_response.status_code = 500
@@ -154,7 +154,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_timeout(self, mock_mcp, mock_config):
         """Test preview fetch with timeout."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                     side_effect=httpx.TimeoutException("Request timeout")
@@ -168,7 +168,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_network_error(self, mock_mcp, mock_config):
         """Test preview fetch with network error."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                     side_effect=httpx.ConnectError("Connection failed")
@@ -182,7 +182,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_success_false_in_response(self, mock_mcp, mock_config):
         """Test preview fetch when WordPress returns success=false."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             mock_response = Mock()
             mock_response.json.return_value = {
                 "success": False,
@@ -203,7 +203,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_url_construction(self, mock_mcp, mock_config):
         """Test that preview URL is correctly constructed."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             mock_response = Mock()
             mock_response.json.return_value = {
                 "success": True,
@@ -227,7 +227,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_auth_headers(self, mock_mcp, mock_config):
         """Test that authentication is passed correctly."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             mock_response = Mock()
             mock_response.json.return_value = {
                 "success": True,
@@ -249,7 +249,7 @@ class TestPreviewTool:
     @pytest.mark.asyncio
     async def test_preview_response_format_validation(self, mock_mcp, mock_config):
         """Test that all expected fields are present in successful response."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             mock_response = Mock()
             mock_response.json.return_value = {
                 "success": True,
@@ -284,7 +284,7 @@ class TestPreviewIntegration:
     @pytest.mark.asyncio
     async def test_preview_with_different_post_types(self, mock_mcp, mock_config):
         """Test preview for different post types (post, page, custom)."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             for post_type in ["post", "page", "custom_type"]:
                 mock_response = Mock()
                 mock_response.json.return_value = {
@@ -308,7 +308,7 @@ class TestPreviewIntegration:
     @pytest.mark.asyncio
     async def test_preview_with_different_statuses(self, mock_mcp, mock_config):
         """Test preview for posts with different statuses."""
-        with patch("wp_mcp.tools.preview.config", mock_config):
+        with patch("articulate_mcp.tools.preview.config", mock_config):
             for status in ["draft", "publish", "pending", "private"]:
                 mock_response = Mock()
                 mock_response.json.return_value = {

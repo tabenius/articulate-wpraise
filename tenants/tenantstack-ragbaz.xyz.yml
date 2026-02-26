@@ -1,0 +1,114 @@
+
+# TEMPLATE: docker-compose-tenant.yml
+# DOMAIN: ragbaz.xyz
+# ID: 48a5fa68894027e9258540cf5ac34bd2
+ 
+version: "3.9"
+
+name: tenant_48a5fa68894027e9258540cf5ac34bd2
+
+services:
+
+  wordpress:
+    image: wordpress:6.4-php8.2-fpm-alpine
+    container_name: tenant_48a5fa68894027e9258540cf5ac34bd2_wordpress
+    restart: unless-stopped
+
+    depends_on:
+      - mariadb
+
+    networks:
+      - proxy_net
+      - tenant_net
+      - control_net
+
+    volumes:
+      - wp_data:/var/www/html
+
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: wp
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: 7101136092f6d4fcf6db0dbc82a2056c
+
+    # Resource controls
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+
+    # Security hardening
+    read_only: false
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    tmpfs:
+      - /tmp
+
+    # Caddy integration (example via labels if using docker discovery)
+    labels:
+      caddy: ragbaz.xyz
+      caddy.reverse_proxy: "tenant_48a5fa68894027e9258540cf5ac34bd2_wordpress:9000"
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: tenant_48a5fa68894027e9258540cf5ac34bd2_mariadb
+    restart: unless-stopped
+
+    networks:
+      - tenant_net
+      - control_net
+
+    volumes:
+      - db_data:/var/lib/mysql
+
+    environment:
+      MYSQL_ROOT_PASSWORD: 089f82775098d56341ad9d4c9bbb9116
+      MYSQL_DATABASE: wp
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: 7101136092f6d4fcf6db0dbc82a2056c
+
+    command:
+      - --transaction-isolation=READ-COMMITTED
+      - --binlog-format=ROW
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=50
+
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    tmpfs:
+      - /tmp
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+networks:
+
+  proxy_net:
+    external: true
+
+  control_net:
+    external: true
+
+  tenant_net:
+    driver: bridge
+    internal: true
+
+volumes:
+
+  wp_data:
+    name: tenant_48a5fa68894027e9258540cf5ac34bd2_wp_data
+
+  db_data:
+    name: tenant_48a5fa68894027e9258540cf5ac34bd2_db_data

@@ -10,13 +10,13 @@ Integration tests for critical security paths:
 
 ```bash
 # Run all tests
-docker exec wp-ai-mcp pytest /app/tests/ -v
+docker exec articulate-mcp pytest /app/tests/ -v
 
 # Run specific test file
-docker exec wp-ai-mcp pytest /app/tests/test_user_manager.py -v
+docker exec articulate-mcp pytest /app/tests/test_user_manager.py -v
 
 # Run with coverage
-docker exec wp-ai-mcp pytest /app/tests/ --cov=wp_mcp --cov-report=html
+docker exec articulate-mcp pytest /app/tests/ --cov=articulate_mcp --cov-report=html
 ```
 
 ## Test Database

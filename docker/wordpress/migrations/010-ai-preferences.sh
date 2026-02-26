@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS wp_org_ai_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- AI Usage Tracking Table
-CREATE TABLE IF NOT EXISTS wp_ai_usage (
+CREATE TABLE IF NOT EXISTS articulate_ai_usage (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
   organization_id BIGINT UNSIGNED,

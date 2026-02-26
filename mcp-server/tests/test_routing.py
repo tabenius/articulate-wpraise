@@ -1,5 +1,5 @@
 import pytest
-from wp_mcp.tenants.routing import RouteResolver
+from articulate_mcp.tenants.routing import RouteResolver
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet
 @pytest.fixture
 def crypto():
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-    from wp_mcp.tenants.crypto import TenantCrypto
+    from articulate_mcp.tenants.crypto import TenantCrypto
     return TenantCrypto(os.environ["ENCRYPTION_KEY"])
 
 

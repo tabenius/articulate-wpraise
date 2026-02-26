@@ -9,8 +9,8 @@ import pytest
 
 @pytest.fixture
 def docker_ops():
-    with patch("wp_mcp.tenants.docker_ops.DockerClient") as mock_docker:
-        from wp_mcp.tenants.docker_ops import TenantDockerOps
+    with patch("articulate_mcp.tenants.docker_ops.DockerClient") as mock_docker:
+        from articulate_mcp.tenants.docker_ops import TenantDockerOps
         ops = TenantDockerOps(compose_dir="/tmp/tenants")
         ops.docker = mock_docker.return_value
         yield ops

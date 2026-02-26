@@ -11,7 +11,7 @@ import sys
 import logging
 from pathlib import Path
 
-# Add parent directory to path to import wp_mcp
+# Add parent directory to path to import articulate_mcp
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import pymysql

@@ -1,8 +1,8 @@
 """Tests for block parser and serializer."""
 
-from wp_mcp.blocks.parser import parse_blocks
-from wp_mcp.blocks.serializer import serialize_blocks
-from wp_mcp.blocks.types import Block
+from articulate_mcp.blocks.parser import parse_blocks
+from articulate_mcp.blocks.serializer import serialize_blocks
+from articulate_mcp.blocks.types import Block
 
 
 def test_parse_empty_content():

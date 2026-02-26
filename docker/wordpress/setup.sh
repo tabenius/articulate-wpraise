@@ -171,10 +171,10 @@ install_wordpress_core() {
 
   wp core install \
     --url="http://localhost:8080" \
-    --title="WP-AI Dev" \
+    --title="Articulate Dev" \
     --admin_user="${WP_ADMIN_USER:-admin}" \
     --admin_password="${WP_ADMIN_PASS:-admin123}" \
-    --admin_email="admin@wp-ai.local" \
+    --admin_email="admin@articulate.local" \
     --skip-email \
     --path="$WORDPRESS_PATH" \
     --allow-root
@@ -496,7 +496,7 @@ run_migrations() {
   bash /usr/local/bin/run-migrations.sh
 
   # Check migration version
-  local version=$(wp option get wp_ai_migration_version --path="$WORDPRESS_PATH" --allow-root 2>/dev/null || echo "0")
+  local version=$(wp option get articulate_migration_version --path="$WORDPRESS_PATH" --allow-root 2>/dev/null || echo "0")
   log_success "Current migration version: $version"
 
   return 0
@@ -513,7 +513,7 @@ print_summary() {
   local site_url=$(wp option get siteurl --path="$WORDPRESS_PATH" --allow-root 2>/dev/null)
   local wp_version=$(wp core version --path="$WORDPRESS_PATH" --allow-root 2>/dev/null)
   local active_plugins=$(wp plugin list --status=active --field=name --path="$WORDPRESS_PATH" --allow-root 2>/dev/null | wc -l)
-  local migration_version=$(wp option get wp_ai_migration_version --path="$WORDPRESS_PATH" --allow-root 2>/dev/null || echo "0")
+  local migration_version=$(wp option get articulate_migration_version --path="$WORDPRESS_PATH" --allow-root 2>/dev/null || echo "0")
   local post_count=$(wp post list --post_type=post --format=count --path="$WORDPRESS_PATH" --allow-root 2>/dev/null || echo "0")
 
   echo ""

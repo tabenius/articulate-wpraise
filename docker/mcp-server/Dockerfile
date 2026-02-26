@@ -23,4 +23,4 @@ RUN pip install --no-cache-dir -e ".[dev]" 2>/dev/null || pip install --no-cache
 
 EXPOSE 8000
 
-CMD ["python", "-m", "wp_mcp.server"]
+CMD ["python", "-m", "articulate_mcp.server"]

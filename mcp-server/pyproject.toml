@@ -1,5 +1,5 @@
 [project]
-name = "wp-mcp"
+name = "articulate-mcp"
 version = "0.1.0"
 description = "MCP server for WordPress integration via WPGraphQL"
 requires-python = ">=3.12"
