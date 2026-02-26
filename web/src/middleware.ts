@@ -5,11 +5,18 @@ import type { NextRequest } from "next/server";
 const PUBLIC_ROUTES = [
   "/",
   "/auth",
+  "/auth/verify",
+  "/auth/reset",
+  "/auth/forgot-password",
   "/setup",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/me",
   "/api/auth/setup-default-connection",
+  "/api/auth/verify-email",
+  "/api/auth/resend-verification",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
 ];
 
 export async function middleware(request: NextRequest) {

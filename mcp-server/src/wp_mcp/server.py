@@ -31,7 +31,10 @@ from wp_mcp.tools import (
 
 # Import route handlers
 from wp_mcp.routes.auth import (
-    register_endpoint, login_endpoint, logout_endpoint, me_endpoint
+    register_endpoint, login_endpoint, logout_endpoint, me_endpoint,
+    verify_email_endpoint, resend_verification_endpoint,
+    forgot_password_endpoint, reset_password_endpoint,
+    wp_login_token_endpoint, validate_wp_login_token_endpoint
 )
 from wp_mcp.routes.profile import (
     get_profile_endpoint, update_profile_endpoint,
@@ -200,6 +203,12 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/login", login_endpoint, methods=["POST"]),
     Route("/logout", logout_endpoint, methods=["POST"]),
     Route("/me", me_endpoint, methods=["GET"]),
+    Route("/auth/verify-email", verify_email_endpoint, methods=["POST"]),
+    Route("/auth/resend-verification", resend_verification_endpoint, methods=["POST"]),
+    Route("/auth/forgot-password", forgot_password_endpoint, methods=["POST"]),
+    Route("/auth/reset-password", reset_password_endpoint, methods=["POST"]),
+    Route("/auth/wp-login-token", wp_login_token_endpoint, methods=["POST"]),
+    Route("/auth/validate-wp-login-token", validate_wp_login_token_endpoint, methods=["POST"]),
 
     # Profile
     Route("/profile", get_profile_endpoint, methods=["GET"]),

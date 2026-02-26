@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WP-AI Preview Renderer
+ * Plugin Name: Articulate Preview Renderer
  * Description: Provides REST endpoint for live post preview with theme rendering
  * Version: 1.0.0
  */
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class WP_AI_Preview_Renderer {
+class Articulate_Preview_Renderer {
     public function __construct() {
         add_action('rest_api_init', [$this, 'register_routes']);
     }
@@ -19,7 +19,7 @@ class WP_AI_Preview_Renderer {
      * Register REST API routes
      */
     public function register_routes() {
-        register_rest_route('wp-ai/v1', '/preview/(?P<id>\d+)', [
+        register_rest_route('articulate/v1', '/preview/(?P<id>\d+)', [
             'methods' => 'GET',
             'callback' => [$this, 'render_preview'],
             'permission_callback' => [$this, 'check_permission'],
@@ -170,4 +170,4 @@ class WP_AI_Preview_Renderer {
 }
 
 // Initialize the plugin
-new WP_AI_Preview_Renderer();
+new Articulate_Preview_Renderer();

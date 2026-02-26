@@ -290,22 +290,22 @@ configure_wpgraphql() {
 install_custom_plugins() {
   log_section "Installing Custom Plugins"
 
-  if [ ! -d "/tmp/wp-ai-plugins" ]; then
-    log_warning "No custom plugins found at /tmp/wp-ai-plugins"
+  if [ ! -d "/tmp/articulate-plugins" ]; then
+    log_warning "No custom plugins found at /tmp/articulate-plugins"
     return 0
   fi
 
-  local plugin_count=$(find /tmp/wp-ai-plugins -maxdepth 1 -type d | tail -n +2 | wc -l)
+  local plugin_count=$(find /tmp/articulate-plugins -maxdepth 1 -type d | tail -n +2 | wc -l)
   if [ $plugin_count -eq 0 ]; then
     log_warning "Custom plugins directory is empty"
     return 0
   fi
 
   log_info "Copying $plugin_count custom plugin(s)..."
-  cp -r /tmp/wp-ai-plugins/* "$WORDPRESS_PATH/wp-content/plugins/"
+  cp -r /tmp/articulate-plugins/* "$WORDPRESS_PATH/wp-content/plugins/"
 
   # List and activate each custom plugin
-  for plugin_dir in /tmp/wp-ai-plugins/*/; do
+  for plugin_dir in /tmp/articulate-plugins/*/; do
     local plugin_name=$(basename "$plugin_dir")
 
     if [ -d "$WORDPRESS_PATH/wp-content/plugins/$plugin_name" ]; then
@@ -325,12 +325,12 @@ install_custom_plugins() {
 install_must_use_plugins() {
   log_section "Installing Must-Use Plugins"
 
-  if [ ! -d "/tmp/wp-ai-mu-plugins" ]; then
+  if [ ! -d "/tmp/articulate-mu-plugins" ]; then
     log_warning "No must-use plugins found"
     return 0
   fi
 
-  local mu_plugin_count=$(find /tmp/wp-ai-mu-plugins -maxdepth 1 -type f -name "*.php" | wc -l)
+  local mu_plugin_count=$(find /tmp/articulate-mu-plugins -maxdepth 1 -type f -name "*.php" | wc -l)
   if [ $mu_plugin_count -eq 0 ]; then
     log_warning "Must-use plugins directory is empty"
     return 0
@@ -338,7 +338,7 @@ install_must_use_plugins() {
 
   log_info "Copying $mu_plugin_count must-use plugin(s)..."
   mkdir -p "$WORDPRESS_PATH/wp-content/mu-plugins"
-  cp -r /tmp/wp-ai-mu-plugins/* "$WORDPRESS_PATH/wp-content/mu-plugins/"
+  cp -r /tmp/articulate-mu-plugins/* "$WORDPRESS_PATH/wp-content/mu-plugins/"
 
   log_success "Must-use plugins installed (auto-activated)"
 

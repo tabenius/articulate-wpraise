@@ -19,15 +19,14 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ email, password }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
       return NextResponse.json(
-        { error: error.error || "Login failed" },
+        { error: data.error || "Login failed", email: data.email },
         { status: response.status }
       );
     }
-
-    const data = await response.json();
 
     const cookieStore = await cookies();
 

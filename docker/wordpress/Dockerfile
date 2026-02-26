@@ -43,10 +43,10 @@ RUN chmod +x /usr/local/migrations/*.sh
 
 # Copy custom plugins to a temporary location
 # (will be moved during setup since /var/www/html is a volume)
-COPY plugins /tmp/wp-ai-plugins/
+COPY plugins /tmp/articulate-plugins/
 
 # Copy must-use plugins (these enable core functionality)
-COPY mu-plugins /tmp/wp-ai-mu-plugins/
+COPY mu-plugins /tmp/articulate-mu-plugins/
 
 # Copy SSH entrypoint wrapper
 COPY docker-entrypoint-ssh.sh /usr/local/bin/docker-entrypoint-ssh.sh

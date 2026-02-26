@@ -17,11 +17,13 @@ services:
       - control_net
     volumes:
       - wp_data:/var/www/html
+      - /app/templates/wordpress/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
     environment:
       WORDPRESS_DB_HOST: mariadb:3306
       WORDPRESS_DB_NAME: wp
       WORDPRESS_DB_USER: wp
       WORDPRESS_DB_PASSWORD: "{{DB_PASSWORD}}"
+      ARTICULATE_MCP_URL: http://articulate-mcp:8000
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_HOME', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
         define('WP_SITEURL', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');

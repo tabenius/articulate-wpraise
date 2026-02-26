@@ -83,7 +83,7 @@ def register(mcp: FastMCP) -> None:
                 if not wp_auth:
                     return {"error": "WordPress authentication not configured"}
 
-                upload_url = f"{config.wp_url}/wp-json/wp-ai/v1/fonts/upload"
+                upload_url = f"{config.wp_url}/wp-json/articulate/v1/fonts/upload"
                 upload_response = await client.post(
                     upload_url,
                     files=files,
@@ -124,7 +124,7 @@ def register(mcp: FastMCP) -> None:
                 if not wp_auth:
                     return [{"error": "WordPress authentication not configured"}]
 
-                list_url = f"{config.wp_url}/wp-json/wp-ai/v1/fonts"
+                list_url = f"{config.wp_url}/wp-json/articulate/v1/fonts"
                 response = await client.get(list_url, auth=wp_auth)
                 response.raise_for_status()
 
@@ -154,7 +154,7 @@ def register(mcp: FastMCP) -> None:
                 if not wp_auth:
                     return {"error": "WordPress authentication not configured"}
 
-                delete_url = f"{config.wp_url}/wp-json/wp-ai/v1/fonts/{font_id}"
+                delete_url = f"{config.wp_url}/wp-json/articulate/v1/fonts/{font_id}"
                 response = await client.delete(delete_url, auth=wp_auth)
                 response.raise_for_status()
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WP-AI Font Manager
+ * Plugin Name: Articulate Font Manager
  * Description: Manages font uploads and automatic @font-face registration
  * Version: 1.0.0
  */
@@ -10,9 +10,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class WP_AI_Font_Manager {
-    const OPTION_KEY = 'wp_ai_registered_fonts';
-    const API_NAMESPACE = 'wp-ai/v1';
+class Articulate_Font_Manager {
+    const OPTION_KEY = 'articulate_registered_fonts';
+    const API_NAMESPACE = 'articulate/v1';
     const UPLOAD_DIR = 'fonts';
 
     public function __construct() {
@@ -218,7 +218,7 @@ class WP_AI_Font_Manager {
             return;
         }
 
-        echo "<style id='wp-ai-fonts'>\n";
+        echo "<style id='articulate-fonts'>\n";
         foreach ($fonts as $font) {
             echo $font['css'] . "\n";
         }
@@ -227,4 +227,4 @@ class WP_AI_Font_Manager {
 }
 
 // Initialize the plugin
-new WP_AI_Font_Manager();
+new Articulate_Font_Manager();

@@ -73,7 +73,12 @@ async def login_endpoint(request):
         password = data.get("password")
 
         result = await UserManager.authenticate(email, password)
-        if result:
+        if result and result.get("error") == "email_not_verified":
+            return JSONResponse(
+                {"error": "email_not_verified", "email": result["email"]},
+                status_code=403,
+            )
+        if result and "session_id" in result:
             # Log successful login
             await AuditLog.log_auth_event(
                 event_type="login",
@@ -162,3 +167,127 @@ async def me_endpoint(request):
     except Exception as e:
         logger.error("Get user error: %s", e)
         return JSONResponse({"error": "Failed to get user"}, status_code=500)
+
+
+async def verify_email_endpoint(request):
+    """Verify email address using token."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        token = data.get("token")
+        if not token:
+            return JSONResponse({"error": "Token required"}, status_code=400)
+
+        success = await UserManager.verify_email(token)
+        if success:
+            return JSONResponse({"success": True})
+        else:
+            return JSONResponse({"error": "Invalid or expired token"}, status_code=400)
+    except Exception as e:
+        logger.error("Verify email error: %s", e)
+        return JSONResponse({"error": "Verification failed"}, status_code=500)
+
+
+async def resend_verification_endpoint(request):
+    """Resend verification email."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        email = data.get("email")
+        if not email:
+            return JSONResponse({"error": "Email required"}, status_code=400)
+
+        await UserManager.resend_verification(email)
+        # Always return success to not leak user existence
+        return JSONResponse({"success": True, "message": "If the email is registered, a verification link has been sent."})
+    except Exception as e:
+        logger.error("Resend verification error: %s", e)
+        return JSONResponse({"error": "Failed to resend"}, status_code=500)
+
+
+async def forgot_password_endpoint(request):
+    """Request a password reset email."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        email = data.get("email")
+        if not email:
+            return JSONResponse({"error": "Email required"}, status_code=400)
+
+        await UserManager.request_password_reset(email)
+        return JSONResponse({"success": True, "message": "If the email is registered, a reset link has been sent."})
+    except Exception as e:
+        logger.error("Forgot password error: %s", e)
+        return JSONResponse({"error": "Failed to send reset email"}, status_code=500)
+
+
+async def reset_password_endpoint(request):
+    """Reset password with token."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        token = data.get("token")
+        password = data.get("password")
+        if not token or not password:
+            return JSONResponse({"error": "Token and password required"}, status_code=400)
+
+        success = await UserManager.reset_password(token, password)
+        if success:
+            return JSONResponse({"success": True})
+        else:
+            return JSONResponse({"error": "Invalid or expired token"}, status_code=400)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Reset password error: %s", e)
+        return JSONResponse({"error": "Password reset failed"}, status_code=500)
+
+
+async def wp_login_token_endpoint(request):
+    """Generate a one-time WP-Admin login token for a tenant."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Authentication required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        data = await request.json()
+        tenant_id = data.get("tenant_id")
+        if not tenant_id:
+            return JSONResponse({"error": "tenant_id required"}, status_code=400)
+
+        token = await UserManager.create_wp_login_token(user["id"], tenant_id)
+
+        return JSONResponse({"token": token})
+    except Exception as e:
+        logger.error("WP login token error: %s", e)
+        return JSONResponse({"error": "Failed to create login token"}, status_code=500)
+
+
+async def validate_wp_login_token_endpoint(request):
+    """Validate a one-time WP-Admin login token (called by tenant WordPress)."""
+    from wp_mcp.user_manager import UserManager
+
+    try:
+        data = await request.json()
+        token = data.get("token")
+        if not token:
+            return JSONResponse({"valid": False, "error": "Token required"}, status_code=400)
+
+        result = await UserManager.validate_wp_login_token(token)
+        if result:
+            return JSONResponse({"valid": True, **result})
+        else:
+            return JSONResponse({"valid": False}, status_code=401)
+    except Exception as e:
+        logger.error("Validate WP login token error: %s", e)
+        return JSONResponse({"valid": False, "error": "Validation failed"}, status_code=500)

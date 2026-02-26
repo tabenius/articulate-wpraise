@@ -32,6 +32,7 @@ import {
   Server,
   Eye,
   Link2,
+  Shield,
 } from "lucide-react";
 
 interface Tenant {
@@ -288,6 +289,32 @@ function TenantCard({
   const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
   const [domainForm, setDomainForm] = useState({ external_domain: "", target_view: "wordpress" });
   const [isAddingDomain, setIsAddingDomain] = useState(false);
+  const [isWpAdminLoading, setIsWpAdminLoading] = useState(false);
+
+  async function handleWpAdmin() {
+    setIsWpAdminLoading(true);
+    try {
+      const res = await fetch("/api/auth/wp-login-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_id: tenant.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate login token");
+
+      // Open WP-Admin with the one-time token
+      const wpLoginUrl = `https://wordpress.${tenant.name}.ragbaz.xyz/wp-login.php?articulate_token=${data.token}`;
+      window.open(wpLoginUrl, "_blank");
+    } catch (error) {
+      toast({
+        title: "WP Admin access failed",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsWpAdminLoading(false);
+    }
+  }
 
   async function handleAddDomain(e: React.FormEvent) {
     e.preventDefault();
@@ -339,9 +366,20 @@ function TenantCard({
               {tenant.domain}
             </CardDescription>
           </div>
-          <Button variant="destructive" size="sm" onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleWpAdmin}
+              disabled={isWpAdminLoading || tenant.status !== "running"}
+            >
+              <Shield className="h-4 w-4 mr-1" />
+              {isWpAdminLoading ? "Opening..." : "WP Admin"}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

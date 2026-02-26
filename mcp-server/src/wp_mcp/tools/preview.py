@@ -30,7 +30,7 @@ async def get_preview_html(post_id: int) -> dict[str, Any]:
             if not wp_auth:
                 return {"error": "WordPress authentication not configured"}
 
-            preview_url = f"{config.wp_url}/wp-json/wp-ai/v1/preview/{post_id}"
+            preview_url = f"{config.wp_url}/wp-json/articulate/v1/preview/{post_id}"
             response = await client.get(preview_url, auth=wp_auth)
             response.raise_for_status()
 

@@ -219,7 +219,7 @@ class TestPreviewTool:
                 await get_preview_html(post_id=42)
 
                 # Verify the URL was called correctly
-                expected_url = "http://wordpress:80/wp-json/wp-ai/v1/preview/42"
+                expected_url = "http://wordpress:80/wp-json/articulate/v1/preview/42"
                 mock_get.assert_called_once()
                 actual_url = mock_get.call_args[0][0]
                 assert actual_url == expected_url

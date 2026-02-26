@@ -55,6 +55,11 @@ class AuthMiddleware:
             "/register",
             "/login",
             "/me",
+            "/auth/verify-email",
+            "/auth/resend-verification",
+            "/auth/forgot-password",
+            "/auth/reset-password",
+            "/auth/validate-wp-login-token",
             "/organizations/search",  # Public organization search
             "/api/register-wordpress",  # Public WordPress registration with API key
         ]

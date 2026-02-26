@@ -1,16 +1,16 @@
 <?php
 /**
- * Plugin Name: WP-AI Authentication
- * Description: JWT-based authentication for WP-AI application
+ * Plugin Name: Articulate Authentication
+ * Description: JWT-based authentication for Articulate application
  * Version: 1.0.0
- * Author: WP-AI Team
+ * Author: Articulate Team
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WP_AI_Auth {
+class Articulate_Auth {
     private $secret_key;
     private $token_expiration = 7 * DAY_IN_SECONDS; // 7 days
 
@@ -125,28 +125,28 @@ class WP_AI_Auth {
     public function register_rest_routes() {
         add_action('rest_api_init', function() {
             // Login endpoint
-            register_rest_route('wp-ai/v1', '/auth/login', [
+            register_rest_route('articulate/v1', '/auth/login', [
                 'methods' => 'POST',
                 'callback' => [$this, 'handle_login'],
                 'permission_callback' => '__return_true',
             ]);
 
             // Token verification endpoint
-            register_rest_route('wp-ai/v1', '/auth/verify', [
+            register_rest_route('articulate/v1', '/auth/verify', [
                 'methods' => 'POST',
                 'callback' => [$this, 'handle_verify'],
                 'permission_callback' => '__return_true',
             ]);
 
             // Get current user endpoint (protected)
-            register_rest_route('wp-ai/v1', '/auth/me', [
+            register_rest_route('articulate/v1', '/auth/me', [
                 'methods' => 'GET',
                 'callback' => [$this, 'handle_me'],
                 'permission_callback' => [$this, 'verify_token_permission'],
             ]);
 
             // Logout endpoint
-            register_rest_route('wp-ai/v1', '/auth/logout', [
+            register_rest_route('articulate/v1', '/auth/logout', [
                 'methods' => 'POST',
                 'callback' => [$this, 'handle_logout'],
                 'permission_callback' => [$this, 'verify_token_permission'],
@@ -333,7 +333,7 @@ class WP_AI_Auth {
         }
 
         // Try custom header
-        $token = $request->get_header('X-WP-AI-Token');
+        $token = $request->get_header('X-Articulate-Token');
         if ($token) {
             return $token;
         }
@@ -402,4 +402,4 @@ class WP_AI_Auth {
 }
 
 // Initialize the plugin
-new WP_AI_Auth();
+new Articulate_Auth();

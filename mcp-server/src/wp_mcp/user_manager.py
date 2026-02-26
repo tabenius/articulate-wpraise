@@ -11,6 +11,7 @@ import bcrypt
 
 from wp_mcp.audit import AuditLog
 from wp_mcp.database import db
+from wp_mcp.email_service import send_verification_email, send_password_reset_email
 
 logger = logging.getLogger(__name__)
 
@@ -53,18 +54,28 @@ class UserManager:
             "utf-8"
         )
 
-        # Insert user
+        # Generate verification token
+        verify_token = secrets.token_urlsafe(32)
+        verify_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+
+        # Insert user (unverified)
         user_id = await db.insert(
-            "INSERT INTO wp_users_auth (email, password_hash, name) VALUES (%s, %s, %s)",
-            (email, password_hash, name),
+            """INSERT INTO wp_users_auth (email, password_hash, name, email_verified,
+                   email_verify_token, email_verify_expires)
+               VALUES (%s, %s, %s, FALSE, %s, %s)""",
+            (email, password_hash, name, verify_token, verify_expires),
         )
 
-        logger.info("User registered: %s (ID: %d)", email, user_id)
+        # Send verification email
+        send_verification_email(email, name, verify_token)
+
+        logger.info("User registered (unverified): %s (ID: %d)", email, user_id)
 
         return {
             "id": user_id,
             "email": email,
             "name": name,
+            "email_verified": False,
         }
 
     @staticmethod
@@ -200,7 +211,7 @@ class UserManager:
         """
         # Get user
         user = await db.fetchone(
-            "SELECT id, email, password_hash, name FROM wp_users_auth WHERE email = %s",
+            "SELECT id, email, password_hash, name, email_verified FROM wp_users_auth WHERE email = %s",
             (email,),
         )
 
@@ -214,6 +225,11 @@ class UserManager:
         ):
             logger.warning("Login failed: invalid password (%s)", email)
             return None
+
+        # Check email verification
+        if not user.get("email_verified"):
+            logger.warning("Login failed: email not verified (%s)", email)
+            return {"error": "email_not_verified", "email": email}
 
         # Create session
         session_id = secrets.token_urlsafe(32)
@@ -330,3 +346,144 @@ class UserManager:
         )
         if result > 0:
             logger.info("Cleaned up %d expired sessions", result)
+
+    @staticmethod
+    async def verify_email(token: str) -> bool:
+        """Verify a user's email address using the verification token."""
+        user = await db.fetchone(
+            "SELECT id, email_verify_expires FROM wp_users_auth WHERE email_verify_token = %s",
+            (token,),
+        )
+        if not user:
+            return False
+
+        expires = user["email_verify_expires"]
+        if expires and expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return False
+
+        await db.execute(
+            "UPDATE wp_users_auth SET email_verified = TRUE, email_verify_token = NULL, email_verify_expires = NULL WHERE id = %s",
+            (user["id"],),
+        )
+        logger.info("Email verified for user %d", user["id"])
+        return True
+
+    @staticmethod
+    async def resend_verification(email: str) -> bool:
+        """Resend verification email. Returns True if sent."""
+        user = await db.fetchone(
+            "SELECT id, name, email_verified FROM wp_users_auth WHERE email = %s",
+            (email,),
+        )
+        if not user or user["email_verified"]:
+            return False
+
+        token = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(hours=24)
+
+        await db.execute(
+            "UPDATE wp_users_auth SET email_verify_token = %s, email_verify_expires = %s WHERE id = %s",
+            (token, expires, user["id"]),
+        )
+        send_verification_email(email, user["name"] or "", token)
+        logger.info("Verification email resent to %s", email)
+        return True
+
+    @staticmethod
+    async def request_password_reset(email: str) -> bool:
+        """Generate a password reset token and send email. Always returns True to not leak user existence."""
+        user = await db.fetchone(
+            "SELECT id, name, email_verified FROM wp_users_auth WHERE email = %s",
+            (email,),
+        )
+        if not user or not user["email_verified"]:
+            return True  # Don't reveal whether email exists
+
+        token = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        await db.insert(
+            "INSERT INTO wp_password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)",
+            (user["id"], token, expires),
+        )
+        send_password_reset_email(email, user["name"] or "", token)
+        logger.info("Password reset requested for %s", email)
+        return True
+
+    @staticmethod
+    async def reset_password(token: str, new_password: str) -> bool:
+        """Reset password using a valid token."""
+        if len(new_password) < 8:
+            raise ValueError("Password must be at least 8 characters")
+
+        row = await db.fetchone(
+            "SELECT id, user_id, expires_at, used_at FROM wp_password_reset_tokens WHERE token = %s",
+            (token,),
+        )
+        if not row or row["used_at"]:
+            return False
+
+        expires = row["expires_at"]
+        if expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return False
+
+        password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        await db.execute(
+            "UPDATE wp_users_auth SET password_hash = %s WHERE id = %s",
+            (password_hash, row["user_id"]),
+        )
+        await db.execute(
+            "UPDATE wp_password_reset_tokens SET used_at = NOW() WHERE id = %s",
+            (row["id"],),
+        )
+        # Invalidate all sessions for this user
+        await db.execute(
+            "DELETE FROM wp_sessions WHERE user_id = %s",
+            (row["user_id"],),
+        )
+        logger.info("Password reset completed for user %d", row["user_id"])
+        return True
+
+    @staticmethod
+    async def create_wp_login_token(user_id: int, tenant_id: str) -> str:
+        """Generate a one-time token for WP-Admin auto-login."""
+        token = secrets.token_urlsafe(48)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=5)
+
+        await db.insert(
+            "INSERT INTO wp_login_tokens (user_id, tenant_id, token, expires_at) VALUES (%s, %s, %s, %s)",
+            (user_id, tenant_id, token, expires),
+        )
+        return token
+
+    @staticmethod
+    async def validate_wp_login_token(token: str) -> Optional[dict]:
+        """Validate and consume a one-time WP login token. Returns tenant+user info or None."""
+        row = await db.fetchone(
+            """SELECT t.id, t.user_id, t.tenant_id, t.expires_at, t.used_at,
+                      tn.name as tenant_name, tn.domain as tenant_domain
+               FROM wp_login_tokens t
+               JOIN tenants tn ON t.tenant_id = tn.id
+               WHERE t.token = %s""",
+            (token,),
+        )
+        if not row or row["used_at"]:
+            return None
+
+        expires = row["expires_at"]
+        if expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return None
+
+        # Mark as used
+        await db.execute(
+            "UPDATE wp_login_tokens SET used_at = NOW() WHERE id = %s",
+            (row["id"],),
+        )
+
+        return {
+            "user_id": row["user_id"],
+            "tenant_id": row["tenant_id"],
+            "tenant_name": row["tenant_name"],
+            "tenant_domain": row["tenant_domain"],
+        }

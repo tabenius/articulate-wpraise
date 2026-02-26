@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { Mail } from "lucide-react";
+import Link from "next/link";
 
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   const [loginEmail, setLoginEmail] = useState("");
@@ -25,6 +27,12 @@ function AuthContent() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerLoading, setRegisterLoading] = useState(false);
+
+  // Email verification states
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -38,11 +46,17 @@ function AuthContent() {
       });
       router.push(redirect);
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      });
+      const message = error instanceof Error ? error.message : "An error occurred";
+      if (message === "email_not_verified") {
+        setVerificationEmail(loginEmail);
+        setShowVerificationPrompt(true);
+      } else {
+        toast({
+          title: "Login failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoginLoading(false);
     }
@@ -53,14 +67,23 @@ function AuthContent() {
     setRegisterLoading(true);
 
     try {
-      await register(registerEmail, registerPassword, registerName);
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created. Logging you in...",
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registerEmail,
+          password: registerPassword,
+          name: registerName,
+        }),
       });
-      // Auto-login after registration
-      await login(registerEmail, registerPassword);
-      router.push(redirect);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Registration failed");
+      }
+
+      setVerificationEmail(registerEmail);
+      setRegistrationComplete(true);
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -70,6 +93,70 @@ function AuthContent() {
     } finally {
       setRegisterLoading(false);
     }
+  }
+
+  async function handleResendVerification() {
+    setResendLoading(true);
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verificationEmail }),
+      });
+      toast({
+        title: "Verification email sent",
+        description: "Check your inbox and spam folder.",
+      });
+    } catch {
+      toast({
+        title: "Failed to resend",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
+  // Show verification prompt (after login with unverified email or after registration)
+  if (showVerificationPrompt || registrationComplete) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Mail className="h-12 w-12 mx-auto text-primary mb-2" />
+            <CardTitle>
+              {registrationComplete ? "Check Your Email" : "Email Not Verified"}
+            </CardTitle>
+            <CardDescription>
+              {registrationComplete
+                ? `We sent a verification link to ${verificationEmail}. Please check your inbox to activate your account.`
+                : `Your email (${verificationEmail}) hasn't been verified yet. Please check your inbox for the verification link.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-center">
+            <Button
+              variant="outline"
+              onClick={handleResendVerification}
+              disabled={resendLoading}
+              className="w-full"
+            >
+              {resendLoading ? "Sending..." : "Resend Verification Email"}
+            </Button>
+            <Button
+              variant="link"
+              onClick={() => {
+                setShowVerificationPrompt(false);
+                setRegistrationComplete(false);
+              }}
+              className="w-full"
+            >
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -102,7 +189,15 @@ function AuthContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-xs text-muted-foreground hover:text-primary"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <Input
                     id="login-password"
                     type="password"

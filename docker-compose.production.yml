@@ -92,6 +92,21 @@ services:
     networks:
       - articulate-internal
 
+  postfix:
+    build:
+      context: ./docker/postfix
+      dockerfile: Dockerfile
+    container_name: articulate-postfix
+    restart: unless-stopped
+    environment:
+      MAIL_DOMAIN: ragbaz.xyz
+      MAIL_HOSTNAME: mail.ragbaz.xyz
+    ports:
+      - "127.0.0.1:2525:25"    # SMTP for HAProxy
+      - "127.0.0.1:5587:587"   # Submission for HAProxy
+    networks:
+      - articulate-internal
+
   mcp-server:
     build:
       context: .
@@ -102,6 +117,7 @@ services:
       - wordpress
       - redis
       - mariadb
+      - postfix
     environment:
       WP_URL: http://wordpress:80
       WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
@@ -119,6 +135,11 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SMTP_HOST: postfix
+      SMTP_PORT: 25
+      MAIL_FROM: verify@ragbaz.xyz
+      MAIL_FROM_NAME: Articulate
+      APP_URL: https://app.ragbaz.xyz
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./templates:/app/templates:ro
