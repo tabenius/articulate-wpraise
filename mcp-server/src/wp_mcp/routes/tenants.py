@@ -21,7 +21,11 @@ def get_manager():
         encryption_key = os.getenv("ENCRYPTION_KEY")
         if not encryption_key:
             raise RuntimeError("ENCRYPTION_KEY required for tenant management")
-        _manager = TenantManager(encryption_key=encryption_key)
+        _manager = TenantManager(
+            encryption_key=encryption_key,
+            template_dir=os.getenv("TEMPLATE_DIR", "/app/templates"),
+            compose_output_dir=os.getenv("COMPOSE_OUTPUT_DIR", "/app/tenants"),
+        )
     return _manager
 
 

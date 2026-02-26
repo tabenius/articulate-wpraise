@@ -1,5 +1,3 @@
-const { withFaust } = require("@faustwp/core");
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -11,4 +9,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withFaust(nextConfig);
+module.exports = nextConfig;

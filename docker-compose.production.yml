@@ -218,13 +218,13 @@ services:
     restart: unless-stopped
     depends_on:
       - wordpress
-      - web
+      - webedit
       - mcp-server
       - docs
     ports:
-      - "localhost:4555:80"    # HTTP (HAProxy uses port 80, so Caddy uses 4555)
-      - "localhost:4556:443"   # HTTPS (HAProxy uses 443, so Caddy uses 4556)
-      - "localhost:4556:443/udp"  # HTTP/3
+      - "127.0.0.1:4555:80"    # HTTP (HAProxy uses port 80, so Caddy uses 4555)
+      - "127.0.0.1:4556:443"   # HTTPS (HAProxy uses 443, so Caddy uses 4556)
+      - "127.0.0.1:4556:443/udp"  # HTTP/3
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data

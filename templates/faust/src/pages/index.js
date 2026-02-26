@@ -1,31 +1,6 @@
-import { gql, useQuery } from "@faustwp/core";
 import Head from "next/head";
 
-const GET_POSTS = gql`
-  query GetPosts {
-    posts(first: 10) {
-      nodes {
-        id
-        title
-        excerpt
-        uri
-        date
-      }
-    }
-    generalSettings {
-      title
-      description
-    }
-  }
-`;
-
-export default function Home() {
-  const { data, loading } = useQuery(GET_POSTS);
-
-  if (loading) return <p>Loading...</p>;
-
-  const { posts, generalSettings } = data || {};
-
+export default function Home({ posts, generalSettings }) {
   return (
     <>
       <Head>
@@ -35,7 +10,7 @@ export default function Home() {
       <main style={{ maxWidth: 800, margin: "0 auto", padding: 20 }}>
         <h1>{generalSettings?.title}</h1>
         <p>{generalSettings?.description}</p>
-        {posts?.nodes?.map((post) => (
+        {posts?.map((post) => (
           <article key={post.id} style={{ marginBottom: 24 }}>
             <h2>
               <a href={post.uri}>{post.title}</a>
@@ -49,4 +24,25 @@ export default function Home() {
   );
 }
 
-Home.query = GET_POSTS;
+export async function getServerSideProps() {
+  const wpUrl = process.env.NEXT_PUBLIC_WORDPRESS_URL || "http://localhost:80";
+  const res = await fetch(`${wpUrl}/graphql`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: `query {
+        posts(first: 10) {
+          nodes { id title excerpt uri date }
+        }
+        generalSettings { title description }
+      }`,
+    }),
+  });
+  const json = await res.json();
+  return {
+    props: {
+      posts: json.data?.posts?.nodes || [],
+      generalSettings: json.data?.generalSettings || {},
+    },
+  };
+}
