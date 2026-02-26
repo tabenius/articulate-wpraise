@@ -1,0 +1,128 @@
+version: "3.9"
+
+name: tenant_{{TENANT_ID}}
+
+services:
+
+  wordpress:
+    image: wordpress:6.4-php8.2-apache
+    container_name: tenant_{{TENANT_ID}}_wordpress
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - proxy_net
+      - tenant_{{TENANT_ID}}_net
+      - control_net
+    volumes:
+      - wp_data:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: wp
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: "{{DB_PASSWORD}}"
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
+        define('WP_SITEURL', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    labels:
+      articulate.tenant: "{{TENANT_ID}}"
+      articulate.tenant.name: "{{TENANT_NAME}}"
+      articulate.service: wordpress
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: tenant_{{TENANT_ID}}_mariadb
+    restart: unless-stopped
+    networks:
+      - tenant_{{TENANT_ID}}_net
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "{{DB_ROOT_PASSWORD}}"
+      MYSQL_DATABASE: wp
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: "{{DB_PASSWORD}}"
+    command:
+      - --transaction-isolation=READ-COMMITTED
+      - --binlog-format=ROW
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=50
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  faust:
+    image: articulate-faust:latest
+    container_name: tenant_{{TENANT_ID}}_faust
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+    networks:
+      - proxy_net
+      - tenant_{{TENANT_ID}}_net
+    environment:
+      NEXT_PUBLIC_WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
+      NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
+      TENANT_NAME: "{{TENANT_NAME}}"
+      SITE_URL: "https://faust.{{TENANT_NAME}}.ragbaz.xyz"
+    mem_limit: 256m
+    cpus: 0.5
+    labels:
+      articulate.tenant: "{{TENANT_ID}}"
+      articulate.service: faust
+
+  astro:
+    image: articulate-astro:latest
+    container_name: tenant_{{TENANT_ID}}_astro
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+    networks:
+      - proxy_net
+      - tenant_{{TENANT_ID}}_net
+    environment:
+      WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
+      WORDPRESS_GRAPHQL_URL: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
+      TENANT_NAME: "{{TENANT_NAME}}"
+      SITE_URL: "https://astro.{{TENANT_NAME}}.ragbaz.xyz"
+    mem_limit: 256m
+    cpus: 0.5
+    labels:
+      articulate.tenant: "{{TENANT_ID}}"
+      articulate.service: astro
+
+networks:
+  proxy_net:
+    external: true
+  control_net:
+    external: true
+  tenant_{{TENANT_ID}}_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  wp_data:
+    name: tenant_{{TENANT_ID}}_wp_data
+  db_data:
+    name: tenant_{{TENANT_ID}}_db_data
