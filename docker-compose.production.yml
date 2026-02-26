@@ -4,7 +4,7 @@
 services:
   mariadb:
     image: mariadb:11
-    container_name: wp-ai-db
+    container_name: articulate-db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -15,7 +15,7 @@ services:
       - db_data:/var/lib/mysql
     # NO PORTS EXPOSED - internal only
     networks:
-      - wp-ai-internal
+      - articulate-internal
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -25,13 +25,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: wp-ai-redis
+    container_name: articulate-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
     # NO PORTS EXPOSED - internal only
     networks:
-      - wp-ai-internal
+      - articulate-internal
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -43,7 +43,7 @@ services:
     build:
       context: ./docker/wordpress
       dockerfile: Dockerfile
-    container_name: wp-ai-wordpress
+    container_name: articulate-wordpress
     restart: unless-stopped
     depends_on:
       mariadb:
@@ -68,14 +68,14 @@ services:
       - "127.0.0.1:8080:80"  # Only accessible from localhost for reverse proxy
       - "127.0.0.1:2222:2222"  # SSH via dropbear, localhost only
     networks:
-      - wp-ai-internal
-      - wp-ai-proxy
+      - articulate-internal
+      - articulate-proxy
 
   wp-setup:
     build:
       context: ./docker/wordpress
       dockerfile: Dockerfile
-    container_name: wp-ai-setup
+    container_name: articulate-setup
     depends_on:
       - wordpress
     environment:
@@ -90,13 +90,13 @@ services:
     entrypoint: ["/usr/local/bin/wp-setup.sh"]
     restart: "no"
     networks:
-      - wp-ai-internal
+      - articulate-internal
 
   mcp-server:
     build:
       context: .
       dockerfile: docker/mcp-server/Dockerfile
-    container_name: wp-ai-mcp
+    container_name: articulate-mcp
     restart: unless-stopped
     depends_on:
       - wordpress
@@ -119,17 +119,23 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./templates:/app/templates:ro
+      - ./tenants:/app/tenants
     ports:
       - "127.0.0.1:8000:8000"  # Only accessible from localhost for Next.js server
     networks:
-      - wp-ai-internal
-      - wp-ai-proxy
+      - articulate-internal
+      - articulate-proxy
+      - proxy_net
+      - control_net
 
   celery-worker:
     build:
       context: .
       dockerfile: docker/mcp-server/Dockerfile
-    container_name: wp-ai-celery
+    container_name: articulate-celery
     restart: unless-stopped
     depends_on:
       - redis
@@ -146,13 +152,13 @@ services:
     volumes:
       - wp_data:/var/www/html
     networks:
-      - wp-ai-internal
+      - articulate-internal
 
   celery-beat:
     build:
       context: .
       dockerfile: docker/mcp-server/Dockerfile
-    container_name: wp-ai-celery-beat
+    container_name: articulate-celery-beat
     restart: unless-stopped
     depends_on:
       - redis
@@ -169,14 +175,14 @@ services:
     volumes:
       - wp_data:/var/www/html
     networks:
-      - wp-ai-internal
+      - articulate-internal
 
   # Next.js frontend
-  web:
+  webedit:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: wp-ai-web
+    container_name: articulate-webedit
     restart: unless-stopped
     depends_on:
       - mcp-server
@@ -190,25 +196,25 @@ services:
     ports:
       - "127.0.0.1:4500:3000"  # Only accessible from localhost for reverse proxy
     networks:
-      - wp-ai-internal
-      - wp-ai-proxy
+      - articulate-internal
+      - articulate-proxy
 
   # Documentation site
   docs:
     build:
       context: ./docs-site
       dockerfile: Dockerfile
-    container_name: wp-ai-docs
+    container_name: articulate-docs
     restart: unless-stopped
     ports:
       - "127.0.0.1:8091:80"  # Only accessible from localhost for reverse proxy
     networks:
-      - wp-ai-proxy
+      - articulate-proxy
 
   # Caddy reverse proxy with automatic HTTPS
   caddy:
     image: caddy:2-alpine
-    container_name: wp-ai-caddy
+    container_name: articulate-caddy
     restart: unless-stopped
     depends_on:
       - wordpress
@@ -216,9 +222,9 @@ services:
       - mcp-server
       - docs
     ports:
-      - "4555:80"    # HTTP (HAProxy uses port 80, so Caddy uses 4555)
-      - "4556:443"   # HTTPS (HAProxy uses 443, so Caddy uses 4556)
-      - "4556:443/udp"  # HTTP/3
+      - "localhost:4555:80"    # HTTP (HAProxy uses port 80, so Caddy uses 4555)
+      - "localhost:4556:443"   # HTTPS (HAProxy uses 443, so Caddy uses 4556)
+      - "localhost:4556:443/udp"  # HTTP/3
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -226,17 +232,26 @@ services:
     environment:
       - DOMAIN=${DOMAIN:-ragbaz.xyz}
     networks:
-      - wp-ai-internal  # Access to WordPress, MCP, and other internal services
-      - wp-ai-proxy     # Receive traffic from HAProxy/external
+      - articulate-internal  # Access to WordPress, MCP, and other internal services
+      - articulate-proxy     # Receive traffic from HAProxy/external
+      - proxy_net            # Access to tenant services
 
 networks:
   # Internal network - not accessible from outside
-  wp-ai-internal:
+  articulate-internal:
     driver: bridge
     internal: true
 
   # Proxy network - only services that need external access
-  wp-ai-proxy:
+  articulate-proxy:
+    driver: bridge
+
+  # Shared networks for multi-tenant routing
+  proxy_net:
+    name: proxy_net
+    driver: bridge
+  control_net:
+    name: control_net
     driver: bridge
 
 volumes:
