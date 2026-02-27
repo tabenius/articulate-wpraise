@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useCapabilities } from "@/contexts/capabilities-context";
 import {
   Plus,
   Trash2,
@@ -286,6 +287,7 @@ function TenantCard({
   onDomainsChanged: () => void;
 }) {
   const { toast } = useToast();
+  const { capabilities } = useCapabilities();
   const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
   const [domainForm, setDomainForm] = useState({ external_domain: "", target_view: "wordpress" });
   const [isAddingDomain, setIsAddingDomain] = useState(false);
@@ -359,6 +361,11 @@ function TenantCard({
                 <Badge variant="secondary" className="text-xs">
                   {tenant.role}
                 </Badge>
+              )}
+              {capabilities && capabilities.roles.length > 0 && (
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  WP: {capabilities.roles.join(", ")}
+                </span>
               )}
             </div>
             <CardDescription className="flex items-center gap-1">
