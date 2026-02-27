@@ -42,9 +42,10 @@ async def _auth_and_connection(request: Request) -> tuple[Optional[dict], Option
 def _lp_client(connection: dict, namespace: str = "learnpress/v1") -> httpx.AsyncClient:
     """Create httpx client for LearnPress REST API."""
     wp_url = connection["wp_url"].rstrip("/")
+    auth_param = (connection.get("wp_user"), connection.get("wp_app_password")) if connection.get("wp_user") and connection.get("wp_app_password") else None
     return httpx.AsyncClient(
         base_url=f"{wp_url}/wp-json/{namespace}",
-        auth=(connection["wp_user"], connection["wp_app_password"]),
+        auth=auth_param,
         timeout=30.0,
     )
 
@@ -87,7 +88,8 @@ async def check_learnpress_endpoint(request):
         wp_user = connection["wp_user"]
         wp_pass = connection.get("wp_app_password")
 
-        async with httpx.AsyncClient(base_url=wp_url + "/wp-json", auth=(wp_user, wp_pass), timeout=10.0) as client:
+        auth_param = (wp_user, wp_pass) if wp_user and wp_pass else None
+        async with httpx.AsyncClient(base_url=wp_url + "/wp-json", auth=auth_param, timeout=10.0) as client:
             endpoints = [
                 "learnpress/v1",
                 "learnpress/v1/courses",
@@ -180,19 +182,24 @@ async def install_learnpress_endpoint(request):
         wp_user = connection["wp_user"]
         wp_pass = connection.get("wp_app_password")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                resp = await client.post(f"{wp_url}/wp-json/wp/v2/plugins", json={"slug": plugin_slug}, auth=(wp_user, wp_pass))
-                if resp.status_code in (200, 201, 202, 204):
-                    try:
-                        body = resp.json()
-                    except Exception:
-                        body = None
-                    return JSONResponse({"success": True, "method": "rest", "status": resp.status_code, "body": body})
-                if resp.status_code in (401, 403):
-                    return JSONResponse({"error": "unauthorized", "status": resp.status_code}, status_code=403)
-            except httpx.HTTPError as e:
-                logger.debug("REST install attempt failed: %s", e)
+        auth_param = (wp_user, wp_pass) if wp_user and wp_pass else None
+
+        if auth_param:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                try:
+                    resp = await client.post(f"{wp_url}/wp-json/wp/v2/plugins", json={"slug": plugin_slug}, auth=auth_param)
+                    if resp.status_code in (200, 201, 202, 204):
+                        try:
+                            body = resp.json()
+                        except Exception:
+                            body = None
+                        return JSONResponse({"success": True, "method": "rest", "status": resp.status_code, "body": body})
+                    if resp.status_code in (401, 403):
+                        return JSONResponse({"error": "unauthorized", "status": resp.status_code}, status_code=403)
+                except httpx.HTTPError as e:
+                    logger.debug("REST install attempt failed: %s", e)
+        else:
+            logger.debug("Skipping REST install attempt: missing wp_user or wp_app_password")
 
         # 3) Fallback: run remote setup script via SSH if credentials were provided in the request
         ssh_host = data.get("ssh_host") or data.get("host")
