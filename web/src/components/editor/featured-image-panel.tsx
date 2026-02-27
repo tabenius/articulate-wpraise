@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useCapabilities } from "@/contexts/capabilities-context";
 
 export function FeaturedImagePanel() {
   const currentPost = usePostStore((s) => s.currentPost);
@@ -26,6 +27,8 @@ export function FeaturedImagePanel() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { canPerformOperation } = useCapabilities();
+  const canUpload = canPerformOperation("upload_media");
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -199,6 +202,8 @@ export function FeaturedImagePanel() {
               </p>
             )}
           </div>
+        ) : !canUpload ? (
+          <p className="text-xs text-muted-foreground">Your WordPress role does not allow file uploads.</p>
         ) : (
           <Tabs defaultValue="file" className="w-full">
             <TabsList className="grid w-full grid-cols-2">

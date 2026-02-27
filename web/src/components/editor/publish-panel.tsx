@@ -14,11 +14,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useCapabilities } from "@/contexts/capabilities-context";
 
 export function PublishPanel() {
   const currentPost = usePostStore((s) => s.currentPost);
   const updatePost = usePostStore((s) => s.updatePost);
   const { toast } = useToast();
+  const { canPerformOperation } = useCapabilities();
+  const canPublish = canPerformOperation("publish_post");
 
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
@@ -95,6 +98,32 @@ export function PublishPanel() {
     }
   };
 
+  const handleSubmitForReview = async () => {
+    if (!currentPost) return;
+
+    setScheduling(true);
+    try {
+      const res = await fetch(`/api/posts/${currentPost.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "pending",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to submit post for review");
+
+      const updatedPost = await res.json();
+      updatePost(currentPost.id, updatedPost);
+
+      toast({ variant: "success", title: "Success", description: "Post submitted for review" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: error instanceof Error ? error.message : "Failed to submit post for review" });
+    } finally {
+      setScheduling(false);
+    }
+  };
+
   if (!currentPost) return null;
 
   const isScheduled = currentPost.status === "future";
@@ -115,84 +144,105 @@ export function PublishPanel() {
       <CardContent className="space-y-3">
         {!isScheduled && !isPublished && (
           <>
-            {/* Quick Publish */}
-            <Button
-              size="sm"
-              onClick={handlePublishNow}
-              disabled={scheduling}
-              className="w-full h-8"
-              variant="default"
-            >
-              {scheduling ? (
-                <>
-                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                  Publishing...
-                </>
-              ) : (
-                "Publish Now"
-              )}
-            </Button>
+            {canPublish ? (
+              <>
+                {/* Quick Publish */}
+                <Button
+                  size="sm"
+                  onClick={handlePublishNow}
+                  disabled={scheduling}
+                  className="w-full h-8"
+                  variant="default"
+                >
+                  {scheduling ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    "Publish Now"
+                  )}
+                </Button>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or schedule for later
-                </span>
-              </div>
-            </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or schedule for later
+                    </span>
+                  </div>
+                </div>
 
-            {/* Schedule for Later */}
-            <div className="space-y-2">
-              <div>
-                <Label htmlFor="schedule-date" className="text-xs">
-                  Date
-                </Label>
-                <Input
-                  id="schedule-date"
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="h-8 text-xs"
-                  min={new Date().toISOString().split("T")[0]}
-                />
-              </div>
-              <div>
-                <Label htmlFor="schedule-time" className="text-xs">
-                  Time
-                </Label>
-                <Input
-                  id="schedule-time"
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
+                {/* Schedule for Later */}
+                <div className="space-y-2">
+                  <div>
+                    <Label htmlFor="schedule-date" className="text-xs">
+                      Date
+                    </Label>
+                    <Input
+                      id="schedule-date"
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="h-8 text-xs"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="schedule-time" className="text-xs">
+                      Time
+                    </Label>
+                    <Input
+                      id="schedule-time"
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSchedule}
+                    disabled={
+                      !scheduledDate || !scheduledTime || scheduling
+                    }
+                    className="w-full h-8"
+                  >
+                    {scheduling ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                        Scheduling...
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-3 w-3 mr-2" />
+                        Schedule Post
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
               <Button
                 size="sm"
-                variant="outline"
-                onClick={handleSchedule}
-                disabled={
-                  !scheduledDate || !scheduledTime || scheduling
-                }
+                onClick={handleSubmitForReview}
+                disabled={scheduling}
                 className="w-full h-8"
+                variant="default"
               >
                 {scheduling ? (
                   <>
                     <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                    Scheduling...
+                    Submitting...
                   </>
                 ) : (
-                  <>
-                    <Calendar className="h-3 w-3 mr-2" />
-                    Schedule Post
-                  </>
+                  "Submit for Review"
                 )}
               </Button>
-            </div>
+            )}
           </>
         )}
 
