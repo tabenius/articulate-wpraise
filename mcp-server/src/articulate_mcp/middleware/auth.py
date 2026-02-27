@@ -212,8 +212,52 @@ class AuthMiddleware:
                 active_conn["name"],
             )
 
+            # Fetch and cache WordPress roles for capability checking
+            try:
+                from articulate_mcp.graphql.client import get_graphql_client
+                from articulate_mcp.graphql.queries import GET_VIEWER_CAPABILITIES
+                gql_client = await get_graphql_client(active_conn["id"], user["id"])
+                viewer_result = await gql_client.query(
+                    GET_VIEWER_CAPABILITIES,
+                    use_cache=True,
+                    user_id=user["id"],
+                )
+                viewer = viewer_result.get("viewer")
+                if viewer:
+                    wp_roles = [n["name"] for n in viewer.get("roles", {}).get("nodes", [])]
+                    scope["state"]["wp_roles"] = wp_roles
+                else:
+                    scope["state"]["wp_roles"] = []
+            except Exception as e:
+                logger.warning("Could not fetch WP roles for MCP endpoint: %s", e)
+                scope["state"]["wp_roles"] = []
+
         # Add user to scope for non-MCP authenticated endpoints
         if "state" not in scope:
             scope["state"] = {"user": user}
+
+            # Try to fetch WP roles for non-MCP endpoints
+            try:
+                from articulate_mcp.connection_manager import connection_manager as conn_mgr
+                from articulate_mcp.graphql.client import get_graphql_client
+                from articulate_mcp.graphql.queries import GET_VIEWER_CAPABILITIES
+                active_conn = await conn_mgr.get_active_connection(user["id"])
+                if active_conn:
+                    gql_client = await get_graphql_client(active_conn["id"], user["id"])
+                    viewer_result = await gql_client.query(
+                        GET_VIEWER_CAPABILITIES,
+                        use_cache=True,
+                        user_id=user["id"],
+                    )
+                    viewer = viewer_result.get("viewer")
+                    if viewer:
+                        wp_roles = [n["name"] for n in viewer.get("roles", {}).get("nodes", [])]
+                        scope["state"]["wp_roles"] = wp_roles
+                    else:
+                        scope["state"]["wp_roles"] = []
+                else:
+                    scope["state"]["wp_roles"] = []
+            except Exception:
+                scope["state"]["wp_roles"] = []
 
         await self.app(scope, receive, send)
