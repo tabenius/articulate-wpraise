@@ -104,7 +104,7 @@ export default function ConnectionsPage() {
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || error.details || "Install failed");
+        throw new Error(error.error_info?.message || error.error || error.details || "Install failed");
       }
       const result = await response.json();
       toast({ title: "Plugin installed", description: `LearnPress installed on ${name}` });

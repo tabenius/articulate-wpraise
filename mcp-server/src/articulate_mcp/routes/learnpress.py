@@ -25,6 +25,14 @@ async def run_subprocess_exec(*args, **kwargs):
     return await asyncio.create_subprocess_exec(*args, **kwargs)
 
 
+def error_response(code: str, message: str, status_code: int = 400, details: Optional[object] = None) -> JSONResponse:
+    """Return a structured error response while preserving a top-level error code for compatibility."""
+    payload = {"error": code, "error_info": {"code": code, "message": message}}
+    if details is not None:
+        payload["error_info"]["details"] = details
+    return JSONResponse(payload, status_code=status_code)
+
+
 async def _auth_and_connection(request: Request) -> tuple[Optional[dict], Optional[dict], Optional[JSONResponse]]:
     """Authenticate request and get WP connection. Returns (user, connection, error_response)."""
     session_id = request.headers.get("X-Session-ID")
@@ -62,11 +70,11 @@ async def check_learnpress_endpoint(request):
     try:
         session_id = request.headers.get("X-Session-ID")
         if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
+            return error_response("session_required", "Session required", status_code=401)
 
         user = await UserManager.get_user_from_session(session_id)
         if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+            return error_response("invalid_session", "Invalid session", status_code=401)
 
         connection_id = int(request.path_params.get("id"))
 
@@ -86,7 +94,7 @@ async def check_learnpress_endpoint(request):
         # Fallback to REST endpoint checks
         connection = await connection_manager.get_connection(connection_id, user["id"])
         if not connection:
-            return JSONResponse({"error": "Connection not found"}, status_code=404)
+            return error_response("connection_not_found", "Connection not found", status_code=404)
 
         wp_url = connection["wp_url"].rstrip("/")
         wp_user = connection["wp_user"]
@@ -131,7 +139,7 @@ async def check_learnpress_endpoint(request):
 
     except Exception as e:
         logger.error("Check LearnPress error: %s", e, exc_info=True)
-        return JSONResponse({"error": "Failed to check LearnPress", "details": str(e)}, status_code=500)
+        return error_response("check_error", "Failed to check LearnPress", status_code=500, details=str(e))
 
 
 async def install_learnpress_endpoint(request):
@@ -145,18 +153,18 @@ async def install_learnpress_endpoint(request):
     try:
         session_id = request.headers.get("X-Session-ID")
         if not session_id:
-            return JSONResponse({"error": "Session required"}, status_code=401)
+            return error_response("session_required", "Session required", status_code=401)
 
         user = await UserManager.get_user_from_session(session_id)
         if not user:
-            return JSONResponse({"error": "Invalid session"}, status_code=401)
+            return error_response("invalid_session", "Invalid session", status_code=401)
 
         connection_id = int(request.path_params.get("id"))
         data = await request.json()
         plugin_slug = data.get("plugin_slug", "learnpress")
         # Sanitize plugin_slug: only allow lowercase letters, numbers, hyphen and underscore
         if not isinstance(plugin_slug, str) or not re.match(r'^[a-z0-9_-]+$', plugin_slug):
-            return JSONResponse({"error": "invalid_plugin_slug", "details": "plugin_slug must match ^[a-z0-9_-]+$"}, status_code=400)
+            return error_response("invalid_plugin_slug", "plugin_slug must match ^[a-z0-9_-]+$", status_code=400)
 
         # 1) Try GraphQL mutation
         try:
@@ -180,7 +188,7 @@ async def install_learnpress_endpoint(request):
         # 2) Try REST endpoint (best-effort)
         connection = await connection_manager.get_connection(connection_id, user["id"])
         if not connection:
-            return JSONResponse({"error": "Connection not found"}, status_code=404)
+            return error_response("connection_not_found", "Connection not found", status_code=404)
 
         wp_url = connection["wp_url"].rstrip("/")
         wp_user = connection["wp_user"]
@@ -199,7 +207,7 @@ async def install_learnpress_endpoint(request):
                             body = None
                         return JSONResponse({"success": True, "method": "rest", "status": resp.status_code, "body": body})
                     if resp.status_code in (401, 403):
-                        return JSONResponse({"error": "unauthorized", "status": resp.status_code}, status_code=403)
+                        return error_response("unauthorized", "Unauthorized to install plugin", status_code=403, details={"status": resp.status_code})
                 except httpx.HTTPError as e:
                     logger.debug("REST install attempt failed: %s", e)
         else:
@@ -217,7 +225,7 @@ async def install_learnpress_endpoint(request):
             # Find the setup script
             script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "setup-remote-wordpress.py"
             if not script_path.exists():
-                return JSONResponse({"error": "Setup script not found"}, status_code=500)
+                return error_response("setup_script_not_found", "Setup script not found", status_code=500)
 
             cmd = ["python3", str(script_path), "--host", ssh_host, "--user", ssh_user, "--port", str(port), "--plugins", plugin_slug]
             if wp_path:
@@ -253,19 +261,19 @@ async def install_learnpress_endpoint(request):
 
                 if process.returncode != 0:
                     logger.error("SSH install failed: %s", err)
-                    return JSONResponse({"error": "SSH install failed", "details": err}, status_code=500)
+                    return error_response("ssh_install_failed", "SSH install failed", status_code=500, details=err)
 
                 return JSONResponse({"success": True, "method": "ssh", "output": output})
             except Exception as e:
                 logger.error("SSH install exception: %s", e, exc_info=True)
-                return JSONResponse({"error": "SSH install failed", "details": str(e)}, status_code=500)
+                return error_response("ssh_install_failed", "SSH install failed", status_code=500, details=str(e))
 
         # If all attempts failed
-        return JSONResponse({"error": "Failed to install plugin via GraphQL and REST. Provide SSH credentials to attempt remote install."}, status_code=500)
+        return error_response("install_failed_no_credentials", "Failed to install plugin via GraphQL and REST. Provide SSH credentials to attempt remote install.", status_code=500)
 
     except Exception as e:
         logger.error("Install LearnPress error: %s", e, exc_info=True)
-        return JSONResponse({"error": "Failed to install LearnPress", "details": str(e)}, status_code=500)
+        return error_response("install_error", "Failed to install LearnPress", status_code=500, details=str(e))
 
 
 # ── Phase 3: REST proxy routes for LearnPress data ──────────────────

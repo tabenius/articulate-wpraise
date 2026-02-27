@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      return NextResponse.json({ error: error.message || "Failed to check LearnPress" }, { status: response.status });
+      return NextResponse.json({ error: error.error || error.error_info?.message || "Failed to check LearnPress", error_info: error.error_info || null, details: error }, { status: response.status });
     }
 
     const data = await response.json();

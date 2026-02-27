@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return NextResponse.json({ error: data.error || "Failed to install LearnPress", details: data }, { status: response.status });
+      return NextResponse.json({ error: data.error || data.error_info?.message || "Failed to install LearnPress", error_info: data.error_info || null, details: data }, { status: response.status });
     }
 
     return NextResponse.json(data);
