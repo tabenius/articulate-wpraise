@@ -132,33 +132,34 @@ def validate_url(url: str, require_https: bool = False) -> tuple[bool, Optional[
 
 def validate_wordpress_url(url: str) -> tuple[bool, Optional[str]]:
     """Validate a WordPress URL.
-    
+
     WordPress URLs should generally be HTTPS in production but we allow HTTP
     for local development.
-    
+
     Args:
         url: WordPress URL to validate
-        
+
     Returns:
         Tuple of (is_valid, error_message)
     """
+    parsed = urlparse(url)
+
+    # Allow localhost, 127.0.0.1, and Docker service names for development
+    # before running SSRF checks (which would block private IPs)
+    dev_hosts = ["localhost", "127.0.0.1", "::1", "wordpress"]
+    if parsed.hostname in dev_hosts:
+        # Still validate scheme and basic structure
+        if parsed.scheme not in ["http", "https"]:
+            return False, f"Invalid URL scheme: {parsed.scheme}. Only http and https are allowed."
+        return True, None
+
     is_valid, error = validate_url(url, require_https=False)
-    
+
     if not is_valid:
         return False, error
-    
-    parsed = urlparse(url)
-    
-    # Allow localhost and 127.0.0.1 for development
-    if parsed.hostname in ["localhost", "127.0.0.1", "::1"]:
-        return True, None
-    
-    # Allow wordpress service name in Docker
-    if parsed.hostname == "wordpress":
-        return True, None
-    
+
     # For production URLs, recommend HTTPS
-    if parsed.scheme == "http" and parsed.hostname not in ["localhost", "127.0.0.1"]:
+    if parsed.scheme == "http":
         logger.warning(f"HTTP used for non-localhost URL: {url}")
-    
+
     return True, None

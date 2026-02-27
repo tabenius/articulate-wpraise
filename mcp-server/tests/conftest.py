@@ -1,14 +1,52 @@
 """Pytest configuration and shared fixtures."""
 
-import asyncio
 import os
 import socket
+import subprocess
 
 import pytest
 
 
+def _discover_db_host() -> str:
+    """Find a reachable MariaDB host.
+
+    Priority:
+      1. MYSQL_HOST env var (if already set explicitly)
+      2. localhost:3306 (port-forwarded or local install)
+      3. Docker container IP of articulate-db
+    """
+    explicit = os.getenv("MYSQL_HOST")
+    if explicit:
+        return explicit
+
+    # Try localhost first
+    try:
+        with socket.create_connection(("localhost", 3306), timeout=1):
+            return "localhost"
+    except OSError:
+        pass
+
+    # Try to get the Docker container IP
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "articulate-db",
+             "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            ip = result.stdout.strip().split()[0]
+            with socket.create_connection((ip, 3306), timeout=1):
+                return ip
+    except (OSError, subprocess.TimeoutExpired, IndexError):
+        pass
+
+    return "localhost"  # fallback, will fail gracefully
+
+
+_db_host = _discover_db_host()
+
 # Set test environment variables
-os.environ["MYSQL_HOST"] = os.getenv("MYSQL_HOST", "localhost")
+os.environ["MYSQL_HOST"] = _db_host
 os.environ["MYSQL_PORT"] = os.getenv("MYSQL_PORT", "3306")
 os.environ["MYSQL_USER"] = os.getenv("MYSQL_USER", "wpuser")
 os.environ["MYSQL_PASSWORD"] = os.getenv("MYSQL_PASSWORD", "wppassword")
@@ -34,8 +72,14 @@ requires_db = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+async def setup_db():
+    """Session-scoped DB connection shared across all test files.
+
+    This avoids the issue where per-file setup_db fixtures disconnect
+    the global db singleton, preventing subsequent files from reconnecting.
+    """
+    from articulate_mcp.database import db
+
+    await db.connect()
+    yield
+    await db.disconnect()

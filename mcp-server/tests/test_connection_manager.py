@@ -11,14 +11,6 @@ pytestmark = requires_db
 
 
 @pytest.fixture
-async def setup_db():
-    """Setup database connection for tests."""
-    await db.connect()
-    yield
-    await db.disconnect()
-
-
-@pytest.fixture
 async def test_user(setup_db):
     """Create a test user."""
     user = await UserManager.register_user(

@@ -13,14 +13,6 @@ pytestmark = requires_db
 
 
 @pytest.fixture
-async def setup_db():
-    """Setup database connection for tests."""
-    await db.connect()
-    yield
-    await db.disconnect()
-
-
-@pytest.fixture
 async def test_user(setup_db):
     """Create a test user."""
     # Cleanup existing
@@ -279,12 +271,12 @@ async def test_org_connection_creation(test_organization, test_user):
     """Test creating an organization-owned connection."""
     org_id = test_organization["id"]
 
-    # Create org connection
+    # Create org connection (use localhost which is allowed by validate_wordpress_url)
     connection = await connection_manager.add_org_connection(
         organization_id=org_id,
         name="Test WP Site",
-        wp_url="http://test-wp.example.com",
-        wp_graphql_endpoint="http://test-wp.example.com/graphql",
+        wp_url="http://localhost:8080",
+        wp_graphql_endpoint="http://localhost:8080/graphql",
         wp_user="admin",
         wp_app_password="test_password_123"
     )
@@ -292,7 +284,7 @@ async def test_org_connection_creation(test_organization, test_user):
     assert connection["id"] > 0
     assert connection["organization_id"] == org_id
     assert connection["name"] == "Test WP Site"
-    assert connection["wp_url"] == "http://test-wp.example.com"
+    assert connection["wp_url"] == "http://localhost:8080"
     assert "wp_app_password" not in connection  # Shouldn't be in return
 
     # Verify in database
@@ -332,12 +324,12 @@ async def test_full_registration_flow(test_organization, test_user):
     org_data = await OrgApiKeyManager.validate_and_consume_key(api_key)
     assert org_data is not None
 
-    # Step 3: Create organization connection (simulating plugin registration)
+    # Step 3: Create organization connection (use localhost, allowed for dev)
     connection = await connection_manager.add_org_connection(
         organization_id=org_data["organization_id"],
         name="Plugin Test Site",
-        wp_url="http://plugin-test.example.com",
-        wp_graphql_endpoint="http://plugin-test.example.com/graphql",
+        wp_url="http://localhost:9090",
+        wp_graphql_endpoint="http://localhost:9090/graphql",
         wp_user="admin",
         wp_app_password="generated_app_pass_123"
     )

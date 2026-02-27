@@ -10,12 +10,14 @@ from articulate_mcp.user_manager import UserManager
 pytestmark = requires_db
 
 
-@pytest.fixture
-async def setup_db():
-    """Setup database connection for tests."""
-    await db.connect()
-    yield
-    await db.disconnect()
+async def _register_verified_user(email: str, password: str, name: str) -> dict:
+    """Register a user and mark them as email-verified for testing."""
+    user = await UserManager.register_user(email, password, name)
+    await db.execute(
+        "UPDATE articulate_users_auth SET email_verified = TRUE WHERE id = %s",
+        (user["id"],),
+    )
+    return user
 
 
 @pytest.mark.asyncio
@@ -68,9 +70,10 @@ async def test_duplicate_registration(setup_db):
 @pytest.mark.asyncio
 async def test_authentication_success(setup_db):
     """Test successful authentication."""
-    # Register user
-    await UserManager.register_user("auth@test.com", "mypassword", "Auth User")
-    
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("auth@test.com",))
+    # Register user and verify email
+    await _register_verified_user("auth@test.com", "mypassword", "Auth User")
+
     # Authenticate
     result = await UserManager.authenticate("auth@test.com", "mypassword")
     
@@ -96,26 +99,43 @@ async def test_authentication_success(setup_db):
 @pytest.mark.asyncio
 async def test_authentication_failure(setup_db):
     """Test failed authentication with wrong password."""
-    # Register user
-    await UserManager.register_user("wrong@test.com", "correctpass", "User")
-    
+    # Register user (verify email so we test password check, not email check)
+    await _register_verified_user("wrong@test.com", "correctpass", "User")
+
     # Try with wrong password
     result = await UserManager.authenticate("wrong@test.com", "wrongpass")
     assert result is None
-    
+
     # Try with non-existent email
     result = await UserManager.authenticate("nonexistent@test.com", "anypass")
     assert result is None
-    
+
     # Cleanup
     await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("wrong@test.com",))
 
 
 @pytest.mark.asyncio
+async def test_unverified_email_blocked(setup_db):
+    """Test that unverified email prevents login."""
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("unverified@test.com",))
+    await UserManager.register_user("unverified@test.com", "password123", "User")
+
+    # Authenticate without verifying email
+    result = await UserManager.authenticate("unverified@test.com", "password123")
+    assert result is not None
+    assert result.get("error") == "email_not_verified"
+    assert "session_id" not in result
+
+    # Cleanup
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("unverified@test.com",))
+
+
+@pytest.mark.asyncio
 async def test_get_user_from_session(setup_db):
     """Test retrieving user from valid session."""
-    # Register and authenticate
-    await UserManager.register_user("session@test.com", "password123", "Session User")
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("session@test.com",))
+    # Register (verified) and authenticate
+    await _register_verified_user("session@test.com", "password123", "Session User")
     auth_result = await UserManager.authenticate("session@test.com", "password123")
     session_id = auth_result["session_id"]
     
@@ -134,8 +154,9 @@ async def test_get_user_from_session(setup_db):
 @pytest.mark.asyncio
 async def test_expired_session(setup_db):
     """Test that expired sessions are rejected."""
-    # Register and authenticate
-    await UserManager.register_user("expired@test.com", "password123", "User")
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("expired@test.com",))
+    # Register (verified) and authenticate
+    await _register_verified_user("expired@test.com", "password123", "User")
     auth_result = await UserManager.authenticate("expired@test.com", "password123")
     session_id = auth_result["session_id"]
     
@@ -164,8 +185,9 @@ async def test_expired_session(setup_db):
 @pytest.mark.asyncio
 async def test_logout(setup_db):
     """Test logout deletes session."""
-    # Register and authenticate
-    await UserManager.register_user("logout@test.com", "password123", "User")
+    await db.execute("DELETE FROM articulate_users_auth WHERE email = %s", ("logout@test.com",))
+    # Register (verified) and authenticate
+    await _register_verified_user("logout@test.com", "password123", "User")
     auth_result = await UserManager.authenticate("logout@test.com", "password123")
     session_id = auth_result["session_id"]
     
