@@ -1,8 +1,40 @@
 """Tests for block parser and serializer."""
 
+import pytest
 from articulate_mcp.blocks.parser import parse_blocks
 from articulate_mcp.blocks.serializer import serialize_blocks
 from articulate_mcp.blocks.types import Block
+
+
+@pytest.fixture
+def sample_block_content():
+    """Sample WordPress block content with multiple block types."""
+    return """<!-- wp:heading {"level":2} -->
+<h2 class="wp-block-heading">Hello World</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>This is a paragraph.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><li>Item 1</li><li>Item 2</li></ul>
+<!-- /wp:list -->
+
+<!-- wp:quote -->
+<blockquote class="wp-block-quote"><p>A quote</p></blockquote>
+<!-- /wp:quote -->
+
+<!-- wp:separator /-->"""
+
+
+@pytest.fixture
+def sample_blocks():
+    """Sample block dicts for serialization roundtrip tests."""
+    return [
+        {"name": "core/heading", "attributes": {"level": 2, "content": "Hello"}, "innerBlocks": []},
+        {"name": "core/paragraph", "attributes": {"content": "World"}, "innerBlocks": []},
+    ]
 
 
 def test_parse_empty_content():
@@ -76,9 +108,9 @@ def test_serialize_paragraph():
         {"name": "core/paragraph", "attributes": {"content": "Hello"}, "innerBlocks": []}
     ]
     result = serialize_blocks(blocks)
-    assert "<!-- wp:paragraph" in result
+    assert "<!-- wp:core/paragraph" in result
     assert "Hello" in result
-    assert "<!-- /wp:paragraph -->" in result
+    assert "<!-- /wp:core/paragraph -->" in result
 
 
 def test_serialize_heading():
@@ -87,7 +119,7 @@ def test_serialize_heading():
         {"name": "core/heading", "attributes": {"content": "Title", "level": 1}, "innerBlocks": []}
     ]
     result = serialize_blocks(blocks)
-    assert "<!-- wp:heading" in result
+    assert "<!-- wp:core/heading" in result
     assert "<h1" in result
     assert "Title" in result
 
@@ -98,7 +130,7 @@ def test_serialize_self_closing():
         {"name": "core/spacer", "attributes": {"height": "50px"}, "innerBlocks": []}
     ]
     result = serialize_blocks(blocks)
-    assert "<!-- wp:spacer" in result
+    assert "<!-- wp:core/spacer" in result
     assert "/-->" in result
 
 

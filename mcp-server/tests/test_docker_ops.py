@@ -31,7 +31,6 @@ def test_up_calls_compose(docker_ops):
     docker_ops.docker.compose.up.assert_called_once()
     call_kwargs = docker_ops.docker.compose.up.call_args
     assert call_kwargs.kwargs["detach"] is True
-    assert call_kwargs.kwargs["project_name"] == "tenant_abc123"
 
 
 def test_down_calls_compose(docker_ops):

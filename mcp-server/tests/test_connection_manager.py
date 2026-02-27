@@ -1,10 +1,13 @@
 """Integration tests for ConnectionManager."""
 
 import pytest
+from tests.conftest import requires_db
 
 from articulate_mcp.connection_manager import connection_manager
 from articulate_mcp.database import db
 from articulate_mcp.user_manager import UserManager
+
+pytestmark = requires_db
 
 
 @pytest.fixture

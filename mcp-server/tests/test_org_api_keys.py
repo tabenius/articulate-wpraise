@@ -2,11 +2,14 @@
 
 import pytest
 from datetime import datetime, timedelta, timezone
+from tests.conftest import requires_db
 
 from articulate_mcp.database import db
 from articulate_mcp.org_api_key_manager import OrgApiKeyManager
 from articulate_mcp.connection_manager import connection_manager
 from articulate_mcp.user_manager import UserManager
+
+pytestmark = requires_db
 
 
 @pytest.fixture

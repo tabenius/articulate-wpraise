@@ -24,6 +24,9 @@ export default function ConnectionsPage() {
     wp_user: "",
     wp_app_password: "",
   });
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorModalData, setErrorModalData] = useState<any>(null);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
 
   async function handleAddConnection(e: React.FormEvent) {
     e.preventDefault();
@@ -106,14 +109,10 @@ export default function ConnectionsPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         const human = data?.error_info?.message || data?.error || data?.details || "Install failed";
-        // Try to copy full error details to clipboard for easier troubleshooting (best-effort)
-        try {
-          await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-          toast({ title: "Error details copied", description: "Full error info copied to clipboard", variant: "destructive" });
-        } catch (e) {
-          // ignore clipboard failures
-        }
-        toast({ title: "Failed to install LearnPress", description: human, variant: "destructive" });
+        // Open modal showing human message and full error details for copy
+        setErrorModalMessage(human);
+        setErrorModalData(data);
+        setIsErrorModalOpen(true);
         return;
       }
 
@@ -121,11 +120,9 @@ export default function ConnectionsPage() {
       toast({ title: "Plugin installed", description: `LearnPress installed on ${name}` });
     } catch (error) {
       const desc = error instanceof Error ? error.message : "An error occurred";
-      toast({
-        title: "Failed to install LearnPress",
-        description: desc,
-        variant: "destructive",
-      });
+      setErrorModalMessage(desc);
+      setErrorModalData({ message: desc });
+      setIsErrorModalOpen(true);
     }
   }
 
@@ -315,7 +312,28 @@ export default function ConnectionsPage() {
         </div>
       )}
 
-      <RemoteSetupDialog
+      <Dialog open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen}>
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Install error</DialogTitle>
+        <DialogDescription>{errorModalMessage}</DialogDescription>
+      </DialogHeader>
+      <pre className="whitespace-pre-wrap bg-gray-100 p-3 rounded text-sm overflow-auto max-h-64">{errorModalData ? JSON.stringify(errorModalData, null, 2) : ""}</pre>
+      <div className="mt-4 flex justify-end gap-2">
+        <Button onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(JSON.stringify(errorModalData, null, 2));
+            toast({ title: "Error details copied", description: "Full error info copied to clipboard" });
+          } catch (e) {
+            toast({ title: "Copy failed", description: "Could not copy error details", variant: "destructive" });
+          }
+        }}>Copy details</Button>
+        <Button variant="outline" onClick={() => setIsErrorModalOpen(false)}>Close</Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+
+  <RemoteSetupDialog
         open={isRemoteSetupOpen}
         onOpenChange={setIsRemoteSetupOpen}
         onSuccess={(connection) => {
