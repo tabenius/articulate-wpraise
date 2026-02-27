@@ -26,7 +26,7 @@ from articulate_mcp.middleware.logging import RequestLoggingMiddleware
 from articulate_mcp.tools import (
     posts, pages, blocks, media, fonts, preview, search, taxonomies,
     revisions, image_tools, settings, menus, templates, seo_tools,
-    export_tools, generated
+    export_tools, generated, capabilities as capabilities_tools, wp_users
 )
 
 # Import route handlers
@@ -76,6 +76,7 @@ from articulate_mcp.routes.image_alt_text import generate_alt_text_endpoint
 from articulate_mcp.routes.content_assistant import (
     analyze_content_endpoint, improve_content_endpoint
 )
+from articulate_mcp.routes.capabilities import get_capabilities_endpoint
 from articulate_mcp.routes import tenants as tenant_routes
 from articulate_mcp.routes import routing as routing_routes
 
@@ -134,6 +135,8 @@ templates.register(mcp)
 seo_tools.register(mcp)
 export_tools.register(mcp)
 generated.register(mcp)
+capabilities_tools.register(mcp)
+wp_users.register(mcp)
 
 logger.info("Articulate MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
@@ -282,6 +285,9 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/tenants/{tenant_id}/domains", tenant_routes.add_domain_endpoint, methods=["POST"]),
     Route("/tenants/{tenant_id}/domains/{domain_id:int}", tenant_routes.remove_domain_endpoint, methods=["DELETE"]),
     Route("/tenants/{tenant_id}/domains/{domain_id:int}/verify", tenant_routes.verify_domain_endpoint, methods=["POST"]),
+
+    # WordPress Capabilities
+    Route("/capabilities", get_capabilities_endpoint, methods=["GET"]),
 
     # Caddy Routing (no auth required)
     Route("/routing/resolve", routing_routes.resolve_upstream, methods=["GET"]),
