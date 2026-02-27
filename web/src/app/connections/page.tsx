@@ -102,16 +102,28 @@ export default function ConnectionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plugin_slug: "learnpress" }),
       });
+
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error_info?.message || error.error || error.details || "Install failed");
+        const human = data?.error_info?.message || data?.error || data?.details || "Install failed";
+        // Try to copy full error details to clipboard for easier troubleshooting (best-effort)
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+          toast({ title: "Error details copied", description: "Full error info copied to clipboard", variant: "destructive" });
+        } catch (e) {
+          // ignore clipboard failures
+        }
+        toast({ title: "Failed to install LearnPress", description: human, variant: "destructive" });
+        return;
       }
-      const result = await response.json();
+
+      // success
       toast({ title: "Plugin installed", description: `LearnPress installed on ${name}` });
     } catch (error) {
+      const desc = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: "Failed to install LearnPress",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: desc,
         variant: "destructive",
       });
     }
