@@ -342,6 +342,43 @@ function TenantCard({
     }
   };
 
+  const handleUpdateRole = async (memberId: number, newRole: string) => {
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/members/${memberId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Role updated", description: data.wp_synced ? "WordPress role synced" : "Role updated (WP sync pending)" });
+        fetchMembers();
+      } else {
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update role", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveMember = async (memberId: number, memberName: string) => {
+    if (!confirm(`Remove ${memberName} from this site?`)) return;
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/members/${memberId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Member removed" });
+        fetchMembers();
+      } else {
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to remove member", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     if (showTeam) fetchMembers();
   }, [showTeam]);
@@ -577,6 +614,11 @@ function TenantCard({
             <h3 className="text-sm font-medium flex items-center gap-2">
               <Users className="h-4 w-4" />
               Team
+              {members.length > 0 && (
+                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                  {members.length}
+                </span>
+              )}
             </h3>
             <Button
               variant="outline"
@@ -606,15 +648,17 @@ function TenantCard({
                       member.role === "editor" ? <Pencil className="h-3.5 w-3.5 text-green-500" /> :
                       <Eye className="h-3.5 w-3.5 text-gray-500" />;
 
+                    const canManage = (tenant.role === "owner" || tenant.role === "admin") && member.role !== "owner";
+
                     return (
                       <div
-                        key={member.id || idx}
+                        key={member.user_id || idx}
                         className="flex items-center justify-between rounded-lg border p-2 text-sm"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           {roleIcon}
-                          <div>
-                            <span className="font-medium">{member.name || member.email}</span>
+                          <div className="min-w-0">
+                            <span className="font-medium truncate">{member.name || member.email}</span>
                             {member.name && (
                               <span className="text-muted-foreground ml-1 text-xs">
                                 ({member.email})
@@ -622,14 +666,36 @@ function TenantCard({
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {member.role}
-                          </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {canManage ? (
+                            <select
+                              value={member.role}
+                              onChange={(e) => handleUpdateRole(member.user_id, e.target.value)}
+                              className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="editor">Editor</option>
+                              <option value="viewer">Viewer</option>
+                            </select>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              {member.role}
+                            </Badge>
+                          )}
                           {member.wp_role && (
                             <Badge variant="outline" className="text-xs">
                               WP: {member.wp_role}
                             </Badge>
+                          )}
+                          {canManage && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveMember(member.user_id, member.name || member.email)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           )}
                         </div>
                       </div>
