@@ -11,7 +11,7 @@ os.environ["MYSQL_PORT"] = os.getenv("MYSQL_PORT", "3306")
 os.environ["MYSQL_USER"] = os.getenv("MYSQL_USER", "wpuser")
 os.environ["MYSQL_PASSWORD"] = os.getenv("MYSQL_PASSWORD", "wppassword")
 os.environ["MYSQL_DATABASE"] = os.getenv("MYSQL_DATABASE", "wordpress")
-os.environ["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY", "test_key_for_testing_only_32bytes!")
+os.environ["ENCRYPTION_KEY"] = os.getenv("ENCRYPTION_KEY", "pUhZBBsCbHu_7am0tWVYDXMgbIgpHUa_RQkZMsNG-3o=")
 
 
 @pytest.fixture(scope="session")
