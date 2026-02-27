@@ -84,6 +84,17 @@ async def test_install_learnpress_ssh_fallback(monkeypatch):
     )
 
     resp = await lp_route.install_learnpress_endpoint(req)
+    # Debug output to capture response body when the test fails
+    print("DEBUG install resp.status_code:", getattr(resp, 'status_code', None))
+    body = getattr(resp, 'body', None)
+    try:
+        if isinstance(body, (bytes, bytearray)):
+            print("DEBUG install resp.body:", body.decode(errors='replace'))
+        else:
+            print("DEBUG install resp.body:", body)
+    except Exception as e:
+        print("DEBUG error reading resp.body:", e)
+
     assert resp.status_code == 200
     data = json.loads(resp.body.decode())
     assert data.get("success") is True
