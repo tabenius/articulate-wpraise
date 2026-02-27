@@ -17,6 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy source code first (needed for package installation)
 COPY mcp-server/ ./
+# Copy helper scripts (e.g., setup-remote-wordpress.py) so WP-CLI fallback works in container
+COPY scripts/ ./scripts/
+# Also copy scripts to the container root so the module-level relative lookup succeeds
+COPY scripts/ /scripts/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -e ".[dev]" 2>/dev/null || pip install --no-cache-dir .
