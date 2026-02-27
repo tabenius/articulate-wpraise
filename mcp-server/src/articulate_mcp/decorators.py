@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import functools
 from functools import wraps
 from typing import Callable, Optional
 
 from starlette.responses import JSONResponse
+
+from articulate_mcp.capability_checker import capability_checker
 
 
 def require_auth(f: Callable) -> Callable:
@@ -135,4 +138,52 @@ def require_org_member(role: Optional[str] = None) -> Callable:
             return await f(request)
 
         return wrapper
+    return decorator
+
+
+def require_wp_capability(required_capabilities):
+    """Decorator that checks WordPress capabilities before executing an endpoint.
+
+    Args:
+        required_capabilities: Single capability string or list of capabilities.
+
+    The decorator expects request.state.wp_roles to be set (by middleware).
+    If wp_roles is not available, it returns 403.
+    """
+    if isinstance(required_capabilities, str):
+        required_capabilities = [required_capabilities]
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(request, *args, **kwargs):
+            wp_roles = getattr(request.state, "wp_roles", None)
+
+            if not wp_roles:
+                return JSONResponse(
+                    {
+                        "error": "WordPress role information not available",
+                        "detail": "No active WordPress connection or roles could not be determined",
+                    },
+                    status_code=403,
+                )
+
+            has_caps, missing = capability_checker.check(wp_roles, required_capabilities)
+
+            if not has_caps:
+                role_names = ", ".join(wp_roles)
+                missing_names = ", ".join(missing)
+                return JSONResponse(
+                    {
+                        "error": "Insufficient WordPress capabilities",
+                        "detail": f"Your WordPress role ({role_names}) lacks: {missing_names}",
+                        "missing_capabilities": missing,
+                        "your_roles": wp_roles,
+                    },
+                    status_code=403,
+                )
+
+            return await func(request, *args, **kwargs)
+
+        return wrapper
+
     return decorator
