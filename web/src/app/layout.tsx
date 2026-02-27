@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ConnectionProvider } from "@/contexts/connection-context";
+import { CapabilitiesProvider } from "@/contexts/capabilities-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -32,7 +33,9 @@ export default function RootLayout({
           <ErrorBoundary>
             <AuthProvider>
               <ConnectionProvider>
-                {children}
+                <CapabilitiesProvider>
+                  {children}
+                </CapabilitiesProvider>
               </ConnectionProvider>
             </AuthProvider>
             <Toaster />

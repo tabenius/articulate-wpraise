@@ -87,6 +87,36 @@ export default function ConnectionsPage() {
     }
   }
 
+  async function handleInstallLearnpress(id: number, name: string) {
+    if (!confirm(`Install LearnPress on "${name}"? This may require admin permissions.`)) {
+      return;
+    }
+    const sessionId = localStorage.getItem("session_id");
+    if (!sessionId) {
+      toast({ title: "Not authenticated", description: "Please sign in", variant: "destructive" });
+      return;
+    }
+    try {
+      const response = await fetch(`/api/connections/${id}/learnpress/install`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plugin_slug: "learnpress" }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || error.details || "Install failed");
+      }
+      const result = await response.json();
+      toast({ title: "Plugin installed", description: `LearnPress installed on ${name}` });
+    } catch (error) {
+      toast({
+        title: "Failed to install LearnPress",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -256,6 +286,9 @@ export default function ConnectionsPage() {
                       Activate
                     </Button>
                   )}
+                  <Button size="sm" onClick={() => handleInstallLearnpress(connection.id, connection.name)}>
+                    Install LearnPress
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"

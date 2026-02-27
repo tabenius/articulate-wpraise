@@ -61,6 +61,7 @@ from articulate_mcp.routes.connections import (
     update_connection_endpoint, delete_connection_endpoint,
     activate_connection_endpoint, setup_remote_wordpress_endpoint
 )
+from articulate_mcp.routes.learnpress import check_learnpress_endpoint, install_learnpress_endpoint
 from articulate_mcp.routes.monitoring import (
     health_endpoint, health_ready_endpoint, health_deep_endpoint,
     metrics_endpoint, audit_logs_endpoint, audit_summary_endpoint,
@@ -79,6 +80,12 @@ from articulate_mcp.routes.content_assistant import (
 from articulate_mcp.routes.capabilities import get_capabilities_endpoint
 from articulate_mcp.routes import tenants as tenant_routes
 from articulate_mcp.routes import routing as routing_routes
+from articulate_mcp.routes.tenant_members import (
+    list_tenant_members_endpoint,
+    add_tenant_member_endpoint,
+    update_tenant_member_role_endpoint,
+    remove_tenant_member_endpoint,
+)
 
 # Configure structured logging
 json_format = os.getenv("LOG_FORMAT", "human") == "json"
@@ -258,6 +265,8 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
     Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
     Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
+    Route("/connections/{id:int}/learnpress/check", check_learnpress_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/install", install_learnpress_endpoint, methods=["POST"]),
 
     # Upload
     Route("/upload", upload_file_endpoint, methods=["POST"]),
@@ -285,6 +294,12 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/tenants/{tenant_id}/domains", tenant_routes.add_domain_endpoint, methods=["POST"]),
     Route("/tenants/{tenant_id}/domains/{domain_id:int}", tenant_routes.remove_domain_endpoint, methods=["DELETE"]),
     Route("/tenants/{tenant_id}/domains/{domain_id:int}/verify", tenant_routes.verify_domain_endpoint, methods=["POST"]),
+
+    # Tenant Members
+    Route("/tenants/{tenant_id}/members", list_tenant_members_endpoint, methods=["GET"]),
+    Route("/tenants/{tenant_id}/members", add_tenant_member_endpoint, methods=["POST"]),
+    Route("/tenants/{tenant_id}/members/{member_id:int}", update_tenant_member_role_endpoint, methods=["PUT"]),
+    Route("/tenants/{tenant_id}/members/{member_id:int}", remove_tenant_member_endpoint, methods=["DELETE"]),
 
     # WordPress Capabilities
     Route("/capabilities", get_capabilities_endpoint, methods=["GET"]),

@@ -391,3 +391,18 @@ query GetRevision($id: ID!) {
   }
 }
 """
+
+GET_VIEWER_CAPABILITIES = """
+query GetViewerCapabilities {
+  viewer {
+    databaseId
+    username
+    email
+    roles {
+      nodes {
+        name
+      }
+    }
+  }
+}
+"""

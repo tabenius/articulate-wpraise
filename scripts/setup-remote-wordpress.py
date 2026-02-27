@@ -415,6 +415,12 @@ define('JWT_AUTH_CORS_ENABLE', true);
                 "wp-graphql-jwt-authentication"
             ]
 
+            # Allow additional plugins via CLI flag
+            if hasattr(self, 'extra_plugins_to_install') and self.extra_plugins_to_install:
+                for p in self.extra_plugins_to_install:
+                    if p and p not in required_plugins:
+                        required_plugins.append(p)
+
             for plugin in required_plugins:
                 self.install_plugin(wp_path, plugin)
 
@@ -480,6 +486,7 @@ def main():
     parser.add_argument("--discover", action="store_true", help="Only discover WordPress installations (don't setup)")
     parser.add_argument("--username", default="mcp-api-user", help="WordPress username to create")
     parser.add_argument("--output", help="Save connection info to JSON file")
+    parser.add_argument("--plugins", help="Comma-separated plugin slugs to install (e.g., learnpress,other-plugin)")
 
     args = parser.parse_args()
 
@@ -495,6 +502,10 @@ def main():
         key_path=args.key,
         password=args.password
     )
+
+    # Pass extra plugins to install into the setup instance
+    if args.plugins:
+        setup.extra_plugins_to_install = [p.strip() for p in args.plugins.split(',') if p.strip()]
 
     # Run discover mode or full setup
     if args.discover:

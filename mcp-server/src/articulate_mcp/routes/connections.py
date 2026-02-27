@@ -233,6 +233,17 @@ async def setup_remote_wordpress_endpoint(request):
         else:
             cmd.extend(["--password", ssh_password])
 
+        # Include plugins list if provided (comma-separated string or list)
+        plugins = data.get("plugins")
+        if plugins:
+            # Accept list or comma-separated string
+            if isinstance(plugins, list):
+                plugins_str = ",".join([p for p in plugins if p])
+            else:
+                plugins_str = str(plugins)
+            if plugins_str:
+                cmd.extend(["--plugins", plugins_str])
+
         # Run setup script
         logger.info(f"Running remote WordPress setup for {host}")
         process = await asyncio.create_subprocess_exec(

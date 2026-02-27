@@ -481,9 +481,25 @@ class UserManager:
             (row["id"],),
         )
 
+        # Get Articulate user info
+        user = await db.fetchone(
+            "SELECT email, name FROM articulate_users_auth WHERE id = %s",
+            (row["user_id"],),
+        )
+
+        # Look up per-user WP mapping for this tenant
+        tenant_user = await db.fetchone(
+            "SELECT wp_username, wp_role FROM tenant_users WHERE tenant_id = %s AND user_id = %s",
+            (row["tenant_id"], row["user_id"]),
+        )
+
         return {
             "user_id": row["user_id"],
             "tenant_id": row["tenant_id"],
             "tenant_name": row["tenant_name"],
             "tenant_domain": row["tenant_domain"],
+            "email": user["email"] if user else "",
+            "name": user.get("name", "") if user else "",
+            "wp_username": tenant_user["wp_username"] if tenant_user and tenant_user.get("wp_username") else None,
+            "wp_role": tenant_user["wp_role"] if tenant_user and tenant_user.get("wp_role") else None,
         }

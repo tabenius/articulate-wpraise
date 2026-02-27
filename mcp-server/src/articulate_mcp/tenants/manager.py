@@ -1,5 +1,6 @@
 """Tenant lifecycle management — orchestrates crypto, composer, Docker ops, and DB."""
 
+import asyncio
 import os
 import re
 import uuid
@@ -11,6 +12,7 @@ from articulate_mcp.tenants.crypto import TenantCrypto
 from articulate_mcp.tenants.composer import TenantComposer
 from articulate_mcp.tenants.docker_ops import TenantDockerOps
 from articulate_mcp.tenants.routing import RESERVED_SUBDOMAINS, VIEWS
+from articulate_mcp.tenants.wp_user_sync import create_wp_user_for_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,35 @@ class TenantManager:
                 "UPDATE tenants SET status = 'error' WHERE id = %s", (tenant_id,)
             )
             raise
+
+        # Create per-user WordPress account for the owner (async, non-blocking)
+        try:
+            owner = await self.db.fetchone(
+                "SELECT email, name FROM articulate_users_auth WHERE id = %s",
+                (owner_user_id,),
+            )
+            if owner:
+                # Wait for WordPress to be ready (REST API needs wp-setup to finish)
+                await asyncio.sleep(10)
+                wp_user = await create_wp_user_for_tenant(
+                    wp_url=f"http://tenant_{tenant_id}_wordpress:80",
+                    wp_admin_user="admin",
+                    wp_admin_password=secrets["wp_admin_password"],
+                    articulate_user_email=owner["email"],
+                    articulate_user_name=owner.get("name", ""),
+                    articulate_role="owner",
+                )
+                if wp_user:
+                    await self.db.execute(
+                        """UPDATE tenant_users
+                           SET wp_user_id = %s, wp_username = %s, wp_role = %s
+                           WHERE tenant_id = %s AND user_id = %s""",
+                        (wp_user["wp_user_id"], wp_user["wp_username"],
+                         wp_user["wp_role"], tenant_id, owner_user_id),
+                    )
+                    logger.info("Created WP user for tenant owner: %s", wp_user["wp_username"])
+        except Exception as e:
+            logger.warning("Could not create WP user for tenant owner: %s", e)
 
         return {
             "tenant_id": tenant_id,
