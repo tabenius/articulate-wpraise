@@ -26,7 +26,8 @@ from articulate_mcp.middleware.logging import RequestLoggingMiddleware
 from articulate_mcp.tools import (
     posts, pages, blocks, media, fonts, preview, search, taxonomies,
     revisions, image_tools, settings, menus, templates, seo_tools,
-    export_tools, generated, capabilities as capabilities_tools, wp_users
+    export_tools, generated, capabilities as capabilities_tools, wp_users,
+    learnpress as learnpress_tools,
 )
 
 # Import route handlers
@@ -61,7 +62,12 @@ from articulate_mcp.routes.connections import (
     update_connection_endpoint, delete_connection_endpoint,
     activate_connection_endpoint, setup_remote_wordpress_endpoint
 )
-from articulate_mcp.routes.learnpress import check_learnpress_endpoint, install_learnpress_endpoint
+from articulate_mcp.routes.learnpress import (
+    check_learnpress_endpoint, install_learnpress_endpoint,
+    lp_list_courses_endpoint, lp_get_course_endpoint, lp_enroll_endpoint,
+    lp_course_students_endpoint, lp_list_quizzes_endpoint, lp_get_quiz_endpoint,
+    lp_orders_endpoint, lp_student_progress_endpoint,
+)
 from articulate_mcp.routes.monitoring import (
     health_endpoint, health_ready_endpoint, health_deep_endpoint,
     metrics_endpoint, audit_logs_endpoint, audit_summary_endpoint,
@@ -144,6 +150,7 @@ export_tools.register(mcp)
 generated.register(mcp)
 capabilities_tools.register(mcp)
 wp_users.register(mcp)
+learnpress_tools.register(mcp)
 
 logger.info("Articulate MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
@@ -267,6 +274,14 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
     Route("/connections/{id:int}/learnpress/check", check_learnpress_endpoint, methods=["GET"]),
     Route("/connections/{id:int}/learnpress/install", install_learnpress_endpoint, methods=["POST"]),
+    Route("/connections/{id:int}/learnpress/courses", lp_list_courses_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/courses/{course_id:int}", lp_get_course_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/courses/{course_id:int}/enroll", lp_enroll_endpoint, methods=["POST"]),
+    Route("/connections/{id:int}/learnpress/courses/{course_id:int}/students", lp_course_students_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/quizzes", lp_list_quizzes_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/quizzes/{quiz_id:int}", lp_get_quiz_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/orders", lp_orders_endpoint, methods=["GET"]),
+    Route("/connections/{id:int}/learnpress/progress", lp_student_progress_endpoint, methods=["GET"]),
 
     # Upload
     Route("/upload", upload_file_endpoint, methods=["POST"]),

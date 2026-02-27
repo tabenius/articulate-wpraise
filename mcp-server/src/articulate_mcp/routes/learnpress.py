@@ -1,4 +1,4 @@
-"""Endpoints for LearnPress detection and management."""
+"""Endpoints for LearnPress detection, management, and LMS data proxying."""
 
 from __future__ import annotations
 
@@ -7,8 +7,10 @@ import logging
 import json
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 import httpx
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from articulate_mcp.user_manager import UserManager
@@ -16,6 +18,34 @@ from articulate_mcp.connection_manager import connection_manager
 from articulate_mcp.graphql.client import get_graphql_client, GraphQLError
 
 logger = logging.getLogger(__name__)
+
+
+async def _auth_and_connection(request: Request) -> tuple[Optional[dict], Optional[dict], Optional[JSONResponse]]:
+    """Authenticate request and get WP connection. Returns (user, connection, error_response)."""
+    session_id = request.headers.get("X-Session-ID")
+    if not session_id:
+        return None, None, JSONResponse({"error": "Session required"}, status_code=401)
+
+    user = await UserManager.get_user_from_session(session_id)
+    if not user:
+        return None, None, JSONResponse({"error": "Invalid session"}, status_code=401)
+
+    connection_id = int(request.path_params.get("id"))
+    connection = await connection_manager.get_connection(connection_id, user["id"])
+    if not connection:
+        return user, None, JSONResponse({"error": "Connection not found"}, status_code=404)
+
+    return user, connection, None
+
+
+def _lp_client(connection: dict, namespace: str = "learnpress/v1") -> httpx.AsyncClient:
+    """Create httpx client for LearnPress REST API."""
+    wp_url = connection["wp_url"].rstrip("/")
+    return httpx.AsyncClient(
+        base_url=f"{wp_url}/wp-json/{namespace}",
+        auth=(connection["wp_user"], connection["wp_app_password"]),
+        timeout=30.0,
+    )
 
 
 async def check_learnpress_endpoint(request):
@@ -221,3 +251,161 @@ async def install_learnpress_endpoint(request):
     except Exception as e:
         logger.error("Install LearnPress error: %s", e, exc_info=True)
         return JSONResponse({"error": "Failed to install LearnPress", "details": str(e)}, status_code=500)
+
+
+# ── Phase 3: REST proxy routes for LearnPress data ──────────────────
+
+
+async def lp_list_courses_endpoint(request: Request):
+    """List LearnPress courses for a connection."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    try:
+        params = dict(request.query_params)
+        async with _lp_client(connection) as client:
+            resp = await client.get("/courses", params=params)
+            if resp.status_code == 404:
+                return JSONResponse({"courses": [], "learnpress_installed": False})
+            resp.raise_for_status()
+            return JSONResponse({"courses": resp.json(), "learnpress_installed": True})
+    except Exception as e:
+        logger.error("List LP courses error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_get_course_endpoint(request: Request):
+    """Get a single LearnPress course with curriculum."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    course_id = request.path_params.get("course_id")
+    try:
+        async with _lp_client(connection) as client:
+            resp = await client.get(f"/courses/{course_id}")
+            if resp.status_code == 404:
+                return JSONResponse({"error": "Course not found"}, status_code=404)
+            resp.raise_for_status()
+            return JSONResponse(resp.json())
+    except Exception as e:
+        logger.error("Get LP course error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_enroll_endpoint(request: Request):
+    """Enroll the authenticated user in a course."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    course_id = request.path_params.get("course_id")
+    try:
+        async with _lp_client(connection) as client:
+            resp = await client.post("/courses/enroll", json={"id": int(course_id)})
+            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            if resp.status_code >= 400:
+                return JSONResponse({"error": data.get("message", "Enrollment failed")}, status_code=resp.status_code)
+            return JSONResponse({"success": True, "data": data})
+    except Exception as e:
+        logger.error("LP enroll error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_course_students_endpoint(request: Request):
+    """List students enrolled in a course (via admin API)."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    course_id = request.path_params.get("course_id")
+    try:
+        # Use lp/v1 admin namespace for student listing
+        async with _lp_client(connection, namespace="lp/v1") as client:
+            resp = await client.get("/admin/users", params={
+                "course_id": course_id,
+                **dict(request.query_params),
+            })
+            if resp.status_code == 404:
+                return JSONResponse({"students": []})
+            resp.raise_for_status()
+            return JSONResponse({"students": resp.json()})
+    except Exception as e:
+        logger.error("LP course students error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_list_quizzes_endpoint(request: Request):
+    """List LearnPress quizzes for a connection."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    try:
+        params = dict(request.query_params)
+        async with _lp_client(connection) as client:
+            resp = await client.get("/quiz", params=params)
+            if resp.status_code == 404:
+                return JSONResponse({"quizzes": []})
+            resp.raise_for_status()
+            return JSONResponse({"quizzes": resp.json()})
+    except Exception as e:
+        logger.error("List LP quizzes error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_get_quiz_endpoint(request: Request):
+    """Get a single LearnPress quiz with questions."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    quiz_id = request.path_params.get("quiz_id")
+    try:
+        async with _lp_client(connection) as client:
+            resp = await client.get(f"/quiz/{quiz_id}")
+            if resp.status_code == 404:
+                return JSONResponse({"error": "Quiz not found"}, status_code=404)
+            resp.raise_for_status()
+            return JSONResponse(resp.json())
+    except Exception as e:
+        logger.error("Get LP quiz error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_orders_endpoint(request: Request):
+    """List LearnPress orders (admin)."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    try:
+        params = dict(request.query_params)
+        async with _lp_client(connection, namespace="lp/v1") as client:
+            resp = await client.get("/admin/orders", params=params)
+            if resp.status_code == 404:
+                return JSONResponse({"orders": []})
+            resp.raise_for_status()
+            return JSONResponse({"orders": resp.json()})
+    except Exception as e:
+        logger.error("LP orders error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def lp_student_progress_endpoint(request: Request):
+    """Get student progress/statistics for the authenticated user."""
+    user, connection, err = await _auth_and_connection(request)
+    if err:
+        return err
+
+    try:
+        async with _lp_client(connection, namespace="lp/v1") as client:
+            resp = await client.get("/profile/student/statistic")
+            if resp.status_code == 404:
+                return JSONResponse({"progress": {}})
+            resp.raise_for_status()
+            return JSONResponse({"progress": resp.json()})
+    except Exception as e:
+        logger.error("LP student progress error: %s", e, exc_info=True)
+        return JSONResponse({"error": str(e)}, status_code=500)
