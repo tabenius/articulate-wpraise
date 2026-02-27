@@ -34,6 +34,10 @@ import {
   Eye,
   Link2,
   Shield,
+  Users,
+  Crown,
+  UserPlus,
+  Pencil,
 } from "lucide-react";
 
 interface Tenant {
@@ -292,6 +296,55 @@ function TenantCard({
   const [domainForm, setDomainForm] = useState({ external_domain: "", target_view: "wordpress" });
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [isWpAdminLoading, setIsWpAdminLoading] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [addMemberEmail, setAddMemberEmail] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState("viewer");
+  const [addingMember, setAddingMember] = useState(false);
+
+  const fetchMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/members`);
+      if (res.ok) {
+        const data = await res.json();
+        setMembers(data.members || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch members:", e);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!addMemberEmail.trim()) return;
+    setAddingMember(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: addMemberEmail, role: addMemberRole }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Member added successfully" });
+        setAddMemberEmail("");
+        fetchMembers();
+      } else {
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to add member", variant: "destructive" });
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showTeam) fetchMembers();
+  }, [showTeam]);
 
   async function handleWpAdmin() {
     setIsWpAdminLoading(true);
@@ -516,6 +569,112 @@ function TenantCard({
           <p className="text-xs text-muted-foreground">
             No custom domains configured. Add one to use your own domain name.
           </p>
+        </div>
+
+        {/* Team */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTeam(!showTeam)}
+            >
+              {showTeam ? "Hide" : "Show"} Members
+            </Button>
+          </div>
+
+          {showTeam && (
+            <div className="space-y-3">
+              {loadingMembers ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : members.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No team members found.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {members.map((member, idx) => {
+                    const roleIcon =
+                      member.role === "owner" ? <Crown className="h-3.5 w-3.5 text-yellow-500" /> :
+                      member.role === "admin" ? <Shield className="h-3.5 w-3.5 text-blue-500" /> :
+                      member.role === "editor" ? <Pencil className="h-3.5 w-3.5 text-green-500" /> :
+                      <Eye className="h-3.5 w-3.5 text-gray-500" />;
+
+                    return (
+                      <div
+                        key={member.id || idx}
+                        className="flex items-center justify-between rounded-lg border p-2 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          {roleIcon}
+                          <div>
+                            <span className="font-medium">{member.name || member.email}</span>
+                            {member.name && (
+                              <span className="text-muted-foreground ml-1 text-xs">
+                                ({member.email})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {member.role}
+                          </Badge>
+                          {member.wp_role && (
+                            <Badge variant="outline" className="text-xs">
+                              WP: {member.wp_role}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add Member form - only for owners and admins */}
+              {(tenant.role === "owner" || tenant.role === "admin") && (
+                <div className="rounded-lg border p-3 space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Add Member
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder="user@example.com"
+                      value={addMemberEmail}
+                      onChange={(e) => setAddMemberEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <select
+                      value={addMemberRole}
+                      onChange={(e) => setAddMemberRole(e.target.value)}
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="editor">Editor</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                    <Button
+                      size="sm"
+                      onClick={handleAddMember}
+                      disabled={addingMember || !addMemberEmail.trim()}
+                    >
+                      {addingMember && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Metadata */}
