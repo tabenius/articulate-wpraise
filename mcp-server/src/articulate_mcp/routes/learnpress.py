@@ -20,6 +20,10 @@ from articulate_mcp.graphql.client import get_graphql_client, GraphQLError
 
 logger = logging.getLogger(__name__)
 
+async def run_subprocess_exec(*args, **kwargs):
+    """Wrapper around asyncio.create_subprocess_exec to allow monkeypatching in tests."""
+    return await asyncio.create_subprocess_exec(*args, **kwargs)
+
 
 async def _auth_and_connection(request: Request) -> tuple[Optional[dict], Optional[dict], Optional[JSONResponse]]:
     """Authenticate request and get WP connection. Returns (user, connection, error_response)."""
@@ -231,7 +235,7 @@ async def install_learnpress_endpoint(request):
                     cmd.extend(["--password", ssh_password])
 
                 logger.info("Running remote plugin install via SSH for %s", ssh_host)
-                process = await asyncio.create_subprocess_exec(
+                process = await run_subprocess_exec(
                     *cmd,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,

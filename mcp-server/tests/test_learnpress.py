@@ -69,7 +69,7 @@ async def test_install_learnpress_ssh_fallback(monkeypatch):
     async def fake_create_subprocess_exec(*args, **kwargs):
         return FakeProcess()
 
-    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setattr(lp_route, "run_subprocess_exec", fake_create_subprocess_exec)
 
     req = DummyRequest(
         headers={"X-Session-ID": "sess"},

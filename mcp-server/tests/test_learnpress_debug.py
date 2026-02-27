@@ -38,7 +38,7 @@ async def test_learnpress_debug(monkeypatch):
 
         return FakeProc()
 
-    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setattr(lp_route, "run_subprocess_exec", fake_create_subprocess_exec)
 
     # Minimal request-like object expected by the FastAPI-like route function
     class Req:
