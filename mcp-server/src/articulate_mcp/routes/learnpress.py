@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+import re
 import httpx
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -147,6 +148,9 @@ async def install_learnpress_endpoint(request):
         connection_id = int(request.path_params.get("id"))
         data = await request.json()
         plugin_slug = data.get("plugin_slug", "learnpress")
+        # Sanitize plugin_slug: only allow lowercase letters, numbers, hyphen and underscore
+        if not isinstance(plugin_slug, str) or not re.match(r'^[a-z0-9_-]+$', plugin_slug):
+            return JSONResponse({"error": "invalid_plugin_slug", "details": "plugin_slug must match ^[a-z0-9_-]+$"}, status_code=400)
 
         # 1) Try GraphQL mutation
         try:
