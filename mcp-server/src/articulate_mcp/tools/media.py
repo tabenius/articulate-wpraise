@@ -12,6 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from articulate_mcp.graphql.client import gql_client
 from articulate_mcp.graphql.queries import GET_MEDIA, GET_MEDIA_ITEM
 from articulate_mcp.config import config
+from articulate_mcp.context_helper import check_wp_capability
 
 
 def register(mcp: FastMCP) -> None:
@@ -58,6 +59,7 @@ def register(mcp: FastMCP) -> None:
         file_url: str,
         title: str = "",
         alt_text: str = "",
+        context: dict | None = None,
     ) -> dict[str, Any]:
         """Upload a media file to WordPress from a URL or data URI.
 
@@ -69,6 +71,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Uploaded media object with id, url, and dimensions.
         """
+        allowed, warning = check_wp_capability(context, "upload_media")
+        if not allowed:
+            return warning
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Check if this is a data URL (base64 encoded)
             data_url_match = re.match(r"data:([^;]+);base64,(.+)", file_url)

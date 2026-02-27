@@ -3,6 +3,7 @@
 from typing import Any
 from mcp.server.fastmcp import FastMCP
 from articulate_mcp.config import config
+from articulate_mcp.context_helper import check_wp_capability
 
 
 async def list_menus() -> dict[str, Any]:
@@ -106,7 +107,7 @@ async def get_menu_items(menu_id: int) -> dict[str, Any]:
         return {"error": str(e), "success": False}
 
 
-async def add_page_to_menu(page_id: int, menu_id: int, label: str | None = None) -> dict[str, Any]:
+async def add_page_to_menu(page_id: int, menu_id: int, label: str | None = None, context: dict | None = None) -> dict[str, Any]:
     """Add a page to a WordPress menu.
 
     Args:
@@ -117,6 +118,10 @@ async def add_page_to_menu(page_id: int, menu_id: int, label: str | None = None)
     Returns:
         Dictionary with success status
     """
+    allowed, warning = check_wp_capability(context, "manage_menus")
+    if not allowed:
+        return {"error": warning, "success": False}
+
     import httpx
 
     try:
@@ -171,7 +176,7 @@ async def add_page_to_menu(page_id: int, menu_id: int, label: str | None = None)
         return {"error": str(e), "success": False}
 
 
-async def remove_page_from_menu(page_id: int, menu_id: int) -> dict[str, Any]:
+async def remove_page_from_menu(page_id: int, menu_id: int, context: dict | None = None) -> dict[str, Any]:
     """Remove a page from a WordPress menu.
 
     Args:
@@ -181,6 +186,10 @@ async def remove_page_from_menu(page_id: int, menu_id: int) -> dict[str, Any]:
     Returns:
         Dictionary with success status
     """
+    allowed, warning = check_wp_capability(context, "manage_menus")
+    if not allowed:
+        return {"error": warning, "success": False}
+
     import httpx
 
     try:

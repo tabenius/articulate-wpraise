@@ -15,7 +15,7 @@ from articulate_mcp.graphql.mutations import (
     CREATE_PAGE,
     UPDATE_PAGE,
 )
-from articulate_mcp.context_helper import get_connection_info
+from articulate_mcp.context_helper import get_connection_info, check_wp_capability
 import logging
 
 logger = logging.getLogger(__name__)
@@ -131,6 +131,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The created post/page object with id, title, slug, status.
         """
+        allowed, warning = check_wp_capability(context, "create_post")
+        if not allowed:
+            return warning
+
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
@@ -198,6 +202,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             The updated post/page object.
         """
+        allowed, warning = check_wp_capability(context, "update_post")
+        if not allowed:
+            return warning
+
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
@@ -285,6 +293,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Confirmation with deleted post title and id.
         """
+        allowed, warning = check_wp_capability(context, "delete_post")
+        if not allowed:
+            return warning
+
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 

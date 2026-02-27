@@ -6,7 +6,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from articulate_mcp.context_helper import get_connection_info
+from articulate_mcp.context_helper import get_connection_info, check_wp_capability
 from articulate_mcp.graphql.client import get_graphql_client
 
 
@@ -137,6 +137,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Updated template data.
         """
+        allowed, warning = check_wp_capability(context, "manage_templates")
+        if not allowed:
+            return warning
+
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
@@ -218,6 +222,10 @@ def register(mcp: FastMCP) -> None:
         Returns:
             Created template data.
         """
+        allowed, warning = check_wp_capability(context, "manage_templates")
+        if not allowed:
+            return warning
+
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 

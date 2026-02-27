@@ -3,6 +3,7 @@
 from typing import Any
 from mcp.server.fastmcp import FastMCP
 from articulate_mcp.config import config
+from articulate_mcp.context_helper import check_wp_capability
 
 
 async def get_front_page_settings() -> dict[str, Any]:
@@ -40,7 +41,7 @@ async def get_front_page_settings() -> dict[str, Any]:
         return {"error": str(e)}
 
 
-async def set_front_page(page_id: int) -> dict[str, Any]:
+async def set_front_page(page_id: int, context: dict | None = None) -> dict[str, Any]:
     """Set a page as the site's front page.
 
     Args:
@@ -49,6 +50,10 @@ async def set_front_page(page_id: int) -> dict[str, Any]:
     Returns:
         Dictionary with success status and updated settings
     """
+    allowed, warning = check_wp_capability(context, "set_front_page")
+    if not allowed:
+        return {"error": warning, "success": False}
+
     from articulate_mcp.graphql.client import GraphQLClient
 
     # First, we need to update WordPress options via REST API
@@ -75,8 +80,12 @@ async def set_front_page(page_id: int) -> dict[str, Any]:
         return {"error": str(e), "success": False}
 
 
-async def unset_front_page() -> dict[str, Any]:
+async def unset_front_page(context: dict | None = None) -> dict[str, Any]:
     """Unset the front page (show posts on front page instead)."""
+    allowed, warning = check_wp_capability(context, "set_front_page")
+    if not allowed:
+        return {"error": warning, "success": False}
+
     import httpx
 
     try:
