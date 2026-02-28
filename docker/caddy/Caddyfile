@@ -58,7 +58,7 @@ http://app.ragbaz.xyz {
 
     # Next.js frontend (default - handles all other routes)
     handle {
-        reverse_proxy web:3000 {
+        reverse_proxy webedit:3000 {
             header_up Host {host}
             header_up X-Real-IP {header.X-Real-IP}
             header_up X-Forwarded-For {header.X-Forwarded-For}
