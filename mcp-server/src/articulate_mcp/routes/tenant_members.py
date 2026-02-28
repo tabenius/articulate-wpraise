@@ -68,7 +68,10 @@ async def add_tenant_member_endpoint(request: Request):
         return JSONResponse({"error": "Authentication required"}, status_code=401)
 
     tenant_id = request.path_params["tenant_id"]
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
     email = data.get("email", "").strip()
     role = data.get("role", "viewer")
@@ -165,7 +168,10 @@ async def update_tenant_member_role_endpoint(request: Request):
 
     tenant_id = request.path_params["tenant_id"]
     member_user_id = int(request.path_params["member_id"])
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
     new_role = data.get("role")
     if new_role not in ("admin", "editor", "viewer"):

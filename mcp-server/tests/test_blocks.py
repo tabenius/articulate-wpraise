@@ -169,3 +169,9 @@ def test_roundtrip_simple(sample_blocks):
     assert len(parsed) == len(sample_blocks)
     for original, parsed_block in zip(sample_blocks, parsed):
         assert parsed_block.name == original["name"]
+        # Verify attributes are preserved through serialization roundtrip
+        for key, value in original["attributes"].items():
+            assert parsed_block.attributes.get(key) == value, (
+                f"Attribute '{key}' lost in roundtrip for {original['name']}: "
+                f"expected {value!r}, got {parsed_block.attributes.get(key)!r}"
+            )

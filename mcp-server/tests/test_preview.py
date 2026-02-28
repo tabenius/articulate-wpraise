@@ -44,7 +44,7 @@ class TestPreviewTool:
                 "post_type": "post",
                 "post_status": "publish"
             }
-            mock_response.raise_for_status = Mock()
+            mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -188,7 +188,7 @@ class TestPreviewTool:
                 "success": False,
                 "error": "Preview generation failed"
             }
-            mock_response.raise_for_status = Mock()
+            mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -210,7 +210,7 @@ class TestPreviewTool:
                 "html": "<html></html>",
                 "post_id": 42
             }
-            mock_response.raise_for_status = Mock()
+            mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
             with patch("httpx.AsyncClient") as mock_client:
                 mock_get = AsyncMock(return_value=mock_response)
@@ -233,7 +233,7 @@ class TestPreviewTool:
                 "success": True,
                 "html": "<html></html>"
             }
-            mock_response.raise_for_status = Mock()
+            mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
             with patch("httpx.AsyncClient") as mock_client:
                 mock_get = AsyncMock(return_value=mock_response)
@@ -259,7 +259,7 @@ class TestPreviewTool:
                 "post_type": "post",
                 "post_status": "publish"
             }
-            mock_response.raise_for_status = Mock()
+            mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
             with patch("httpx.AsyncClient") as mock_client:
                 mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -293,7 +293,7 @@ class TestPreviewIntegration:
                     "post_id": 1,
                     "post_type": post_type
                 }
-                mock_response.raise_for_status = Mock()
+                mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
                 with patch("httpx.AsyncClient") as mock_client:
                     mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -317,7 +317,7 @@ class TestPreviewIntegration:
                     "post_id": 1,
                     "post_status": status
                 }
-                mock_response.raise_for_status = Mock()
+                mock_response.raise_for_status = Mock()  # 200 OK - no exception
 
                 with patch("httpx.AsyncClient") as mock_client:
                     mock_client.return_value.__aenter__.return_value.get = AsyncMock(

@@ -66,8 +66,11 @@ class UserManager:
             (email, password_hash, name, verify_token, verify_expires),
         )
 
-        # Send verification email
-        send_verification_email(email, name, verify_token)
+        # Send verification email (non-fatal if email service is down)
+        try:
+            send_verification_email(email, name, verify_token)
+        except Exception as e:
+            logger.error("Failed to send verification email to %s: %s", email, e)
 
         logger.info("User registered (unverified): %s (ID: %d)", email, user_id)
 
@@ -385,7 +388,10 @@ class UserManager:
             "UPDATE articulate_users_auth SET email_verify_token = %s, email_verify_expires = %s WHERE id = %s",
             (token, expires, user["id"]),
         )
-        send_verification_email(email, user["name"] or "", token)
+        try:
+            send_verification_email(email, user["name"] or "", token)
+        except Exception as e:
+            logger.error("Failed to resend verification email to %s: %s", email, e)
         logger.info("Verification email resent to %s", email)
         return True
 
@@ -406,7 +412,10 @@ class UserManager:
             "INSERT INTO articulate_password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)",
             (user["id"], token, expires),
         )
-        send_password_reset_email(email, user["name"] or "", token)
+        try:
+            send_password_reset_email(email, user["name"] or "", token)
+        except Exception as e:
+            logger.error("Failed to send password reset email to %s: %s", email, e)
         logger.info("Password reset requested for %s", email)
         return True
 
