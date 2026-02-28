@@ -21,6 +21,8 @@ COPY mcp-server/ ./
 COPY scripts/ ./scripts/
 # Also copy scripts to the container root so the module-level relative lookup succeeds
 COPY scripts/ /scripts/
+# Copy tenant templates (TenantComposer resolves 4 levels up from source to /templates)
+COPY templates/ /templates/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -e ".[dev]" 2>/dev/null || pip install --no-cache-dir .
