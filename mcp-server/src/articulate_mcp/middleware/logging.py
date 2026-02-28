@@ -1,9 +1,10 @@
-"""Request/response logging middleware."""
+"""Request/response logging middleware with correlation IDs."""
 
 from __future__ import annotations
 
 import logging
 import time
+import uuid
 from typing import Callable, cast
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,6 +18,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log all HTTP requests and responses.
 
     Logs:
+    - Correlation ID (auto-generated or from X-Correlation-ID header)
     - Request method, path, and query parameters
     - Request headers (sanitized)
     - Response status code
@@ -34,6 +36,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and log details."""
+        # Generate or reuse correlation ID
+        correlation_id = (
+            request.headers.get("X-Correlation-ID")
+            or request.headers.get("X-Request-ID")
+            or uuid.uuid4().hex[:12]
+        )
+        # Store on request state so handlers can access it
+        request.state.correlation_id = correlation_id
+
         # Record start time
         start_time = time.time()
 
@@ -42,12 +53,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         query_params = dict(request.query_params) if request.query_params else None
 
-        # Sanitize headers (remove sensitive data)
-        headers = {
-            k.lower(): v if k.lower() not in self.SENSITIVE_HEADERS else "[REDACTED]"
-            for k, v in request.headers.items()
-        }
-
         # Get user info if available (set by auth middleware)
         user_id = None
         if hasattr(request.state, "user") and request.state.user:
@@ -55,8 +60,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request
         logger.info(
-            f"Request started",
+            "Request started",
             extra={
+                "request_id": correlation_id,
                 "method": method,
                 "path": path,
                 "query_params": query_params,
@@ -72,8 +78,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             # Log exception and re-raise
             duration_ms = (time.time() - start_time) * 1000
             logger.error(
-                f"Request failed with exception",
+                "Request failed with exception",
                 extra={
+                    "request_id": correlation_id,
                     "method": method,
                     "path": path,
                     "error": str(e),
@@ -90,8 +97,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         log_level = logging.INFO if response.status_code < 400 else logging.WARNING
         logger.log(
             log_level,
-            f"Request completed",
+            "Request completed",
             extra={
+                "request_id": correlation_id,
                 "method": method,
                 "path": path,
                 "status_code": response.status_code,
@@ -100,7 +108,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             }
         )
 
-        # Add custom header with response time
+        # Add correlation and timing headers to response
+        response.headers["X-Correlation-ID"] = correlation_id
         response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
 
         return response

@@ -64,6 +64,7 @@ from articulate_mcp.routes.connections import (
 )
 from articulate_mcp.routes.learnpress import (
     check_learnpress_endpoint, install_learnpress_endpoint,
+    install_learnpress_stream_endpoint,
     lp_list_courses_endpoint, lp_get_course_endpoint, lp_enroll_endpoint,
     lp_course_students_endpoint, lp_list_quizzes_endpoint, lp_get_quiz_endpoint,
     lp_orders_endpoint, lp_student_progress_endpoint,
@@ -274,6 +275,7 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
     Route("/connections/{id:int}/learnpress/check", check_learnpress_endpoint, methods=["GET"]),
     Route("/connections/{id:int}/learnpress/install", install_learnpress_endpoint, methods=["POST"]),
+    Route("/connections/{id:int}/learnpress/install/stream", install_learnpress_stream_endpoint, methods=["POST"]),
     Route("/connections/{id:int}/learnpress/courses", lp_list_courses_endpoint, methods=["GET"]),
     Route("/connections/{id:int}/learnpress/courses/{course_id:int}", lp_get_course_endpoint, methods=["GET"]),
     Route("/connections/{id:int}/learnpress/courses/{course_id:int}/enroll", lp_enroll_endpoint, methods=["POST"]),
