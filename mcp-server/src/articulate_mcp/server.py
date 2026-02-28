@@ -322,8 +322,10 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/capabilities", get_capabilities_endpoint, methods=["GET"]),
 
     # Caddy Routing (no auth required)
-    Route("/routing/resolve", routing_routes.resolve_upstream, methods=["GET"]),
     Route("/routing/tls-check", routing_routes.tls_check, methods=["GET"]),
+    # Tenant reverse proxy: Caddy rewrites /{path} → /routing/proxy/{path}
+    Route("/routing/proxy/{path:path}", routing_routes.proxy_tenant_request),
+    Route("/routing/proxy", routing_routes.proxy_tenant_request),
 
     # Static files
     Mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads"),

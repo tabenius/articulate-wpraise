@@ -73,7 +73,7 @@ class TenantDockerOps:
         Returns the application password for MCP access, or None on failure.
         """
         wp_container = self.container_name(tenant_id, "wordpress")
-        site_url = f"https://wordpress.{tenant_name}.{base_domain}"
+        site_url = f"https://wordpress-{tenant_name}.{base_domain}"
 
         if not admin_email:
             admin_email = f"admin@{tenant_name}.{base_domain}"

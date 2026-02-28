@@ -186,7 +186,7 @@ http://my.ragbaz.xyz {
 }
 
 # Multi-tenant wildcard routing
-# Matches: {view}.{tenant}.ragbaz.xyz and {tenant}.ragbaz.xyz
+# Matches: {view}-{tenant}.ragbaz.xyz and {tenant}.ragbaz.xyz
 # Routes dynamically via MCP server's /routing/resolve endpoint
 http://*.ragbaz.xyz {
     log {
@@ -197,12 +197,14 @@ http://*.ragbaz.xyz {
         format json
     }
 
-    reverse_proxy mcp-server:8000/routing/resolve {
-        header_up Host {host}
-        header_up X-Forwarded-Host {host}
+    # Rewrite to tenant proxy path on MCP server
+    rewrite * /routing/proxy{uri}
+
+    reverse_proxy mcp-server:8000 {
+        header_up X-Forwarded-Host {http.request.host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
         flush_interval -1
     }
 }
