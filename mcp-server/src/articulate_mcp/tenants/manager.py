@@ -106,9 +106,6 @@ class TenantManager:
         # Start Docker project
         try:
             self.docker_ops.up(tenant_id, compose_path)
-            await self.db.execute(
-                "UPDATE tenants SET status = 'running' WHERE id = %s", (tenant_id,)
-            )
         except Exception as e:
             logger.error("Failed to start tenant %s: %s", tenant_id, e)
             await self.db.execute(
@@ -116,15 +113,39 @@ class TenantManager:
             )
             raise
 
-        # Create per-user WordPress account for the owner (async, non-blocking)
+        # Install WordPress core, plugins, and create app password
+        app_password = None
+        try:
+            app_password = await asyncio.to_thread(
+                self.docker_ops.setup_wordpress,
+                tenant_id=tenant_id,
+                tenant_name=name,
+                admin_password=secrets["wp_admin_password"],
+                base_domain=self.base_domain,
+            )
+            if app_password:
+                logger.info("Tenant %s: WordPress setup complete", tenant_id)
+                await self.db.execute(
+                    "UPDATE tenants SET status = 'running' WHERE id = %s", (tenant_id,)
+                )
+            else:
+                logger.error("Tenant %s: WordPress setup failed (no app password)", tenant_id)
+                await self.db.execute(
+                    "UPDATE tenants SET status = 'error' WHERE id = %s", (tenant_id,)
+                )
+        except Exception as e:
+            logger.error("Tenant %s: WordPress setup failed: %s", tenant_id, e)
+            await self.db.execute(
+                "UPDATE tenants SET status = 'error' WHERE id = %s", (tenant_id,)
+            )
+
+        # Create per-user WordPress account for the owner
         try:
             owner = await self.db.fetchone(
                 "SELECT email, name FROM articulate_users_auth WHERE id = %s",
                 (owner_user_id,),
             )
-            if owner:
-                # Wait for WordPress to be ready (REST API needs wp-setup to finish)
-                await asyncio.sleep(10)
+            if owner and app_password:
                 wp_user = await create_wp_user_for_tenant(
                     wp_url=f"http://tenant_{tenant_id}_wordpress:80",
                     wp_admin_user="admin",
