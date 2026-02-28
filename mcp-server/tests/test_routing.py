@@ -7,19 +7,26 @@ def resolver():
     return RouteResolver(base_domain="ragbaz.xyz")
 
 
-def test_parse_view_subdomain(resolver):
-    result = resolver.parse_host("faust.tenant1.ragbaz.xyz")
+# --- Flat subdomain scheme: {view}-{tenant}.ragbaz.xyz ---
+
+def test_parse_wordpress_view(resolver):
+    result = resolver.parse_host("wordpress-tenant1.ragbaz.xyz")
+    assert result == {"tenant_name": "tenant1", "view": "wordpress"}
+
+
+def test_parse_faust_view(resolver):
+    result = resolver.parse_host("faust-tenant1.ragbaz.xyz")
     assert result == {"tenant_name": "tenant1", "view": "faust"}
 
 
-def test_parse_astro_subdomain(resolver):
-    result = resolver.parse_host("astro.mysite.ragbaz.xyz")
+def test_parse_astro_view(resolver):
+    result = resolver.parse_host("astro-mysite.ragbaz.xyz")
     assert result == {"tenant_name": "mysite", "view": "astro"}
 
 
-def test_parse_wordpress_subdomain(resolver):
-    result = resolver.parse_host("wordpress.tenant1.ragbaz.xyz")
-    assert result == {"tenant_name": "tenant1", "view": "wordpress"}
+def test_parse_view_with_hyphenated_tenant(resolver):
+    result = resolver.parse_host("wordpress-my-cool-site.ragbaz.xyz")
+    assert result == {"tenant_name": "my-cool-site", "view": "wordpress"}
 
 
 def test_parse_bare_subdomain(resolver):
@@ -44,18 +51,19 @@ def test_parse_reserved_subdomains(resolver):
 
 
 def test_parse_host_strips_port(resolver):
-    result = resolver.parse_host("faust.tenant1.ragbaz.xyz:443")
+    result = resolver.parse_host("faust-tenant1.ragbaz.xyz:443")
     assert result == {"tenant_name": "tenant1", "view": "faust"}
 
 
 def test_parse_host_case_insensitive(resolver):
-    result = resolver.parse_host("FAUST.Tenant1.Ragbaz.xyz")
+    result = resolver.parse_host("FAUST-Tenant1.Ragbaz.xyz")
     assert result == {"tenant_name": "tenant1", "view": "faust"}
 
 
-def test_parse_unknown_view_returns_none(resolver):
-    result = resolver.parse_host("unknown.tenant1.ragbaz.xyz")
-    assert result is None
+def test_parse_unknown_prefix_is_bare_tenant(resolver):
+    """A subdomain that doesn't start with a known view is a bare tenant."""
+    result = resolver.parse_host("unknown-thing.ragbaz.xyz")
+    assert result == {"tenant_name": "unknown-thing", "view": None}
 
 
 def test_upstream_for_wordpress(resolver):
@@ -72,4 +80,10 @@ def test_upstream_for_astro(resolver):
 
 def test_parse_base_domain_itself(resolver):
     result = resolver.parse_host("ragbaz.xyz")
+    assert result is None
+
+
+def test_parse_two_level_subdomain_not_matched(resolver):
+    """Two-level subdomains (old scheme) should not match."""
+    result = resolver.parse_host("wordpress.tenant1.ragbaz.xyz")
     assert result is None

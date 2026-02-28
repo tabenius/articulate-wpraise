@@ -24,8 +24,8 @@ services:
       WORDPRESS_DB_PASSWORD: "{{DB_PASSWORD}}"
       ARTICULATE_MCP_URL: http://articulate-mcp:8000
       WORDPRESS_CONFIG_EXTRA: |
-        define('WP_HOME', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
-        define('WP_SITEURL', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
+        define('WP_HOME', 'https://wordpress-{{TENANT_NAME}}.ragbaz.xyz');
+        define('WP_SITEURL', 'https://wordpress-{{TENANT_NAME}}.ragbaz.xyz');
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 200
@@ -78,7 +78,7 @@ services:
       NEXT_PUBLIC_WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
       NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
       TENANT_NAME: "{{TENANT_NAME}}"
-      SITE_URL: "https://faust.{{TENANT_NAME}}.ragbaz.xyz"
+      SITE_URL: "https://faust-{{TENANT_NAME}}.ragbaz.xyz"
     mem_limit: 256m
     cpus: 0.5
     labels:
@@ -98,7 +98,7 @@ services:
       WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
       WORDPRESS_GRAPHQL_URL: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
       TENANT_NAME: "{{TENANT_NAME}}"
-      SITE_URL: "https://astro.{{TENANT_NAME}}.ragbaz.xyz"
+      SITE_URL: "https://astro-{{TENANT_NAME}}.ragbaz.xyz"
     mem_limit: 256m
     cpus: 0.5
     labels:
