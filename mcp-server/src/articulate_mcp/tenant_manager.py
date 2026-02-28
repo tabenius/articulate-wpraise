@@ -141,15 +141,16 @@ class TenantManager:
             )
 
             conn.commit()
-            logger.info(f"Created tenant {tenant_id} ({name}) for user {owner_user_id}")
+            logger.info("Created tenant %s (%s) for user %d", tenant_id, name, owner_user_id)
             return tenant_id
 
         except Exception as e:
             conn.rollback()
-            logger.error(f"Failed to create tenant: {e}")
+            logger.error("Failed to create tenant: %s", e)
             raise
         finally:
             cursor.close()
+            conn.close()
 
     def get_tenant(self, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Get tenant by ID"""
@@ -174,6 +175,7 @@ class TenantManager:
 
         finally:
             cursor.close()
+            conn.close()
 
     def get_user_tenants(self, user_id: int) -> List[Dict[str, Any]]:
         """Get all tenants accessible by a user"""
@@ -198,6 +200,7 @@ class TenantManager:
 
         finally:
             cursor.close()
+            conn.close()
 
     def update_tenant_status(self, tenant_id: str, status: str) -> bool:
         """Update tenant status (active, suspended, deleted)"""
@@ -221,15 +224,16 @@ class TenantManager:
             conn.commit()
             affected = cursor.rowcount > 0
             if affected:
-                logger.info(f"Updated tenant {tenant_id} status to {status}")
+                logger.info("Updated tenant %s status to %s", tenant_id, status)
             return cast(bool, affected)
 
         except Exception as e:
             conn.rollback()
-            logger.error(f"Failed to update tenant status: {e}")
+            logger.error("Failed to update tenant status: %s", e)
             raise
         finally:
             cursor.close()
+            conn.close()
 
     def add_user_to_tenant(
         self, tenant_id: str, user_id: int, role: str = "viewer"
@@ -252,15 +256,16 @@ class TenantManager:
             )
 
             conn.commit()
-            logger.info(f"Added user {user_id} to tenant {tenant_id} with role {role}")
+            logger.info("Added user %d to tenant %s with role %s", user_id, tenant_id, role)
             return True
 
         except Exception as e:
             conn.rollback()
-            logger.error(f"Failed to add user to tenant: {e}")
+            logger.error("Failed to add user to tenant: %s", e)
             raise
         finally:
             cursor.close()
+            conn.close()
 
     def remove_user_from_tenant(self, tenant_id: str, user_id: int) -> bool:
         """Remove a user from a tenant"""
@@ -286,15 +291,16 @@ class TenantManager:
             conn.commit()
             affected = cursor.rowcount > 0
             if affected:
-                logger.info(f"Removed user {user_id} from tenant {tenant_id}")
+                logger.info("Removed user %d from tenant %s", user_id, tenant_id)
             return cast(bool, affected)
 
         except Exception as e:
             conn.rollback()
-            logger.error(f"Failed to remove user from tenant: {e}")
+            logger.error("Failed to remove user from tenant: %s", e)
             raise
         finally:
             cursor.close()
+            conn.close()
 
     def get_tenant_usage(self, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Get current usage stats for a tenant"""
@@ -316,6 +322,7 @@ class TenantManager:
 
         finally:
             cursor.close()
+            conn.close()
 
     def update_tenant_usage(
         self, tenant_id: str, post_count: int, storage_used_mb: float, user_count: int
@@ -340,10 +347,11 @@ class TenantManager:
 
         except Exception as e:
             conn.rollback()
-            logger.error(f"Failed to update tenant usage: {e}")
+            logger.error("Failed to update tenant usage: %s", e)
             raise
         finally:
             cursor.close()
+            conn.close()
 
     def get_decrypted_db_password(self, tenant_id: str) -> Optional[str]:
         """Get decrypted database password for a tenant"""
@@ -361,8 +369,13 @@ class TenantManager:
                 return None
 
             encrypted_password = result[0]
-            decrypted = self.cipher.decrypt(encrypted_password.encode()).decode()
-            return decrypted
+            try:
+                decrypted = self.cipher.decrypt(encrypted_password.encode()).decode()
+                return decrypted
+            except Exception as e:
+                logger.error("Failed to decrypt tenant %s DB password: %s", tenant_id, e)
+                return None
 
         finally:
             cursor.close()
+            conn.close()

@@ -274,16 +274,10 @@ class ConnectionManager:
         if not connection:
             raise ValueError("Connection not found or unauthorized")
 
-        # Deactivate all connections for user
+        # Atomically deactivate all and activate selected in one statement
         await db.execute(
-            "UPDATE articulate_wordpress_connections SET is_active = 0 WHERE user_id = %s",
-            (user_id,),
-        )
-
-        # Activate selected connection
-        await db.execute(
-            "UPDATE articulate_wordpress_connections SET is_active = 1 WHERE id = %s",
-            (connection_id,),
+            "UPDATE articulate_wordpress_connections SET is_active = (id = %s) WHERE user_id = %s",
+            (connection_id, user_id),
         )
 
         logger.info("Connection %d activated for user %d", connection_id, user_id)

@@ -230,6 +230,9 @@ async def _run_install(request, data: dict, user: dict, connection_id: int, corr
         if wp_path:
             cmd.extend(["--wp-path", wp_path])
 
+        if not ssh_key and not ssh_password:
+            return {"error": "ssh_credentials_missing", "message": "Either ssh_key or ssh_password is required for SSH install", "status_code": 400}
+
         key_file = None
         try:
             if ssh_key:
@@ -249,12 +252,6 @@ async def _run_install(request, data: dict, user: dict, connection_id: int, corr
             )
             stdout, stderr = await process.communicate()
 
-            if key_file:
-                try:
-                    Path(key_file.name).unlink()
-                except Exception:
-                    pass
-
             output = stdout.decode() if stdout else ""
             err = stderr.decode() if stderr else ""
 
@@ -267,6 +264,12 @@ async def _run_install(request, data: dict, user: dict, connection_id: int, corr
         except Exception as e:
             logger.error("SSH install exception: %s", e, exc_info=True, extra=log_extra)
             return {"error": "ssh_install_failed", "message": "SSH install failed", "status_code": 500, "details": str(e)}
+        finally:
+            if key_file:
+                try:
+                    Path(key_file.name).unlink()
+                except Exception:
+                    pass
 
     return {"error": "install_failed_no_credentials", "message": "Failed to install plugin via GraphQL, REST, and mu-plugin. Provide SSH credentials to attempt remote install.", "status_code": 500}
 
@@ -488,6 +491,10 @@ async def install_learnpress_stream_endpoint(request):
             if wp_path:
                 cmd.extend(["--wp-path", wp_path])
 
+            if not ssh_key and not ssh_password:
+                yield sse_event("error", {"error": "ssh_credentials_missing", "message": "Either ssh_key or ssh_password is required"})
+                return
+
             key_file = None
             try:
                 if ssh_key:
@@ -508,12 +515,6 @@ async def install_learnpress_stream_endpoint(request):
                 )
                 stdout, stderr = await process.communicate()
 
-                if key_file:
-                    try:
-                        Path(key_file.name).unlink()
-                    except Exception:
-                        pass
-
                 output = stdout.decode() if stdout else ""
                 err = stderr.decode() if stderr else ""
 
@@ -524,13 +525,14 @@ async def install_learnpress_stream_endpoint(request):
                 yield sse_event("complete", {"success": True, "method": "ssh", "output": output})
                 return
             except Exception as e:
+                yield sse_event("error", {"error": "ssh_install_failed", "message": str(e)})
+                return
+            finally:
                 if key_file:
                     try:
                         Path(key_file.name).unlink()
                     except Exception:
                         pass
-                yield sse_event("error", {"error": "ssh_install_failed", "message": str(e)})
-                return
 
         yield sse_event("error", {
             "error": "install_failed_no_credentials",
