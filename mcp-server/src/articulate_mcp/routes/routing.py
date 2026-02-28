@@ -3,7 +3,7 @@
 import logging
 import httpx
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import RedirectResponse, Response, StreamingResponse
 
 from articulate_mcp.database import db
 from articulate_mcp.tenants.routing import RouteResolver
@@ -64,7 +64,7 @@ async def proxy_tenant_request(request: Request) -> Response:
     upstream = await _resolve_upstream(host)
 
     if not upstream:
-        return Response("Tenant not found", status_code=404)
+        return RedirectResponse("https://app.ragbaz.xyz", status_code=302)
 
     # Build upstream URL — strip /routing/proxy prefix added by Caddy
     path = request.path_params.get("path", "")
