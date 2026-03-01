@@ -98,12 +98,20 @@ def register(mcp: FastMCP) -> None:
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
+        # Try as post first, then fall back to page
         data = await client.query(
             GET_POST,
             variables={"id": str(post_id)},
             user_id=user_id,
         )
         post = data.get("post")
+        if not post:
+            data = await client.query(
+                GET_PAGE,
+                variables={"id": str(post_id)},
+                user_id=user_id,
+            )
+            post = data.get("page")
         if not post:
             return {"error": f"Post {post_id} not found"}
         return _format_post(post)
