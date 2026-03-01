@@ -140,6 +140,9 @@ services:
       MAIL_FROM: verify@ragbaz.xyz
       MAIL_FROM_NAME: Articulate
       APP_URL: https://app.ragbaz.xyz
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./templates:/app/templates:ro
