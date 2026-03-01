@@ -24,8 +24,8 @@ http://app.ragbaz.xyz {
         path /api/mcp/*
     }
     handle @mcpapi {
-        # Strip /api/mcp prefix
-        uri strip_prefix /api/mcp
+        # Rewrite /api/mcp to /mcp so internal MCP server routes match
+        uri replace /api/mcp /mcp
 
         reverse_proxy mcp-server:8000 {
             header_up Host {host}
