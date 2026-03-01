@@ -218,7 +218,7 @@ async def mcp_apikey_wrapper(request):
 mcp._app.routes.extend([  # type: ignore[attr-defined]
     # MCP JSON-RPC
     Route("/mcp", mcp_endpoint_wrapper, methods=["POST"]),
-    Route("/mcp/c/{api_key}", mcp_apikey_wrapper, methods=["POST"]),
+    Route("/mcp/c/{api_key}", mcp_apikey_wrapper, methods=["POST", "GET"]),
 
     # Health & Monitoring
     Route("/health", health_endpoint),

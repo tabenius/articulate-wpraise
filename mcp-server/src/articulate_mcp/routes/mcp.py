@@ -47,6 +47,12 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 }
             })
 
+        # Accept notifications (JSON-RPC notifications have no id and do not require a response)
+        if method and method.startswith("notifications/"):
+            logger.info("MCP notification received: %s", method)
+            # Acknowledge notification with 200 OK and empty body
+            return StarletteJSONResponse({}, status_code=200)
+
         if method == "tools/list":
             # List available tools
             tools = await mcp.list_tools()
@@ -160,6 +166,16 @@ async def mcp_apikey_endpoint(request, mcp):
         request: Starlette request object (with path param `api_key`)
         mcp: FastMCP instance
     """
+    # Support basic GET for health/status checks to avoid 405 from some clients
+    if request.method == "GET":
+        api_key = request.path_params.get("api_key")
+        if not api_key:
+            return StarletteJSONResponse({"error": "API key required"}, status_code=401)
+        connection = await connection_manager.get_connection_by_api_key(api_key)
+        if not connection:
+            return StarletteJSONResponse({"error": "Invalid API key"}, status_code=401)
+        return StarletteJSONResponse({"status": "ok", "connection": {"id": connection.get("id"), "name": connection.get("name")}}, status_code=200)
+
     api_key = request.path_params.get("api_key")
     if not api_key:
         return StarletteJSONResponse(
