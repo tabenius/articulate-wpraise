@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from typing import Optional
 
 from cryptography.fernet import Fernet
@@ -75,6 +76,9 @@ class ConnectionManager:
             "is_active": bool(connection.get("is_active", False)),
         }
 
+        if "mcp_api_key" in connection and connection["mcp_api_key"]:
+            result["mcp_api_key"] = connection["mcp_api_key"]
+
         if include_password and "wp_app_password" in connection:
             try:
                 result["wp_app_password"] = self._decrypt(connection["wp_app_password"])
@@ -131,6 +135,9 @@ class ConnectionManager:
         # Encrypt app password
         encrypted_password = self._encrypt(wp_app_password)
 
+        # Generate MCP API key
+        mcp_api_key = secrets.token_urlsafe(32)
+
         # Check if user has no connections (make this first one active)
         has_connections = await db.fetchone(
             "SELECT id FROM articulate_wordpress_connections WHERE user_id = %s LIMIT 1",
@@ -142,8 +149,8 @@ class ConnectionManager:
         connection_id = await db.insert(
             """
             INSERT INTO articulate_wordpress_connections
-            (user_id, name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password, is_active)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (user_id, name, wp_url, wp_graphql_endpoint, wp_user, wp_app_password, is_active, mcp_api_key)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 user_id,
@@ -153,6 +160,7 @@ class ConnectionManager:
                 wp_user,
                 encrypted_password,
                 is_active,
+                mcp_api_key,
             ),
         )
 
@@ -168,6 +176,7 @@ class ConnectionManager:
             "wp_graphql_endpoint": wp_graphql_endpoint,
             "wp_user": wp_user,
             "is_active": bool(is_active),
+            "mcp_api_key": mcp_api_key,
         }
 
     async def get_connections(self, user_id: int) -> list[dict]:
@@ -181,7 +190,7 @@ class ConnectionManager:
         """
         connections = await db.fetchall(
             """
-            SELECT id, name, wp_url, wp_graphql_endpoint, wp_user, is_active, created_at
+            SELECT id, name, wp_url, wp_graphql_endpoint, wp_user, is_active, mcp_api_key, created_at
             FROM articulate_wordpress_connections
             WHERE user_id = %s
             ORDER BY created_at DESC
@@ -197,6 +206,7 @@ class ConnectionManager:
                 "wp_graphql_endpoint": conn["wp_graphql_endpoint"],
                 "wp_user": conn["wp_user"],
                 "is_active": bool(conn["is_active"]),
+                "mcp_api_key": conn.get("mcp_api_key"),
                 "created_at": conn["created_at"].isoformat(),
             }
             for conn in connections
@@ -215,7 +225,7 @@ class ConnectionManager:
         connection = await db.fetchone(
             """
             SELECT id, user_id, name, wp_url, wp_graphql_endpoint, wp_user,
-                   wp_app_password, is_active, created_at
+                   wp_app_password, is_active, mcp_api_key, created_at
             FROM articulate_wordpress_connections
             WHERE id = %s AND user_id = %s
             """,
@@ -383,6 +393,60 @@ class ConnectionManager:
 
         logger.info("Connection %d deleted for user %d", connection_id, user_id)
         return True
+
+    async def get_connection_by_api_key(self, api_key: str) -> Optional[dict]:
+        """Get a connection by its MCP API key, with decrypted password.
+
+        Args:
+            api_key: The MCP API key
+
+        Returns:
+            Connection dict with decrypted password, or None
+        """
+        connection = await db.fetchone(
+            """
+            SELECT id, user_id, name, wp_url, wp_graphql_endpoint, wp_user,
+                   wp_app_password, is_active, mcp_api_key
+            FROM articulate_wordpress_connections
+            WHERE mcp_api_key = %s
+            """,
+            (api_key,),
+        )
+
+        if not connection:
+            return None
+
+        return self._build_connection_dict(connection, include_password=True)
+
+    async def regenerate_mcp_api_key(self, connection_id: int, user_id: int) -> str:
+        """Regenerate the MCP API key for a connection.
+
+        Args:
+            connection_id: Connection database ID
+            user_id: User database ID (for authorization)
+
+        Returns:
+            The new MCP API key
+
+        Raises:
+            ValueError: If connection not found or unauthorized
+        """
+        connection = await db.fetchone(
+            "SELECT id FROM articulate_wordpress_connections WHERE id = %s AND user_id = %s",
+            (connection_id, user_id),
+        )
+
+        if not connection:
+            raise ValueError("Connection not found or unauthorized")
+
+        new_key = secrets.token_urlsafe(32)
+        await db.execute(
+            "UPDATE articulate_wordpress_connections SET mcp_api_key = %s WHERE id = %s",
+            (new_key, connection_id),
+        )
+
+        logger.info("MCP API key regenerated for connection %d", connection_id)
+        return new_key
 
     async def add_org_connection(
         self,

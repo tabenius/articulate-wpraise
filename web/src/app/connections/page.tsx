@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Check, Server } from "lucide-react";
+import { Plus, Trash2, Check, Server, Copy, RefreshCw } from "lucide-react";
 import { RemoteSetupDialog } from "@/components/connections/remote-setup-dialog";
 
 export default function ConnectionsPage() {
@@ -87,6 +87,51 @@ export default function ConnectionsPage() {
         description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
+    }
+  }
+
+  async function handleRegenerateMcpKey(id: number, name: string) {
+    if (!confirm(`Regenerate MCP API key for "${name}"? Existing Claude Desktop connections using this key will stop working.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/connections/${id}/regenerate-mcp-key`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to regenerate key");
+      }
+
+      toast({
+        title: "API key regenerated",
+        description: `New MCP key generated for ${name}`,
+      });
+      // Refresh to show new key
+      window.location.reload();
+    } catch (error) {
+      toast({
+        title: "Failed to regenerate key",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  }
+
+  function getMcpUrl(apiKey: string | null | undefined): string {
+    if (!apiKey) return "";
+    const host = typeof window !== "undefined" ? window.location.origin : "";
+    return `${host}/api/mcp/c/${apiKey}`;
+  }
+
+  async function copyToClipboard(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copied", description: `${label} copied to clipboard` });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
     }
   }
 
@@ -284,6 +329,35 @@ export default function ConnectionsPage() {
                     {new Date(connection.created_at).toLocaleDateString()}
                   </p>
                 </div>
+
+                {connection.mcp_api_key && (
+                  <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-2">
+                    <p className="text-xs font-medium text-gray-500">MCP URL (for Claude Desktop)</p>
+                    <div className="flex items-center gap-1">
+                      <code className="text-xs font-mono break-all flex-1 text-gray-700 dark:text-gray-300">
+                        {getMcpUrl(connection.mcp_api_key)}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 shrink-0"
+                        onClick={() => copyToClipboard(getMcpUrl(connection.mcp_api_key), "MCP URL")}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-gray-500"
+                      onClick={() => handleRegenerateMcpKey(connection.id, connection.name)}
+                    >
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Regenerate Key
+                    </Button>
+                  </div>
+                )}
+
                 <div className="mt-4 flex gap-2">
                   {!connection.is_active && (
                     <Button

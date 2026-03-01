@@ -150,6 +150,30 @@ async def activate_connection_endpoint(request):
         return JSONResponse({"error": "Failed to activate connection"}, status_code=500)
 
 
+async def regenerate_mcp_api_key_endpoint(request):
+    """Regenerate MCP API key for a connection."""
+    from articulate_mcp.user_manager import UserManager
+    from articulate_mcp.connection_manager import connection_manager
+
+    try:
+        session_id = request.headers.get("X-Session-ID")
+        if not session_id:
+            return JSONResponse({"error": "Session required"}, status_code=401)
+
+        user = await UserManager.get_user_from_session(session_id)
+        if not user:
+            return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+        connection_id = int(request.path_params.get("id"))
+        new_key = await connection_manager.regenerate_mcp_api_key(connection_id, user["id"])
+        return JSONResponse({"mcp_api_key": new_key})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        logger.error("Regenerate MCP API key error: %s", e)
+        return JSONResponse({"error": "Failed to regenerate API key"}, status_code=500)
+
+
 async def setup_remote_wordpress_endpoint(request):
     """Setup remote WordPress via SSH and optionally create connection."""
     from articulate_mcp.user_manager import UserManager

@@ -61,7 +61,8 @@ from articulate_mcp.routes.invites import (
 from articulate_mcp.routes.connections import (
     get_connections_endpoint, add_connection_endpoint,
     update_connection_endpoint, delete_connection_endpoint,
-    activate_connection_endpoint, setup_remote_wordpress_endpoint
+    activate_connection_endpoint, regenerate_mcp_api_key_endpoint,
+    setup_remote_wordpress_endpoint,
 )
 from articulate_mcp.routes.learnpress import (
     check_learnpress_endpoint, install_learnpress_endpoint,
@@ -76,7 +77,7 @@ from articulate_mcp.routes.monitoring import (
     profiling_stats_endpoint
 )
 from articulate_mcp.routes.upload import upload_file_endpoint
-from articulate_mcp.routes.mcp import mcp_jsonrpc_endpoint
+from articulate_mcp.routes.mcp import mcp_jsonrpc_endpoint, mcp_apikey_endpoint
 from articulate_mcp.routes.ai_preferences import (
     get_ai_preferences_endpoint, update_ai_preferences_endpoint
 )
@@ -208,10 +209,16 @@ async def mcp_endpoint_wrapper(request):
     return await mcp_jsonrpc_endpoint(request, mcp)
 
 
+async def mcp_apikey_wrapper(request):
+    """Wrapper to pass mcp instance to mcp_apikey_endpoint."""
+    return await mcp_apikey_endpoint(request, mcp)
+
+
 # Add all routes
 mcp._app.routes.extend([  # type: ignore[attr-defined]
     # MCP JSON-RPC
     Route("/mcp", mcp_endpoint_wrapper, methods=["POST"]),
+    Route("/mcp/c/{api_key}", mcp_apikey_wrapper, methods=["POST"]),
 
     # Health & Monitoring
     Route("/health", health_endpoint),
@@ -279,6 +286,7 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/connections/{id:int}", update_connection_endpoint, methods=["PUT"]),
     Route("/connections/{id:int}", delete_connection_endpoint, methods=["DELETE"]),
     Route("/connections/{id:int}/activate", activate_connection_endpoint, methods=["POST"]),
+    Route("/connections/{id:int}/regenerate-mcp-key", regenerate_mcp_api_key_endpoint, methods=["POST"]),
     Route("/connections/setup-remote", setup_remote_wordpress_endpoint, methods=["POST"]),
     Route("/connections/{id:int}/learnpress/check", check_learnpress_endpoint, methods=["GET"]),
     Route("/connections/{id:int}/learnpress/install", install_learnpress_endpoint, methods=["POST"]),

@@ -10,6 +10,7 @@ interface Connection {
   wp_graphql_endpoint: string;
   wp_user: string;
   is_active: boolean;
+  mcp_api_key?: string | null;
   created_at: string;
 }
 

@@ -7,6 +7,8 @@ import logging
 
 from starlette.responses import JSONResponse as StarletteJSONResponse
 
+from articulate_mcp.connection_manager import connection_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,10 +37,19 @@ async def mcp_jsonrpc_endpoint(request, mcp):
         if method == "tools/list":
             # List available tools
             tools = await mcp.list_tools()
+            # Convert Tool objects to dicts for JSON serialization
+            tools_list = []
+            for tool in tools:
+                if hasattr(tool, 'model_dump'):
+                    tools_list.append(tool.model_dump())
+                elif hasattr(tool, '__dict__'):
+                    tools_list.append(tool.__dict__)
+                else:
+                    tools_list.append(tool)
             return StarletteJSONResponse({
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": {"tools": tools}
+                "result": {"tools": tools_list}
             })
 
         elif method == "tools/call":
@@ -127,3 +138,38 @@ async def mcp_jsonrpc_endpoint(request, mcp):
             {"jsonrpc": "2.0", "id": body.get("id") if 'body' in locals() else None, "error": {"code": -32603, "message": str(e)}},
             status_code=500
         )
+
+
+async def mcp_apikey_endpoint(request, mcp):
+    """Handle MCP JSON-RPC requests authenticated via API key in URL path.
+
+    Args:
+        request: Starlette request object (with path param `api_key`)
+        mcp: FastMCP instance
+    """
+    api_key = request.path_params.get("api_key")
+    if not api_key:
+        return StarletteJSONResponse(
+            {"error": "API key required"}, status_code=401
+        )
+
+    # Look up connection by API key
+    connection = await connection_manager.get_connection_by_api_key(api_key)
+    if not connection:
+        return StarletteJSONResponse(
+            {"error": "Invalid API key"}, status_code=401
+        )
+
+    # Inject connection context into request scope (same as auth middleware does)
+    request.scope["state"] = {
+        "user": {"id": connection["user_id"]},
+        "connection": connection,
+    }
+
+    logger.info(
+        "MCP API key request: connection=%s, user_id=%s",
+        connection["name"],
+        connection["user_id"],
+    )
+
+    return await mcp_jsonrpc_endpoint(request, mcp)

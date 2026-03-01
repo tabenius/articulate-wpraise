@@ -68,6 +68,7 @@ class AuthMiddleware:
             "/payments/products",
             "/payments/validate-token",
             "/payments/session/",
+            "/mcp/c/",  # MCP via API key (auth handled in route handler)
         ]
 
         # Public GET endpoints (read-only access)
