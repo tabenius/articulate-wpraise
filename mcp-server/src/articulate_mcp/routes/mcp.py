@@ -56,15 +56,43 @@ async def mcp_jsonrpc_endpoint(request, mcp):
         if method == "tools/list":
             # List available tools
             tools = await mcp.list_tools()
-            # Convert Tool objects to dicts for JSON serialization
+            # Convert Tool objects to normalized dicts for JSON serialization and client schema
             tools_list = []
             for tool in tools:
+                # Get raw dict representation
                 if hasattr(tool, 'model_dump'):
-                    tools_list.append(tool.model_dump())
+                    raw = tool.model_dump()
                 elif hasattr(tool, '__dict__'):
-                    tools_list.append(tool.__dict__)
+                    raw = dict(tool.__dict__)
+                elif isinstance(tool, dict):
+                    raw = dict(tool)
                 else:
-                    tools_list.append(tool)
+                    raw = {"name": str(tool)}
+
+                # Normalize fields to types expected by clients (avoid nulls/None)
+                name = raw.get("name") or raw.get("id") or raw.get("title") or "unnamed_tool"
+                title = raw.get("title") if isinstance(raw.get("title"), str) else name
+                description = raw.get("description") if isinstance(raw.get("description"), str) else ""
+                input_schema = raw.get("inputSchema") if isinstance(raw.get("inputSchema"), dict) else {}
+                output_schema = raw.get("outputSchema") if isinstance(raw.get("outputSchema"), dict) else {}
+                icons = raw.get("icons") if isinstance(raw.get("icons"), list) else []
+                annotations = raw.get("annotations") if isinstance(raw.get("annotations"), dict) else {}
+                meta = raw.get("meta") if isinstance(raw.get("meta"), dict) else {}
+                execution = raw.get("execution") if isinstance(raw.get("execution"), dict) else {"type": "jsonrpc", "method": "tools/call", "name": name}
+
+                tool_dict = {
+                    "name": name,
+                    "title": title,
+                    "description": description,
+                    "inputSchema": input_schema,
+                    "outputSchema": output_schema,
+                    "icons": icons,
+                    "annotations": annotations,
+                    "meta": meta,
+                    "execution": execution,
+                }
+                tools_list.append(tool_dict)
+
             return StarletteJSONResponse({
                 "jsonrpc": "2.0",
                 "id": request_id,
