@@ -23,6 +23,20 @@ http://app.ragbaz.xyz {
     @mcpapi {
         path /api/mcp/*
     }
+
+    @mcp_preflight {
+        method OPTIONS
+        path /api/mcp/*
+    }
+    handle @mcp_preflight {
+        respond "" 204 {
+            header Access-Control-Allow-Origin "{http.request.header.Origin}"
+            header Access-Control-Allow-Methods "POST, OPTIONS"
+            header Access-Control-Allow-Headers "Content-Type, Authorization"
+            header Access-Control-Allow-Credentials "true"
+        }
+    }
+
     handle @mcpapi {
         # Rewrite /api/mcp to /mcp so internal MCP server routes match
         uri replace /api/mcp /mcp
