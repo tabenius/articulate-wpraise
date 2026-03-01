@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PurchaseSuccessPage() {
+export const dynamic = "force-dynamic";
+
+function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [status, setStatus] = useState<"loading" | "completed" | "pending">("loading");
@@ -76,5 +78,13 @@ export default function PurchaseSuccessPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PurchaseSuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Processing...</p></div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }

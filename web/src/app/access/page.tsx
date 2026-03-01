@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function AccessPage() {
+export const dynamic = "force-dynamic";
+
+function AccessContent() {
   const searchParams = useSearchParams();
   const [token, setToken] = useState(searchParams.get("token") || "");
   const [result, setResult] = useState<{
@@ -121,5 +123,13 @@ export default function AccessPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+      <AccessContent />
+    </Suspense>
   );
 }
