@@ -29,12 +29,11 @@ http://app.ragbaz.xyz {
         path /api/mcp/*
     }
     handle @mcp_preflight {
-        respond "" 204 {
-            header Access-Control-Allow-Origin "{http.request.header.Origin}"
-            header Access-Control-Allow-Methods "POST, OPTIONS"
-            header Access-Control-Allow-Headers "Content-Type, Authorization"
-            header Access-Control-Allow-Credentials "true"
-        }
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header Access-Control-Allow-Methods "POST, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, Authorization"
+        header Access-Control-Allow-Credentials "true"
+        respond "" 204
     }
 
     handle @mcpapi {
