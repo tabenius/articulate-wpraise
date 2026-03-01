@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelBottomClose } from "lucide-react";
 
 interface AppShellProps {
-  onLoadPost: (postId: number) => void;
+  onLoadPost: (postId: number, type?: string) => void;
   onLoadPosts: () => void;
   onSave: () => void;
   onCreatePost: () => void;
@@ -79,7 +79,7 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost, onCrea
     const handleLoadPost = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.postId) {
-        onLoadPost(customEvent.detail.postId);
+        onLoadPost(customEvent.detail.postId, customEvent.detail.type);
       }
     };
 
@@ -93,8 +93,8 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost, onCrea
   }, [onLoadPosts]);
 
   const handleSelectPost = useCallback(
-    (postId: number) => {
-      onLoadPost(postId);
+    (postId: number, type?: string) => {
+      onLoadPost(postId, type);
       setSidebarOpen(false);
     },
     [onLoadPost]

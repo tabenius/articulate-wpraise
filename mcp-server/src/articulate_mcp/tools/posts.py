@@ -98,7 +98,6 @@ def register(mcp: FastMCP) -> None:
         connection_id, user_id = get_connection_info(context)
         client = await get_graphql_client(connection_id, user_id)
 
-        # Try as post first, then fall back to page
         data = await client.query(
             GET_POST,
             variables={"id": str(post_id)},
@@ -106,15 +105,31 @@ def register(mcp: FastMCP) -> None:
         )
         post = data.get("post")
         if not post:
-            data = await client.query(
-                GET_PAGE,
-                variables={"id": str(post_id)},
-                user_id=user_id,
-            )
-            post = data.get("page")
-        if not post:
             return {"error": f"Post {post_id} not found"}
         return _format_post(post)
+
+    @mcp.tool()
+    async def get_page(post_id: int, context: dict | None = None) -> dict[str, Any]:
+        """Get a single WordPress page by its database ID.
+
+        Args:
+            post_id: The WordPress database ID of the page.
+
+        Returns:
+            Page object with id, title, slug, status, content, date.
+        """
+        connection_id, user_id = get_connection_info(context)
+        client = await get_graphql_client(connection_id, user_id)
+
+        data = await client.query(
+            GET_PAGE,
+            variables={"id": str(post_id)},
+            user_id=user_id,
+        )
+        page = data.get("page")
+        if not page:
+            return {"error": f"Page {post_id} not found"}
+        return _format_post(page)
 
     @mcp.tool()
     async def create_post(

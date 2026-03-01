@@ -86,11 +86,12 @@ export async function fetchPosts(): Promise<PostSummary[]> {
   return result;
 }
 
-export async function fetchPost(id: number): Promise<Post> {
+export async function fetchPost(id: number, type: string = "post"): Promise<Post> {
   if (!id || typeof id !== "number" || id <= 0) {
     throw new Error(`Invalid post ID: ${id}`);
   }
-  const result = await fetchJSON<Post>(`/posts/${id}`);
+  const query = type === "page" ? "?type=page" : "";
+  const result = await fetchJSON<Post>(`/posts/${id}${query}`);
   // Validate required fields
   if (!result || typeof result.id !== "number") {
     throw new Error("Invalid post data received from server");

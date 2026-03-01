@@ -6,14 +6,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, X, Search } from "lucide-react";
+import { FileText, File, Plus, X, Search } from "lucide-react";
 import type { PostSummary } from "@/types/post";
 import { PostListSkeleton } from "./post-list-skeleton";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectPost: (postId: number) => void;
+  onSelectPost: (postId: number, type?: string) => void;
   onCreatePost: () => void;
 }
 
@@ -23,15 +23,19 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
   const isLoading = usePostStore((s) => s.isLoading);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter posts based on search query
-  const filteredPosts = useMemo(() => {
-    if (!searchQuery.trim()) return posts;
-
+  // Filter and group by type
+  const { filteredPosts, filteredPages } = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return posts.filter((post) =>
-      post.title.toLowerCase().includes(query) ||
-      post.status.toLowerCase().includes(query)
-    );
+    const filtered = searchQuery.trim()
+      ? posts.filter((p) =>
+          p.title.toLowerCase().includes(query) ||
+          p.status.toLowerCase().includes(query)
+        )
+      : posts;
+    return {
+      filteredPosts: filtered.filter((p) => p.type !== "page"),
+      filteredPages: filtered.filter((p) => p.type === "page"),
+    };
   }, [posts, searchQuery]);
 
   if (!isOpen) return null;
@@ -65,9 +69,9 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
         <ScrollArea className="flex-1">
           {isLoading ? (
             <PostListSkeleton />
-          ) : filteredPosts.length === 0 && searchQuery ? (
+          ) : filteredPosts.length === 0 && filteredPages.length === 0 && searchQuery ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              No posts found for &quot;{searchQuery}&quot;
+              No results for &quot;{searchQuery}&quot;
             </div>
           ) : posts.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -83,14 +87,38 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
             </div>
           ) : (
             <div className="p-2">
-              {filteredPosts.map((post) => (
-                <PostItem
-                  key={post.id}
-                  post={post}
-                  isActive={currentPost?.id === post.id}
-                  onClick={() => onSelectPost(post.id)}
-                />
-              ))}
+              {filteredPosts.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Posts
+                  </div>
+                  {filteredPosts.map((post) => (
+                    <PostItem
+                      key={`post-${post.id}`}
+                      post={post}
+                      icon={<FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
+                      isActive={currentPost?.id === post.id && currentPost?.type !== "page"}
+                      onClick={() => onSelectPost(post.id, "post")}
+                    />
+                  ))}
+                </>
+              )}
+              {filteredPages.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Pages
+                  </div>
+                  {filteredPages.map((page) => (
+                    <PostItem
+                      key={`page-${page.id}`}
+                      post={page}
+                      icon={<File className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
+                      isActive={currentPost?.id === page.id && currentPost?.type === "page"}
+                      onClick={() => onSelectPost(page.id, "page")}
+                    />
+                  ))}
+                </>
+              )}
             </div>
           )}
         </ScrollArea>
@@ -103,10 +131,12 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
 
 function PostItem({
   post,
+  icon,
   isActive,
   onClick,
 }: {
   post: PostSummary;
+  icon: React.ReactNode;
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -120,7 +150,7 @@ function PostItem({
       }`}
     >
       <div className="flex items-start gap-2">
-        <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+        {icon}
         <div className="min-w-0">
           <div className="font-medium text-sm truncate">
             {post.title || "Untitled"}

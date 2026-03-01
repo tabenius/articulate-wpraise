@@ -76,10 +76,10 @@ export default function Home() {
   }, [handleLoadPosts]);
 
   const handleLoadPost = useCallback(
-    async (postId: number) => {
+    async (postId: number, type?: string) => {
       try {
         setLoading(true);
-        const post = await fetchPost(postId);
+        const post = await fetchPost(postId, type);
         setCurrentPost(post);
         await loadBlocks(postId);
         toast({

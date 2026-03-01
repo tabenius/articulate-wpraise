@@ -3,7 +3,7 @@ import { callMCPTool } from "@/lib/mcp-client";
 import { getSessionHeaders } from "@/lib/server-auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -18,7 +18,9 @@ export async function GET(
       return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
     }
 
-    const result = await callMCPTool("get_post", { post_id: postId }, authHeaders);
+    const type = request.nextUrl.searchParams.get("type") || "post";
+    const tool = type === "page" ? "get_page" : "get_post";
+    const result = await callMCPTool(tool, { post_id: postId }, authHeaders);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
