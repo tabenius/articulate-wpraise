@@ -69,6 +69,7 @@ class AuthMiddleware:
             "/payments/validate-token",
             "/payments/session/",
             "/mcp/c/",  # MCP via API key (auth handled in route handler)
+            "/c/",  # Allow API-key access when reverse proxy strips /mcp prefix
         ]
 
         # Public GET endpoints (read-only access)
