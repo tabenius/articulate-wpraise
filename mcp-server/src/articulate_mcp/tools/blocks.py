@@ -84,6 +84,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             UPDATE_POST,
             variables={"input": {"id": str(post_id), "content": serialized}},
+            invalidate_patterns=["gql:*"],
         )
         post = data.get("updatePost", {}).get("post")
         if not post:

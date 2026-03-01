@@ -195,7 +195,7 @@ def register(mcp: FastMCP) -> None:
         data = await client.mutate(
             mutation,
             variables={"input": input_data},
-            invalidate_patterns=["gql:*post*", "gql:*page*"],
+            invalidate_patterns=["gql:*"],
         )
         result = data.get(mutation_key, {}).get(result_key)
         if not result:
@@ -303,7 +303,7 @@ def register(mcp: FastMCP) -> None:
         data = await client.mutate(
             mutation,
             variables={"input": input_data},
-            invalidate_patterns=["gql:*post*", "gql:*page*"],
+            invalidate_patterns=["gql:*"],
         )
         result = data.get(mutation_key, {}).get(result_key)
         if not result:
@@ -330,7 +330,7 @@ def register(mcp: FastMCP) -> None:
         data = await client.mutate(
             DELETE_POST,
             variables={"input": {"id": str(post_id)}},
-            invalidate_patterns=["gql:*post*"],
+            invalidate_patterns=["gql:*"],
         )
         result = data.get("deletePost", {})
         post = result.get("post", {})

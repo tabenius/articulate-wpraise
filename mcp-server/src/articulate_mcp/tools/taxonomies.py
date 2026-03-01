@@ -69,6 +69,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             CREATE_CATEGORY,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*"],
         )
         category = data.get("createCategory", {}).get("category")
         if not category:
@@ -96,6 +97,7 @@ def register(mcp: FastMCP) -> None:
         data = await gql_client.mutate(
             CREATE_TAG,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*"],
         )
         tag = data.get("createTag", {}).get("tag")
         if not tag:

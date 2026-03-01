@@ -87,6 +87,7 @@ def register(mcp: FastMCP) -> None:
         data = await client.mutate(
             CREATE_PAGE,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*"],
         )
         page = data.get("createPage", {}).get("page")
         if not page:
@@ -126,6 +127,7 @@ def register(mcp: FastMCP) -> None:
         data = await client.mutate(
             UPDATE_PAGE,
             variables={"input": input_data},
+            invalidate_patterns=["gql:*"],
         )
         page = data.get("updatePage", {}).get("page")
         if not page:
