@@ -104,3 +104,41 @@ def send_password_reset_email(to: str, name: str, token: str) -> bool:
     )
 
     return _send(to, subject, html, text)
+
+
+def send_access_token_email(
+    to: str, name: str, product_name: str, access_token: str
+) -> bool:
+    """Send access token email after purchase."""
+    access_url = f"{APP_URL}/access?token={access_token}"
+    subject = f"Your access to {product_name}"
+
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px">
+      <h2 style="margin:0 0 16px">Thank you for your purchase{', ' + name if name else ''}!</h2>
+      <p style="color:#555;line-height:1.6">
+        You now have access to <strong>{product_name}</strong>.
+      </p>
+      <p style="margin:24px 0">
+        <a href="{access_url}"
+           style="background:#18181b;color:#fff;padding:12px 24px;border-radius:6px;
+                  text-decoration:none;display:inline-block;font-weight:500">
+          Access Your Content
+        </a>
+      </p>
+      <p style="color:#888;font-size:13px">
+        Your personal access token: <code>{access_token}</code><br>
+        Keep this safe — it is your unique key to the content.
+      </p>
+    </div>
+    """
+
+    text = (
+        f"Thank you for your purchase{', ' + name if name else ''}!\n\n"
+        f"You now have access to {product_name}.\n\n"
+        f"Access your content: {access_url}\n\n"
+        f"Your personal access token: {access_token}\n"
+        "Keep this safe — it is your unique key to the content."
+    )
+
+    return _send(to, subject, html, text)

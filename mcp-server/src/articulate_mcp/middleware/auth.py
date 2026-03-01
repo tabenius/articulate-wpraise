@@ -64,6 +64,10 @@ class AuthMiddleware:
             "/api/register-wordpress",  # Public WordPress registration with API key
             "/routing/proxy",  # Tenant reverse proxy (Caddy → MCP → upstream)
             "/routing/tls-check",  # Caddy on-demand TLS verification
+            "/payments/webhook",
+            "/payments/products",
+            "/payments/validate-token",
+            "/payments/session/",
         ]
 
         # Public GET endpoints (read-only access)

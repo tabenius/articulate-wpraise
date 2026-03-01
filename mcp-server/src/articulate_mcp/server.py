@@ -85,6 +85,11 @@ from articulate_mcp.routes.content_assistant import (
     analyze_content_endpoint, improve_content_endpoint
 )
 from articulate_mcp.routes.capabilities import get_capabilities_endpoint
+from articulate_mcp.routes.payments import (
+    create_checkout_endpoint, stripe_webhook_endpoint,
+    check_session_endpoint, validate_token_endpoint,
+    list_products_public_endpoint,
+)
 from articulate_mcp.routes import tenants as tenant_routes
 from articulate_mcp.routes import routing as routing_routes
 from articulate_mcp.routes.tenant_members import (
@@ -321,6 +326,13 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
 
     # WordPress Capabilities
     Route("/capabilities", get_capabilities_endpoint, methods=["GET"]),
+
+    # Payments (Stripe)
+    Route("/payments/products", list_products_public_endpoint, methods=["GET"]),
+    Route("/payments/checkout", create_checkout_endpoint, methods=["POST"]),
+    Route("/payments/webhook", stripe_webhook_endpoint, methods=["POST"]),
+    Route("/payments/session/{session_id}", check_session_endpoint, methods=["GET"]),
+    Route("/payments/validate-token", validate_token_endpoint, methods=["POST"]),
 
     # Caddy Routing (no auth required)
     Route("/routing/tls-check", routing_routes.tls_check, methods=["GET"]),
