@@ -34,6 +34,19 @@ async def mcp_jsonrpc_endpoint(request, mcp):
         params = body.get("params", {})
         request_id = body.get("id")
 
+        if method == "initialize":
+            # Accept initialize handshake from clients like Cloudflare Playground
+            logger.info("MCP initialize handshake from client: %s", body.get("clientInfo"))
+            return StarletteJSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "protocolVersion": params.get("protocolVersion", "2025-11-25"),
+                    "capabilities": {"tools": True},
+                    "serverInfo": {"name": "Articulate MCP Server"},
+                }
+            })
+
         if method == "tools/list":
             # List available tools
             tools = await mcp.list_tools()
