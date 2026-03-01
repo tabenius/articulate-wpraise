@@ -42,8 +42,8 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 "id": request_id,
                 "result": {
                     "protocolVersion": params.get("protocolVersion", "2025-11-25"),
-                    "capabilities": {"tools": True},
-                    "serverInfo": {"name": "Articulate MCP Server"},
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "Articulate MCP Server", "version": "0.0.1"},
                 }
             })
 
