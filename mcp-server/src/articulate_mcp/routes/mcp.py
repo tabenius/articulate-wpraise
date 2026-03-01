@@ -64,22 +64,23 @@ async def mcp_jsonrpc_endpoint(request, mcp):
             # Call the MCP tool directly
             result = await mcp.call_tool(tool_name, tool_args)
 
-            logger.info(f"Tool result type: {type(result)}")
-
             # FastMCP returns a tuple: (content_list, parsed_data)
             # We need to extract the content from the first element
             if isinstance(result, tuple) and len(result) >= 1:
                 content_list = result[0]
                 # Check if content_list is a list with TextContent objects
                 if isinstance(content_list, list) and len(content_list) > 0:
-                    text_content = content_list[0]
-                    if hasattr(text_content, 'text'):
-                        # Return the text content wrapped in JSON-RPC format
+                    # Return ALL text content items
+                    contents = []
+                    for item in content_list:
+                        if hasattr(item, 'text'):
+                            contents.append({"type": "text", "text": item.text})
+                    if contents:
                         return StarletteJSONResponse({
                             "jsonrpc": "2.0",
                             "id": request_id,
                             "result": {
-                                "content": [{"type": "text", "text": text_content.text}]
+                                "content": contents
                             }
                         })
 

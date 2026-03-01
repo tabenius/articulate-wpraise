@@ -36,6 +36,21 @@ async def _get_user(request):
     return await UserManager.get_user_from_session(session_id)
 
 
+async def check_name_endpoint(request: Request):
+    """Check if a tenant name is available."""
+    user = await _get_user(request)
+    if not user:
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+    name = request.query_params.get("name", "").strip().lower()
+    if not name:
+        return JSONResponse({"error": "name parameter required"}, status_code=400)
+    row = await db.fetchone(
+        "SELECT id FROM tenants WHERE name = %s AND status != 'deleted'",
+        (name,),
+    )
+    return JSONResponse({"name": name, "available": row is None})
+
+
 async def create_tenant_endpoint(request: Request):
     user = await _get_user(request)
     if not user:

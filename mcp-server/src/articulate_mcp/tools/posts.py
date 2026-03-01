@@ -63,12 +63,16 @@ def register(mcp: FastMCP) -> None:
         results.extend([_format_post_summary(p, "post") for p in posts])
 
         # Fetch pages (pages don't support status/search filters in the same way)
-        pages_data = await client.query(
-            GET_PAGES,
-            variables={"first": min(per_page, 100)},
-            user_id=user_id,
-        )
-        pages = pages_data.get("pages", {}).get("nodes", [])
+        try:
+            pages_data = await client.query(
+                GET_PAGES,
+                variables={"first": min(per_page, 100)},
+                user_id=user_id,
+            )
+            pages = pages_data.get("pages", {}).get("nodes", [])
+        except Exception as e:
+            logger.error("get_posts: pages query failed: %s", e)
+            pages = []
 
         # Filter pages by status if specified
         if status and status.lower() != "any":

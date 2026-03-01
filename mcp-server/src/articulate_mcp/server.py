@@ -303,6 +303,7 @@ mcp._app.routes.extend([  # type: ignore[attr-defined]
     Route("/ai/improve-content", improve_content_endpoint, methods=["POST"]),
 
     # Tenant Management
+    Route("/tenants/check-name", tenant_routes.check_name_endpoint, methods=["GET"]),
     Route("/tenants", tenant_routes.create_tenant_endpoint, methods=["POST"]),
     Route("/tenants", tenant_routes.list_tenants_endpoint, methods=["GET"]),
     Route("/tenants/{tenant_id}", tenant_routes.get_tenant_endpoint, methods=["GET"]),

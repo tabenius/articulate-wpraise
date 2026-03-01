@@ -72,23 +72,27 @@ export async function callMCPTool(
 
   // Extract the text content from MCP tool result
   const result = data.result;
-  console.error("=== MCP DEBUG: raw result ===", JSON.stringify(result, null, 2));
 
   if (result?.content) {
-    const textContent = result.content.find((c) => c.type === "text");
-    if (textContent?.text) {
+    const textItems = result.content.filter((c) => c.type === "text" && c.text);
+
+    if (textItems.length > 1) {
+      // Multiple text items: parse each and combine into array
+      const items = textItems.map((item) => {
+        try { return JSON.parse(item.text!); } catch { return item.text; }
+      });
+      return items;
+    }
+
+    if (textItems.length === 1) {
       try {
-        const parsed = JSON.parse(textContent.text);
-        console.error("=== MCP DEBUG: parsed content ===", JSON.stringify(parsed, null, 2));
-        return parsed;
+        return JSON.parse(textItems[0].text!);
       } catch {
-        console.error("=== MCP DEBUG: returning text (parse failed) ===");
-        return textContent.text;
+        return textItems[0].text;
       }
     }
   }
 
-  console.error("=== MCP DEBUG: returning raw result (no content) ===");
   return result;
 }
 
@@ -118,14 +122,18 @@ async function parseSSEResponse(response: Response): Promise<unknown> {
         if (parsed.result) {
           const content = parsed.result.content;
           if (content) {
-            const textContent = content.find(
-              (c: { type: string }) => c.type === "text"
+            const textItems = content.filter(
+              (c: { type: string; text?: string }) => c.type === "text" && c.text
             );
-            if (textContent?.text) {
+            if (textItems.length > 1) {
+              lastResult = textItems.map((item: { text: string }) => {
+                try { return JSON.parse(item.text); } catch { return item.text; }
+              });
+            } else if (textItems.length === 1) {
               try {
-                lastResult = JSON.parse(textContent.text);
+                lastResult = JSON.parse(textItems[0].text);
               } catch {
-                lastResult = textContent.text;
+                lastResult = textItems[0].text;
               }
             }
           }

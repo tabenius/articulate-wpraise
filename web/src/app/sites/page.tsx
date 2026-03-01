@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,9 @@ export default function SitesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
+  const [isCheckingName, setIsCheckingName] = useState(false);
+  const nameCheckTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const loadTenants = useCallback(async () => {
     try {
@@ -101,6 +104,30 @@ export default function SitesPage() {
   useEffect(() => {
     loadTenants();
   }, [loadTenants]);
+
+  function handleNameChange(value: string) {
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setNewName(cleaned);
+    setNameAvailable(null);
+
+    if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
+    if (!cleaned.trim() || cleaned.length < 2) return;
+
+    setIsCheckingName(true);
+    nameCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tenants/check-name?name=${encodeURIComponent(cleaned)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setNameAvailable(data.available);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsCheckingName(false);
+      }
+    }, 400);
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -214,12 +241,27 @@ export default function SitesPage() {
                       id="site-name"
                       placeholder="my-site"
                       value={newName}
-                      onChange={(e) => setNewName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                      onChange={(e) => handleNameChange(e.target.value)}
                       pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
                       required
                     />
                     <span className="text-sm text-muted-foreground whitespace-nowrap">.ragbaz.xyz</span>
                   </div>
+                  {newName.length >= 2 && (
+                    <p className={`text-xs flex items-center gap-1 ${
+                      isCheckingName ? "text-muted-foreground" :
+                      nameAvailable === true ? "text-green-600" :
+                      nameAvailable === false ? "text-red-600" : "text-muted-foreground"
+                    }`}>
+                      {isCheckingName ? (
+                        <><Loader2 className="h-3 w-3 animate-spin" /> Checking availability...</>
+                      ) : nameAvailable === true ? (
+                        <>{newName}.ragbaz.xyz is available</>
+                      ) : nameAvailable === false ? (
+                        <>{newName}.ragbaz.xyz is already taken</>
+                      ) : null}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Lowercase letters, numbers, and hyphens only. This becomes your subdomain.
                   </p>
@@ -227,9 +269,9 @@ export default function SitesPage() {
                 <div className="rounded-lg border p-3 space-y-1 text-sm">
                   <p className="font-medium">This will create:</p>
                   <ul className="text-muted-foreground space-y-0.5 ml-4 list-disc">
-                    <li>WordPress at wordpress.{newName || "name"}.ragbaz.xyz</li>
-                    <li>Faust (Next.js) at faust.{newName || "name"}.ragbaz.xyz</li>
-                    <li>Astro SSR at astro.{newName || "name"}.ragbaz.xyz</li>
+                    <li>WordPress at wordpress-{newName || "name"}.ragbaz.xyz</li>
+                    <li>Faust (Next.js) at faust-{newName || "name"}.ragbaz.xyz</li>
+                    <li>Astro SSR at astro-{newName || "name"}.ragbaz.xyz</li>
                     <li>Dedicated MariaDB database</li>
                   </ul>
                 </div>
@@ -237,7 +279,7 @@ export default function SitesPage() {
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isCreating || !newName.trim()}>
+                  <Button type="submit" disabled={isCreating || !newName.trim() || nameAvailable === false}>
                     {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isCreating ? "Provisioning..." : "Create Site"}
                   </Button>
@@ -395,7 +437,7 @@ function TenantCard({
       if (!res.ok) throw new Error(data.error || "Failed to generate login token");
 
       // Open WP-Admin with the one-time token
-      const wpLoginUrl = `https://wordpress.${tenant.name}.ragbaz.xyz/wp-login.php?articulate_token=${data.token}`;
+      const wpLoginUrl = `https://wordpress-${tenant.name}.ragbaz.xyz/wp-login.php?articulate_token=${data.token}`;
       window.open(wpLoginUrl, "_blank");
     } catch (error) {
       toast({
@@ -489,7 +531,7 @@ function TenantCard({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {VIEWS.map((view) => {
               const isDefault = tenant.default_view === view;
-              const subdomain = `${view}.${tenant.name}.ragbaz.xyz`;
+              const subdomain = `${view}-${tenant.name}.ragbaz.xyz`;
               return (
                 <div
                   key={view}
