@@ -75,9 +75,9 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 description = raw.get("description") if isinstance(raw.get("description"), str) else ""
                 input_schema = raw.get("inputSchema") if isinstance(raw.get("inputSchema"), dict) else {}
                 output_schema = raw.get("outputSchema") if isinstance(raw.get("outputSchema"), dict) else {}
-                # Ensure outputSchema is an object-type schema expected by clients; wrap non-object schemas
-                if output_schema and output_schema.get("type") != "object":
-                    original_output = dict(output_schema)
+                # Ensure outputSchema is an object-type schema expected by clients; wrap missing or non-object schemas
+                if (not output_schema) or output_schema.get("type") != "object":
+                    original_output = dict(output_schema) if isinstance(output_schema, dict) else {}
                     output_schema = {
                         "type": "object",
                         "properties": {"result": original_output},
