@@ -95,10 +95,12 @@ async def proxy_tenant_request(request: Request) -> Response:
             content=body,
         )
 
-    # Filter response hop-by-hop headers
+    # Filter response headers: hop-by-hop + encoding headers
+    # (httpx auto-decompresses, so content-encoding/content-length are stale)
+    _STRIP_RESP = _HOP_HEADERS | {"content-encoding", "content-length"}
     resp_headers = {
         k: v for k, v in upstream_resp.headers.items()
-        if k.lower() not in _HOP_HEADERS
+        if k.lower() not in _STRIP_RESP
     }
 
     return Response(
