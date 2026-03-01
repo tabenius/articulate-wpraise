@@ -28,6 +28,7 @@ from articulate_mcp.tools import (
     revisions, image_tools, settings, menus, templates, seo_tools,
     export_tools, generated, capabilities as capabilities_tools, wp_users,
     learnpress as learnpress_tools,
+    products as product_tools,
 )
 
 # Import route handlers
@@ -157,6 +158,7 @@ generated.register(mcp)
 capabilities_tools.register(mcp)
 wp_users.register(mcp)
 learnpress_tools.register(mcp)
+product_tools.register(mcp)
 
 logger.info("Articulate MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
