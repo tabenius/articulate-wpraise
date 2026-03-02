@@ -21,7 +21,7 @@ VIEW_PORTS = {
 VIEWS = set(VIEW_PORTS.keys())
 
 # Subdomains reserved for the control plane
-RESERVED_SUBDOMAINS = {"app", "my", "www", "api", "docs", "mail", "smtp"}
+RESERVED_SUBDOMAINS = {"app", "www", "api", "docs", "mail", "smtp"}
 
 # Build regex prefix alternatives from known views: "wordpress-|faust-|astro-"
 _VIEW_PREFIX_RE = "|".join(re.escape(v) for v in sorted(VIEWS))
