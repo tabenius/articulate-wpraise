@@ -1,7 +1,7 @@
 # Caddy configuration for WP-AI with split domains
 # Architecture: Cloudflare → HAProxy (SSL termination) → Caddy (HTTP) → Services
 # - app.ragbaz.xyz: Next.js web app + APIs
-# - my.ragbaz.xyz: WordPress backend
+# - *.ragbaz.xyz: Tenant hostnames routed by MCP
 #
 # Caddy listens on HTTP only - HAProxy handles HTTPS
 
@@ -83,121 +83,6 @@ http://app.ragbaz.xyz {
         }
     }
 }
-
-# WordPress backend - Full WordPress access
-http://my.ragbaz.xyz {
-    # HAProxy forwards HTTP traffic after SSL termination
-
-    # Logging
-    log {
-        output file /var/log/caddy/wp-access.log {
-            roll_size 100MB
-            roll_keep 5
-        }
-        format json
-    }
-
-    # Block xmlrpc.php (common attack vector)
-    @xmlrpc {
-        path /xmlrpc.php
-    }
-    handle @xmlrpc {
-        respond 403
-    }
-
-    # WordPress login
-    @wplogin {
-        path /wp-login.php
-    }
-    handle @wplogin {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-        }
-    }
-
-    # WordPress admin panel
-    @wpadmin {
-        path /wp-admin/*
-    }
-    handle @wpadmin {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-        }
-    }
-
-    # WordPress REST API
-    @wpapi {
-        path /wp-json/*
-    }
-    handle @wpapi {
-        # Enable CORS for API access
-        @origin header Origin *
-        header @origin Access-Control-Allow-Origin "{http.request.header.Origin}"
-        header @origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        header @origin Access-Control-Allow-Headers "Authorization, Content-Type"
-        header @origin Access-Control-Allow-Credentials "true"
-
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-        }
-    }
-
-    # GraphQL endpoint
-    @graphql {
-        path /graphql*
-    }
-    handle @graphql {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-
-            # Disable buffering for streaming
-            flush_interval -1
-        }
-    }
-
-    # Static assets - aggressive caching
-    @static {
-        path /wp-content/* /wp-includes/*
-        not path /wp-content/uploads/wpcf7_uploads/*
-    }
-    handle @static {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-        }
-
-        # Cache headers (HAProxy/Cloudflare will respect these)
-        header {
-            Cache-Control "public, max-age=31536000, immutable"
-            X-Content-Type-Options "nosniff"
-        }
-    }
-
-    # WordPress frontend (default)
-    handle {
-        reverse_proxy wordpress:80 {
-            header_up Host {host}
-            header_up X-Real-IP {header.X-Real-IP}
-            header_up X-Forwarded-For {header.X-Forwarded-For}
-            header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-        }
-    }
-}
-
 # Multi-tenant wildcard routing
 # Matches: {view}-{tenant}.ragbaz.xyz and {tenant}.ragbaz.xyz
 # Routes dynamically via MCP server's /routing/resolve endpoint

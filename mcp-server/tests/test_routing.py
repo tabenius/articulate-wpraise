@@ -41,7 +41,7 @@ def test_parse_external_domain(resolver):
 
 def test_parse_control_plane_returns_none(resolver):
     assert resolver.parse_host("app.ragbaz.xyz") is None
-    assert resolver.parse_host("my.ragbaz.xyz") is None
+    assert resolver.parse_host("my.ragbaz.xyz") == {"tenant_name": "my", "view": None}
 
 
 def test_parse_reserved_subdomains(resolver):

@@ -61,9 +61,13 @@ async def proxy_tenant_request(request: Request) -> Response:
     the response back.
     """
     host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host", "")
+    parsed = resolver.parse_host(host)
     upstream = await _resolve_upstream(host)
 
     if not upstream:
+        # Tenant/external-host misses should not leak into control plane.
+        if parsed is not None:
+            return Response("Tenant not found", status_code=404)
         return RedirectResponse("https://app.ragbaz.xyz", status_code=302)
 
     # Build upstream URL — strip /routing/proxy prefix added by Caddy
