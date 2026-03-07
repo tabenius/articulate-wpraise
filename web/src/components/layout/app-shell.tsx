@@ -153,6 +153,7 @@ export function AppShell({ onLoadPost, onLoadPosts, onSave, onCreatePost, onCrea
             onCreatePost();
             setSidebarOpen(false);
           }}
+          onRefresh={onLoadPosts}
         />
 
         <SettingsDialog

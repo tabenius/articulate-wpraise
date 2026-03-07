@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { FileText, File, Plus, X, Search } from "lucide-react";
+import { FileText, File, Plus, X, Search, RefreshCw } from "lucide-react";
 import type { PostSummary } from "@/types/post";
 import { PostListSkeleton } from "./post-list-skeleton";
 
@@ -15,9 +15,10 @@ interface SidebarProps {
   onClose: () => void;
   onSelectPost: (postId: number, type?: string) => void;
   onCreatePost: () => void;
+  onRefresh?: () => void;
 }
 
-export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost, onRefresh }: SidebarProps) {
   const posts = usePostStore((s) => s.posts);
   const currentPost = usePostStore((s) => s.currentPost);
   const isLoading = usePostStore((s) => s.isLoading);
@@ -47,6 +48,11 @@ export function Sidebar({ isOpen, onClose, onSelectPost, onCreatePost }: Sidebar
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Posts</h2>
             <div className="flex gap-1">
+              {onRefresh && (
+                <Button variant="ghost" size="icon" onClick={onRefresh} title="Refresh">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" onClick={onCreatePost} title="New Post">
                 <Plus className="h-4 w-4" />
               </Button>

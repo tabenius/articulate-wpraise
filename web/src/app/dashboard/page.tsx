@@ -9,14 +9,19 @@ import { useAutosave } from "@/hooks/use-autosave";
 import { useSync } from "@/hooks/use-sync";
 import { fetchPosts, fetchPost, createPost, createPage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useConnections } from "@/contexts/connection-context";
 
 export default function Home() {
   const setCurrentPost = usePostStore((s) => s.setCurrentPost);
   const setPosts = usePostStore((s) => s.setPosts);
   const setLoading = usePostStore((s) => s.setLoading);
   const setError = usePostStore((s) => s.setError);
+  const setDataSource = usePostStore((s) => s.setDataSource);
+  const setReadOnlyMode = usePostStore((s) => s.setReadOnlyMode);
+  const setSyncState = usePostStore((s) => s.setSyncState);
   const { loadBlocks, persistBlocks } = useBlocks();
   const { toast } = useToast();
+  const { activeConnection } = useConnections();
 
   // Enable autosave and chat<->editor sync
   useAutosave();
@@ -27,9 +32,24 @@ export default function Home() {
       setLoading(true);
       const posts = await fetchPosts();
       setPosts(Array.isArray(posts) ? posts : []);
+      setDataSource("live");
+      setReadOnlyMode(false);
     } catch (error) {
       console.error("Failed to load posts:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to load posts";
+      const cached = typeof window !== "undefined" ? localStorage.getItem("wpai:last_posts") : null;
+      if (cached) {
+        try {
+          const cachedPosts = JSON.parse(cached);
+          setPosts(Array.isArray(cachedPosts) ? cachedPosts : []);
+          setDataSource("cache");
+          setReadOnlyMode(true);
+          setError(`Using cached posts due to upstream failure: ${errorMessage}`);
+          return;
+        } catch {
+          // ignore bad cache and continue
+        }
+      }
 
       // Check if it's a 403 error (no WordPress connection)
       if (errorMessage.includes("403")) {
@@ -65,15 +85,17 @@ export default function Home() {
       }
 
       setError(errorMessage);
+      setReadOnlyMode(true);
     } finally {
       setLoading(false);
     }
-  }, [setPosts, setLoading, setError, toast]);
+  }, [setPosts, setLoading, setError, toast, setDataSource, setReadOnlyMode]);
 
-  // Load posts on mount
+  // Load posts on mount and when active connection changes
   useEffect(() => {
+    setCurrentPost(null);
     handleLoadPosts();
-  }, [handleLoadPosts]);
+  }, [handleLoadPosts, activeConnection?.id]);
 
   const handleLoadPost = useCallback(
     async (postId: number, type?: string) => {
@@ -81,6 +103,8 @@ export default function Home() {
         setLoading(true);
         const post = await fetchPost(postId, type);
         setCurrentPost(post);
+        setDataSource("live");
+        setReadOnlyMode(false);
         await loadBlocks(postId);
         toast({
           title: "Post loaded",
@@ -90,6 +114,7 @@ export default function Home() {
         console.error("Failed to load post:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to load post";
         setError(errorMsg);
+        setReadOnlyMode(true);
         toast({
           variant: "destructive",
           title: "Error loading post",
@@ -99,7 +124,7 @@ export default function Home() {
         setLoading(false);
       }
     },
-    [setCurrentPost, setLoading, setError, loadBlocks, toast]
+    [setCurrentPost, setLoading, setError, loadBlocks, toast, setDataSource, setReadOnlyMode]
   );
 
   const handleCreatePost = useCallback(async () => {
@@ -110,6 +135,7 @@ export default function Home() {
       console.log("post.id:", post.id, "type:", typeof post.id);
       setCurrentPost(post);
       useEditorStore.getState().setBlocks([]);
+      setSyncState("synced");
       await handleLoadPosts();
       toast({
         variant: "success",
@@ -120,6 +146,7 @@ export default function Home() {
       console.error("Failed to create post:", error);
       const errorMsg = error instanceof Error ? error.message : "Failed to create post";
       setError(errorMsg);
+      setReadOnlyMode(true);
       toast({
         variant: "destructive",
         title: "Error creating post",
@@ -128,7 +155,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast]);
+  }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast, setReadOnlyMode, setSyncState]);
 
   const handleCreatePage = useCallback(async () => {
     try {
@@ -138,6 +165,7 @@ export default function Home() {
       console.log("page.id:", page.id, "type:", typeof page.id);
       setCurrentPost(page);
       useEditorStore.getState().setBlocks([]);
+      setSyncState("synced");
       await handleLoadPosts();
       toast({
         variant: "success",
@@ -148,6 +176,7 @@ export default function Home() {
       console.error("Failed to create page:", error);
       const errorMsg = error instanceof Error ? error.message : "Failed to create page";
       setError(errorMsg);
+      setReadOnlyMode(true);
       toast({
         variant: "destructive",
         title: "Error creating page",
@@ -156,7 +185,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast]);
+  }, [setCurrentPost, setLoading, setError, handleLoadPosts, toast, setReadOnlyMode, setSyncState]);
 
   const handleSave = useCallback(async () => {
     const currentPost = usePostStore.getState().currentPost;
@@ -166,6 +195,14 @@ export default function Home() {
         variant: "destructive",
         title: "No post loaded",
         description: "Please create or load a post before saving",
+      });
+      return;
+    }
+    if (usePostStore.getState().readOnlyMode) {
+      toast({
+        variant: "destructive",
+        title: "Read-only mode enabled",
+        description: "Writes are temporarily disabled due to recent sync failures. Reconnect and reload posts.",
       });
       return;
     }
