@@ -384,6 +384,12 @@ def _register_all_tool_access() -> None:
 
         # -- Menus --
 
+        # -- Menus --
+        "list_menus": R,
+        "get_menu_items": R,
+        "add_page_to_menu": C,
+        "remove_page_from_menu": D,
+
         # -- Capabilities --
         "get_wp_capabilities": R,
 
