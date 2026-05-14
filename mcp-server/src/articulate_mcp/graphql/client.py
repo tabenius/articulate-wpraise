@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from articulate_mcp.cache import CacheManager
 
 from articulate_mcp.config import config
+from articulate_mcp.tool_access import assert_graphql_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,8 @@ class GraphQLClient:
             GraphQLError: If the response contains errors.
             httpx.HTTPError: If the HTTP request fails.
         """
+        assert_graphql_allowed(query)
+
         payload: dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = variables

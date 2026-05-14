@@ -8,6 +8,15 @@ import logging
 from starlette.responses import JSONResponse as StarletteJSONResponse
 
 from articulate_mcp.connection_manager import connection_manager
+from articulate_mcp.tool_access import (
+    AccessPolicyViolation,
+    ReadOnlyViolation,
+    assert_tool_allowed,
+    infer_tool_access,
+    parse_allowed_access,
+    reset_active_tool_policy,
+    set_active_tool_policy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +96,17 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 annotations = raw.get("annotations") if isinstance(raw.get("annotations"), dict) else {}
                 meta = raw.get("meta") if isinstance(raw.get("meta"), dict) else {}
                 execution = raw.get("execution") if isinstance(raw.get("execution"), dict) else {"type": "jsonrpc", "method": "tools/call", "name": name}
+                access = infer_tool_access(
+                    tool_name=name,
+                    description=description,
+                    annotations=annotations,
+                )
+                annotations = dict(annotations)
+                annotations["readOnlyHint"] = access.read_only
+                meta = dict(meta)
+                meta["accessTag"] = access.tag.value
+                meta["accessSource"] = access.source
+                meta["accessReason"] = access.reason
 
                 tool_dict = {
                     "name": name,
@@ -111,6 +131,32 @@ async def mcp_jsonrpc_endpoint(request, mcp):
             # Call a tool
             tool_name = params.get("name")
             tool_args = params.get("arguments", {})
+            access = infer_tool_access(tool_name=tool_name or "")
+            requested_policy = params.get("permissions", {}) if isinstance(params.get("permissions"), dict) else {}
+            allowed_access_raw = requested_policy.get("allowedAccess")
+            if allowed_access_raw is None:
+                allowed_access_raw = request.headers.get("X-MCP-Allowed-Access")
+            try:
+                allowed_access = parse_allowed_access(allowed_access_raw)
+                assert_tool_allowed(access, allowed_access)
+            except ValueError as e:
+                return StarletteJSONResponse(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {"code": -32602, "message": str(e)},
+                    },
+                    status_code=400,
+                )
+            except AccessPolicyViolation as e:
+                return StarletteJSONResponse(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {"code": -32004, "message": str(e)},
+                    },
+                    status_code=403,
+                )
 
             # Extract connection context from request scope (set by auth middleware)
             state = request.scope.get("state", {})
@@ -122,13 +168,29 @@ async def mcp_jsonrpc_endpoint(request, mcp):
                 tool_args["context"] = {
                     "connection_id": connection.get("id"),
                     "user_id": user.get("id"),
+                    "tool_access": {"tag": access.tag.value, "read_only": access.read_only},
+                    "allowed_access": [a.value for a in sorted(allowed_access or set(), key=lambda x: x.value)],
                 }
                 logger.info(f"Calling tool: {tool_name} with connection_id={connection.get('id')}, user_id={user.get('id')}")
             else:
                 logger.warning(f"Calling tool: {tool_name} without connection context")
 
-            # Call the MCP tool directly
-            result = await mcp.call_tool(tool_name, tool_args)
+            # Call the MCP tool directly with active access policy.
+            token = set_active_tool_policy(access)
+            try:
+                result = await mcp.call_tool(tool_name, tool_args)
+            except ReadOnlyViolation as e:
+                logger.warning("Read-only tool policy blocked mutation in tool %s: %s", tool_name, e)
+                return StarletteJSONResponse(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {"code": -32003, "message": str(e)},
+                    },
+                    status_code=403,
+                )
+            finally:
+                reset_active_tool_policy(token)
 
             # FastMCP returns a tuple: (content_list, parsed_data)
             # We need to extract the content from the first element

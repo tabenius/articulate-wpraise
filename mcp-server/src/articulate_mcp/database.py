@@ -9,6 +9,7 @@ from typing import Any, Optional, cast
 import aiomysql
 
 from articulate_mcp.config import config
+from articulate_mcp.tool_access import assert_sql_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ class Database:
         Returns:
             Number of affected rows
         """
+        assert_sql_allowed(query)
         await self._ensure_connection()
         assert self.pool is not None  # Guaranteed by _ensure_connection
 
@@ -96,6 +98,7 @@ class Database:
         Returns:
             Row as dict or None
         """
+        assert_sql_allowed(query)
         await self._ensure_connection()
         assert self.pool is not None  # Guaranteed by _ensure_connection
 
@@ -114,6 +117,7 @@ class Database:
         Returns:
             List of rows as dicts
         """
+        assert_sql_allowed(query)
         await self._ensure_connection()
         assert self.pool is not None  # Guaranteed by _ensure_connection
 
@@ -132,6 +136,7 @@ class Database:
         Returns:
             Last inserted ID
         """
+        assert_sql_allowed(query)
         await self._ensure_connection()
         assert self.pool is not None  # Guaranteed by _ensure_connection
 
