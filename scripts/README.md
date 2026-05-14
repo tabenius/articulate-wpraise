@@ -313,3 +313,60 @@ python setup-remote-wordpress.py \
 ## License
 
 MIT
+
+---
+
+## 3. configure_project.py - Project Env Config REPL (Menu-Driven)
+
+Interactive, colorized project configuration assistant for:
+
+- `/.env`
+- `/web/.env.local`
+
+### Features
+
+- Menu-driven workflow (no command memorization needed)
+- Clear variable meaning and where to find each key/value
+- Strong validation before save (URLs, emails, endpoint shapes, key formats)
+- Guided wizard for required-only or full configuration
+- Secret masking when listing values
+- One-click ENCRYPTION_KEY generation
+- Safe save back to both env files
+- Profile support (`default`, `dev`, `staging`, `prod`, or custom) with separate env files
+- Non-interactive CLI mode for automation/CI (`--set`, `--save`, `--validate`, `--run`)
+- Built-in operations menu for:
+  - web build (`npm run build`)
+  - Docker build/start
+  - production deploy (`docker compose -f docker-compose.production.yml up -d --build`)
+  - web development server (`npm run dev`)
+  - Cloudflare/Wrangler:
+    - `wrangler login`
+    - `wrangler whoami`
+    - `wrangler dev`
+    - `wrangler deploy`
+    - `wrangler pages deploy`
+
+### Usage
+
+```bash
+python3 scripts/configure_project.py
+```
+
+### Non-Interactive Examples
+
+```bash
+# Validate and save staging profile
+python3 scripts/configure_project.py --profile staging --set DOMAIN=staging.example.com --validate --save
+
+# Run production deploy from configured values
+python3 scripts/configure_project.py --profile prod --run deploy-prod
+
+# Wrangler deploy for custom profile
+python3 scripts/configure_project.py --profile prod --run wrangler-deploy
+```
+
+### Notes
+
+- The script shows an ASCII header and colored menus.
+- If `.env` or `web/.env.local` is missing, it initializes from example files.
+- Use "Save" before quitting to persist updates.

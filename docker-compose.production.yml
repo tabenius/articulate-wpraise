@@ -39,59 +39,59 @@ services:
       retries: 5
       start_period: 10s
 
-  wordpress:
-    build:
-      context: ./docker/wordpress
-      dockerfile: Dockerfile
-    container_name: articulate-wordpress
-    restart: unless-stopped
-    depends_on:
-      mariadb:
-        condition: service_healthy
-    environment:
-      WORDPRESS_DB_HOST: mariadb:3306
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_DB_CHARSET: utf8mb4
-      WORDPRESS_DB_COLLATE: utf8mb4_unicode_ci
-      # Production: Set WordPress URLs for your domain
-      WORDPRESS_CONFIG_EXTRA: |
-        define('WP_HOME', '${WP_DOMAIN}');
-        define('WP_SITEURL', '${WP_DOMAIN}');
-        define('FORCE_SSL_ADMIN', true);
-    volumes:
-      - wp_data:/var/www/html
-      - ssh_keys:/home/wpuser/.ssh
-      - dropbear_keys:/etc/dropbear
-    ports:
-      - "127.0.0.1:8080:80"  # Only accessible from localhost for reverse proxy
-      - "127.0.0.1:2222:2222"  # SSH via dropbear, localhost only
-    networks:
-      - articulate-internal
-      - articulate-proxy
-
-  wp-setup:
-    build:
-      context: ./docker/wordpress
-      dockerfile: Dockerfile
-    container_name: articulate-setup
-    depends_on:
-      - wordpress
-    environment:
-      WORDPRESS_DB_HOST: mariadb:3306
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WP_ADMIN_USER: ${WP_ADMIN_USER}
-      WP_ADMIN_PASS: ${WP_ADMIN_PASS}
-    volumes:
-      - wp_data:/var/www/html
-    entrypoint: ["/usr/local/bin/wp-setup.sh"]
-    restart: "no"
-    networks:
-      - articulate-internal
-
+#  wordpress:
+#    build:
+#      context: ./docker/wordpress
+#      dockerfile: Dockerfile
+#    container_name: articulate-wordpress
+#    restart: unless-stopped
+#    depends_on:
+#      mariadb:
+#        condition: service_healthy
+#    environment:
+#      WORDPRESS_DB_HOST: mariadb:3306
+#      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+#      WORDPRESS_DB_USER: ${MYSQL_USER}
+#      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+#      WORDPRESS_DB_CHARSET: utf8mb4
+#      WORDPRESS_DB_COLLATE: utf8mb4_unicode_ci
+#      # Production: Set WordPress URLs for your domain
+#      WORDPRESS_CONFIG_EXTRA: |
+#        define('WP_HOME', '${WP_DOMAIN}');
+#        define('WP_SITEURL', '${WP_DOMAIN}');
+#        define('FORCE_SSL_ADMIN', true);
+#    volumes:
+#      - wp_data:/var/www/html
+#      - ssh_keys:/home/wpuser/.ssh
+#      - dropbear_keys:/etc/dropbear
+#    ports:
+#      - "127.0.0.1:8080:80"  # Only accessible from localhost for reverse proxy
+#      - "127.0.0.1:2222:2222"  # SSH via dropbear, localhost only
+#    networks:
+#      - articulate-internal
+#      - articulate-proxy
+#
+#  wp-setup:
+#    build:
+#      context: ./docker/wordpress
+#      dockerfile: Dockerfile
+#    container_name: articulate-setup
+#    depends_on:
+#      - wordpress
+#    environment:
+#      WORDPRESS_DB_HOST: mariadb:3306
+#      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+#      WORDPRESS_DB_USER: ${MYSQL_USER}
+#      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+#      WP_ADMIN_USER: ${WP_ADMIN_USER}
+#      WP_ADMIN_PASS: ${WP_ADMIN_PASS}
+#    volumes:
+#      - wp_data:/var/www/html
+#    entrypoint: ["/usr/local/bin/wp-setup.sh"]
+#    restart: "no"
+#    networks:
+#      - articulate-internal
+#
   postfix:
     build:
       context: ./docker/postfix
@@ -114,21 +114,21 @@ services:
     container_name: articulate-mcp
     restart: unless-stopped
     depends_on:
-      - wordpress
+#      - wordpress
       - redis
       - mariadb
       - postfix
     environment:
-      WP_URL: http://wordpress:80
-      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
-      WP_USER: ${WP_ADMIN_USER}
-      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+#      WP_URL: http://wordpress:80
+#      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+#      WP_USER: ${WP_ADMIN_USER}
+#      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
       MCP_TRANSPORT: streamable-http
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
       REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+#      CELERY_BROKER_URL: redis://redis:6379/1
+#      CELERY_RESULT_BACKEND: redis://redis:6379/2
       MYSQL_HOST: mariadb
       MYSQL_PORT: 3306
       MYSQL_USER: ${MYSQL_USER}
@@ -155,52 +155,52 @@ services:
       - proxy_net
       - control_net
 
-  articulate-worker:
-    build:
-      context: .
-      dockerfile: docker/mcp-server/Dockerfile
-    container_name: articulate-worker
-    restart: unless-stopped
-    depends_on:
-      - redis
-      - wordpress
-    environment:
-      WP_URL: http://wordpress:80
-      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
-      WP_USER: ${WP_ADMIN_USER}
-      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-    command: celery -A articulate_mcp.tasks worker --loglevel=info
-    volumes:
-      - wp_data:/var/www/html
-    networks:
-      - articulate-internal
-
-  articulate-beat:
-    build:
-      context: .
-      dockerfile: docker/mcp-server/Dockerfile
-    container_name: articulate-beat
-    restart: unless-stopped
-    depends_on:
-      - redis
-      - wordpress
-    environment:
-      WP_URL: http://wordpress:80
-      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
-      WP_USER: ${WP_ADMIN_USER}
-      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-    command: celery -A articulate_mcp.tasks beat --loglevel=info
-    volumes:
-      - wp_data:/var/www/html
-    networks:
-      - articulate-internal
-
+#  articulate-worker:
+#    build:
+#      context: .
+#      dockerfile: docker/mcp-server/Dockerfile
+#    container_name: articulate-worker
+#    restart: unless-stopped
+#    depends_on:
+#      - redis
+#      - wordpress
+#    environment:
+#      WP_URL: http://wordpress:80
+#      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+#      WP_USER: ${WP_ADMIN_USER}
+#      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+#      REDIS_URL: redis://redis:6379/0
+#      CELERY_BROKER_URL: redis://redis:6379/1
+#      CELERY_RESULT_BACKEND: redis://redis:6379/2
+#    command: celery -A articulate_mcp.tasks worker --loglevel=info
+#    volumes:
+#      - wp_data:/var/www/html
+#    networks:
+#      - articulate-internal
+#
+#  articulate-beat:
+#    build:
+#      context: .
+#      dockerfile: docker/mcp-server/Dockerfile
+#    container_name: articulate-beat
+#    restart: unless-stopped
+#    depends_on:
+#      - redis
+#      - wordpress
+#    environment:
+#      WP_URL: http://wordpress:80
+#      WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
+#      WP_USER: ${WP_ADMIN_USER}
+#      WP_APP_PASSWORD: ${WP_APP_PASSWORD:-}
+#      REDIS_URL: redis://redis:6379/0
+#      CELERY_BROKER_URL: redis://redis:6379/1
+#      CELERY_RESULT_BACKEND: redis://redis:6379/2
+#    command: celery -A articulate_mcp.tasks beat --loglevel=info
+#    volumes:
+#      - wp_data:/var/www/html
+#    networks:
+#      - articulate-internal
+#
   # Next.js frontend
   webedit:
     build:
@@ -241,7 +241,7 @@ services:
     container_name: articulate-caddy
     restart: unless-stopped
     depends_on:
-      - wordpress
+#      - wordpress
       - webedit
       - mcp-server
       - docs
