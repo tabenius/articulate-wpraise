@@ -14,6 +14,9 @@ export function useBlocks() {
   const blocks = useEditorStore((s) => s.blocks);
   const setDirty = useEditorStore((s) => s.setDirty);
   const currentPost = usePostStore((s) => s.currentPost);
+  const setSyncState = usePostStore((s) => s.setSyncState);
+  const setReadOnlyMode = usePostStore((s) => s.setReadOnlyMode);
+  const setLastSyncedAt = usePostStore((s) => s.setLastSyncedAt);
 
   const loadBlocks = useCallback(
     async (postId: number) => {
@@ -21,25 +24,33 @@ export function useBlocks() {
         const result = await fetchBlocks(postId);
         if (Array.isArray(result)) {
           setBlocks(result);
+          setSyncState("synced");
         }
       } catch (error) {
         console.error("Failed to load blocks:", error);
+        setSyncState("error");
       }
     },
-    [setBlocks]
+    [setBlocks, setSyncState]
   );
 
   const persistBlocks = useCallback(async () => {
     if (!currentPost) return;
 
     try {
+      setSyncState("saving");
       await saveBlocks(currentPost.id, blocks);
       setDirty(false);
+      setReadOnlyMode(false);
+      setSyncState("synced");
+      setLastSyncedAt(new Date().toISOString());
     } catch (error) {
       console.error("Failed to save blocks:", error);
+      setSyncState("error");
+      setReadOnlyMode(true);
       throw error;
     }
-  }, [currentPost, blocks, setDirty]);
+  }, [currentPost, blocks, setDirty, setSyncState, setReadOnlyMode, setLastSyncedAt]);
 
   const refreshBlocks = useCallback(async () => {
     if (!currentPost) return;

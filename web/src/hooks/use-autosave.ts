@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useEditorStore } from "@/stores/editor-store";
+import { usePostStore } from "@/stores/post-store";
 import { useBlocks } from "./use-blocks";
 
 const AUTOSAVE_DELAY = 2000; // 2 seconds
@@ -12,11 +13,12 @@ const AUTOSAVE_DELAY = 2000; // 2 seconds
 export function useAutosave() {
   const isDirty = useEditorStore((s) => s.isDirty);
   const blocks = useEditorStore((s) => s.blocks);
+  const readOnlyMode = usePostStore((s) => s.readOnlyMode);
   const { persistBlocks } = useBlocks();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty || readOnlyMode) return;
 
     // Clear previous timer
     if (timerRef.current) {
@@ -37,5 +39,5 @@ export function useAutosave() {
         clearTimeout(timerRef.current);
       }
     };
-  }, [isDirty, blocks, persistBlocks]);
+  }, [isDirty, blocks, persistBlocks, readOnlyMode]);
 }

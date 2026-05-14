@@ -12,6 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 
+function validateEmail(value: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
+}
+
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,11 +26,13 @@ function AuthContent() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginErrors, setLoginErrors] = useState<string[]>([]);
 
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerErrors, setRegisterErrors] = useState<string[]>([]);
 
   // Email verification states
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
@@ -36,6 +42,14 @@ function AuthContent() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    const errs: string[] = [];
+    if (!validateEmail(loginEmail)) errs.push("Email must be valid.");
+    if (!loginPassword.trim()) errs.push("Password is required.");
+    if (errs.length > 0) {
+      setLoginErrors(errs);
+      return;
+    }
+    setLoginErrors([]);
     setLoginLoading(true);
 
     try {
@@ -64,6 +78,14 @@ function AuthContent() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    const errs: string[] = [];
+    if (!validateEmail(registerEmail)) errs.push("Email must be valid.");
+    if (registerPassword.length < 8) errs.push("Password must be at least 8 characters.");
+    if (errs.length > 0) {
+      setRegisterErrors(errs);
+      return;
+    }
+    setRegisterErrors([]);
     setRegisterLoading(true);
 
     try {
@@ -213,6 +235,13 @@ function AuthContent() {
                 >
                   {loginLoading ? "Signing in..." : "Sign in"}
                 </Button>
+                {loginErrors.length > 0 && (
+                  <div className="text-sm text-red-600 space-y-1">
+                    {loginErrors.map((err) => (
+                      <p key={err}>{err}</p>
+                    ))}
+                  </div>
+                )}
               </form>
             </TabsContent>
 
@@ -260,6 +289,13 @@ function AuthContent() {
                 >
                   {registerLoading ? "Creating account..." : "Create account"}
                 </Button>
+                {registerErrors.length > 0 && (
+                  <div className="text-sm text-red-600 space-y-1">
+                    {registerErrors.map((err) => (
+                      <p key={err}>{err}</p>
+                    ))}
+                  </div>
+                )}
               </form>
             </TabsContent>
           </Tabs>

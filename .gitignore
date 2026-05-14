@@ -35,6 +35,7 @@ out/
 
 # Claude Code
 .claude/
+*.tsbuildinfo
 
 # OS
 .DS_Store
@@ -45,6 +46,7 @@ nul
 # Logs
 *.log
 npm-debug.log*
+testmcp.*
 
 # Coverage
 coverage/

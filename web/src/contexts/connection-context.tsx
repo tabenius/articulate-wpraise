@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./auth-context";
+import { getErrorMessage } from "@/lib/api-contract";
 
 interface Connection {
   id: number;
@@ -51,7 +52,8 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
       }
 
       const data = await response.json();
-      setConnections(data);
+      const payload = Array.isArray(data) ? data : data?.data;
+      setConnections(Array.isArray(payload) ? payload : []);
     } catch (error) {
       console.error("Error fetching connections:", error);
       setConnections([]);
@@ -69,7 +71,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to add connection");
+      throw new Error(getErrorMessage(error) || "Failed to add connection");
     }
 
     await refreshConnections();
@@ -84,7 +86,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to update connection");
+      throw new Error(getErrorMessage(error) || "Failed to update connection");
     }
 
     await refreshConnections();
@@ -97,7 +99,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to delete connection");
+      throw new Error(getErrorMessage(error) || "Failed to delete connection");
     }
 
     await refreshConnections();
@@ -110,7 +112,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to activate connection");
+      throw new Error(getErrorMessage(error) || "Failed to activate connection");
     }
 
     await refreshConnections();

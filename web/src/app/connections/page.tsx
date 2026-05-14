@@ -11,6 +11,42 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Check, Server, Copy, RefreshCw } from "lucide-react";
 import { RemoteSetupDialog } from "@/components/connections/remote-setup-dialog";
 
+type ConnectionFormData = {
+  name: string;
+  wp_url: string;
+  wp_graphql_endpoint: string;
+  wp_user: string;
+  wp_app_password: string;
+};
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validateConnectionFormData(data: ConnectionFormData): string[] {
+  const errors: string[] = [];
+  if (!data.name.trim()) errors.push("Connection name is required.");
+  if (!data.wp_user.trim()) errors.push("WordPress username is required.");
+  if (!data.wp_app_password.trim()) errors.push("Application password is required.");
+  if (data.wp_app_password.trim().length < 8) {
+    errors.push("Application password appears too short.");
+  }
+  if (!isValidHttpUrl(data.wp_url.trim())) {
+    errors.push("WordPress URL must be a valid http/https URL.");
+  }
+  if (!isValidHttpUrl(data.wp_graphql_endpoint.trim())) {
+    errors.push("GraphQL endpoint must be a valid http/https URL.");
+  } else if (!data.wp_graphql_endpoint.includes("/graphql")) {
+    errors.push("GraphQL endpoint should include '/graphql'.");
+  }
+  return errors;
+}
+
 export default function ConnectionsPage() {
   const { connections, activeConnection, addConnection, deleteConnection, activateConnection, isLoading } = useConnections();
   const { toast } = useToast();
@@ -27,12 +63,30 @@ export default function ConnectionsPage() {
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorModalData, setErrorModalData] = useState<any>(null);
   const [errorModalMessage, setErrorModalMessage] = useState("");
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
   async function handleAddConnection(e: React.FormEvent) {
     e.preventDefault();
+    const validationErrors = validateConnectionFormData(formData);
+    if (validationErrors.length > 0) {
+      setFormErrors(validationErrors);
+      toast({
+        title: "Invalid connection form data",
+        description: validationErrors.join(" "),
+        variant: "destructive",
+      });
+      return;
+    }
+    setFormErrors([]);
 
     try {
-      await addConnection(formData);
+      await addConnection({
+        name: formData.name.trim(),
+        wp_url: formData.wp_url.trim(),
+        wp_graphql_endpoint: formData.wp_graphql_endpoint.trim(),
+        wp_user: formData.wp_user.trim(),
+        wp_app_password: formData.wp_app_password.trim(),
+      });
       toast({
         title: "Connection added",
         description: `Successfully added connection: ${formData.name}`,
@@ -279,6 +333,13 @@ export default function ConnectionsPage() {
                 </Button>
                 <Button type="submit">Add Connection</Button>
               </div>
+              {formErrors.length > 0 && (
+                <div className="text-sm text-red-600 space-y-1">
+                  {formErrors.map((err) => (
+                    <p key={err}>{err}</p>
+                  ))}
+                </div>
+              )}
             </form>
           </DialogContent>
         </Dialog>

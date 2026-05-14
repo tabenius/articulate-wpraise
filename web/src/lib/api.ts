@@ -6,10 +6,17 @@ import type { Post, PostSummary } from "@/types/post";
 import type { Block } from "@/types/blocks";
 import type { CreatePostResponse, UpdatePostResponse, GetPostResponse } from "@/types/mcp-generated";
 import { logger } from "./logger";
+import { getErrorMessage } from "./api-contract";
 
 const API_BASE = "/api";
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 2;
+const POSTS_CACHE_KEY = "wpai:last_posts";
+const POST_CACHE_PREFIX = "wpai:last_post:";
+
+function createRequestId(): string {
+  return crypto.randomUUID();
+}
 
 async function fetchJSON<T>(
   url: string,
@@ -21,8 +28,17 @@ async function fetchJSON<T>(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    const method = (options?.method || "GET").toUpperCase();
+    const isMutation = method !== "GET";
+    const requestId = createRequestId();
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Request-ID": requestId,
+      ...(isMutation ? { "Idempotency-Key": requestId } : {}),
+      ...(options?.headers || {}),
+    };
     const response = await fetch(`${API_BASE}${url}`, {
-      headers: { "Content-Type": "application/json" },
+      headers,
       ...options,
       signal: controller.signal,
     });
@@ -30,13 +46,19 @@ async function fetchJSON<T>(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      let errorText: string;
+      let errorPayload: unknown = null;
       try {
-        errorText = await response.text();
+        errorPayload = await response.json();
       } catch {
-        errorText = `HTTP ${response.status}`;
+        // fallback to plain text
+        try {
+          const errorText = await response.text();
+          throw new Error(errorText || `HTTP ${response.status}`);
+        } catch {
+          throw new Error(`HTTP ${response.status}`);
+        }
       }
-      throw new Error(errorText || `HTTP ${response.status}`);
+      throw new Error(getErrorMessage(errorPayload) || `HTTP ${response.status}`);
     }
 
     // Safely parse JSON with error handling
@@ -77,13 +99,32 @@ async function fetchJSON<T>(
 
 // Posts
 export async function fetchPosts(): Promise<PostSummary[]> {
-  const result = await fetchJSON<PostSummary[]>("/posts");
-  // Validate response is an array
-  if (!Array.isArray(result)) {
-    logger.error("fetchPosts returned non-array:", result);
-    return [];
+  try {
+    const envelope = await fetchJSON<{ data?: PostSummary[] }>("/posts");
+    const result = envelope?.data ?? [];
+    if (!Array.isArray(result)) {
+      logger.error("fetchPosts returned non-array:", result);
+      throw new Error("Invalid post list response");
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(result));
+    }
+    return result;
+  } catch (error) {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(POSTS_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached) as PostSummary[];
+          logger.warn("Using cached posts due to fetch failure");
+          return parsed;
+        } catch {
+          // ignore bad cache
+        }
+      }
+    }
+    throw error;
   }
-  return result;
 }
 
 export async function fetchPost(id: number, type: string = "post"): Promise<Post> {
@@ -91,10 +132,14 @@ export async function fetchPost(id: number, type: string = "post"): Promise<Post
     throw new Error(`Invalid post ID: ${id}`);
   }
   const query = type === "page" ? "?type=page" : "";
-  const result = await fetchJSON<Post>(`/posts/${id}${query}`);
+  const envelope = await fetchJSON<{ data?: Post }>(`/posts/${id}${query}`);
+  const result = envelope?.data as Post;
   // Validate required fields
   if (!result || typeof result.id !== "number") {
     throw new Error("Invalid post data received from server");
+  }
+  if (typeof window !== "undefined") {
+    localStorage.setItem(`${POST_CACHE_PREFIX}${id}`, JSON.stringify(result));
   }
   return result;
 }
@@ -105,10 +150,11 @@ export async function createPost(title: string): Promise<Post> {
     throw new Error("Invalid title: must be a non-empty string");
   }
 
-  const result = await fetchJSON<CreatePostResponse>("/posts", {
+  const envelope = await fetchJSON<{ data?: CreatePostResponse }>("/posts", {
     method: "POST",
     body: JSON.stringify({ title: title.trim(), status: "draft" }),
   });
+  const result = envelope?.data as CreatePostResponse;
   logger.info("createPost API response:", result);
 
   // Runtime validation - ensure id exists
@@ -133,10 +179,11 @@ export async function createPage(title: string): Promise<Post> {
     throw new Error("Invalid title: must be a non-empty string");
   }
 
-  const result = await fetchJSON<CreatePostResponse>("/posts", {
+  const envelope = await fetchJSON<{ data?: CreatePostResponse }>("/posts", {
     method: "POST",
     body: JSON.stringify({ title: title.trim(), status: "draft", type: "page" }),
   });
+  const result = envelope?.data as CreatePostResponse;
   logger.info("createPage API response:", result);
 
   // Runtime validation - ensure id exists
@@ -165,10 +212,11 @@ export async function updatePost(
   if (!data || typeof data !== "object") {
     throw new Error("Invalid post data: must be an object");
   }
-  const result = await fetchJSON<Post>(`/posts/${id}`, {
+  const envelope = await fetchJSON<{ data?: Post }>(`/posts/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
+  const result = envelope?.data as Post;
   // Validate required fields
   if (!result || typeof result.id !== "number") {
     throw new Error("Invalid post data received from server");
@@ -181,7 +229,8 @@ export async function fetchBlocks(postId: number): Promise<Block[]> {
   if (!postId || typeof postId !== "number" || postId <= 0) {
     throw new Error(`Invalid post ID: ${postId}`);
   }
-  const result = await fetchJSON<Block[]>(`/blocks?postId=${postId}`);
+  const envelope = await fetchJSON<{ data?: Block[] }>(`/blocks?postId=${postId}`);
+  const result = envelope?.data ?? [];
   // Validate response is an array
   if (!Array.isArray(result)) {
     logger.error("fetchBlocks returned non-array:", result);
@@ -200,10 +249,11 @@ export async function saveBlocks(
   if (!Array.isArray(blocks)) {
     throw new Error("Invalid blocks: must be an array");
   }
-  return fetchJSON<{ success: boolean }>("/blocks", {
+  const envelope = await fetchJSON<{ data?: { success: boolean } }>("/blocks", {
     method: "PUT",
     body: JSON.stringify({ postId, blocks }),
   });
+  return envelope?.data ?? { success: false };
 }
 
 // Media

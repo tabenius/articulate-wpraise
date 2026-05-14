@@ -37,6 +37,9 @@ interface HeaderProps {
 export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts, onCreatePost, onCreatePage }: HeaderProps) {
   const currentPost = usePostStore((s) => s.currentPost);
   const isDirty = useEditorStore((s) => s.isDirty);
+  const syncState = usePostStore((s) => s.syncState);
+  const readOnlyMode = usePostStore((s) => s.readOnlyMode);
+  const dataSource = usePostStore((s) => s.dataSource);
   const blocks = useEditorStore((s) => s.blocks);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
@@ -99,6 +102,11 @@ export function Header({ onOpenSettings, onOpenPostList, onSave, onOpenShortcuts
             <Badge variant={isDirty ? "destructive" : "secondary"}>
               {isDirty ? "Unsaved" : currentPost.status}
             </Badge>
+            {readOnlyMode && <Badge variant="destructive">Read-only fallback</Badge>}
+            {!readOnlyMode && syncState === "saving" && <Badge variant="outline">Syncing...</Badge>}
+            {!readOnlyMode && syncState === "synced" && <Badge variant="secondary">Synced</Badge>}
+            {syncState === "error" && <Badge variant="destructive">Sync error</Badge>}
+            {dataSource === "cache" && <Badge variant="outline">Cached data</Badge>}
             {blockCount > 0 && (
               <div className="text-xs text-muted-foreground flex items-center gap-3 px-3 py-1 rounded-md bg-muted/50">
                 <span>{blockCount} block{blockCount !== 1 ? 's' : ''}</span>
