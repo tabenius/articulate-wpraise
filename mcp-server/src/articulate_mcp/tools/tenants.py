@@ -7,7 +7,7 @@ Allows users to create and manage multiple WordPress instances.
 import os
 import logging
 from typing import Optional
-from articulate_mcp.server import mcp
+from mcp.server.fastmcp import FastMCP
 from articulate_mcp.tenant_manager import TenantManager
 
 logger = logging.getLogger(__name__)
@@ -21,294 +21,285 @@ else:
     tenant_manager = TenantManager(ENCRYPTION_KEY)
 
 
-@mcp.tool()
-async def create_tenant(
-    name: str,
-    slug: str,
-    wp_url: str,
-    wp_graphql_endpoint: str,
-    wp_admin_user: str,
-    wp_admin_email: Optional[str] = None,
-    db_host: Optional[str] = None,
-    db_name: Optional[str] = None,
-    db_user: Optional[str] = None,
-    db_password: Optional[str] = None,
-    max_posts: int = 1000,
-    max_storage_mb: int = 5000,
-    max_users: int = 10,
-) -> dict:
-    """
-    Create a new tenant (isolated WordPress instance)
+def register(mcp: FastMCP) -> None:
+    """Register all tenant management tools with the MCP server."""
 
-    Args:
-        name: Human-readable tenant name (e.g., "Acme Corporation")
-        slug: URL-safe identifier (e.g., "acme-corp")
-        wp_url: WordPress instance URL
-        wp_graphql_endpoint: WordPress GraphQL endpoint
-        wp_admin_user: WordPress admin username
-        wp_admin_email: WordPress admin email
-        db_host: Database host (optional, for separate DB)
-        db_name: Database name
-        db_user: Database username
-        db_password: Database password (will be encrypted)
-        max_posts: Maximum posts allowed
-        max_storage_mb: Maximum storage in MB
-        max_users: Maximum users allowed
+    @mcp.tool()
+    async def create_tenant(
+        name: str,
+        slug: str,
+        wp_url: str,
+        wp_graphql_endpoint: str,
+        wp_admin_user: str,
+        wp_admin_email: Optional[str] = None,
+        db_host: Optional[str] = None,
+        db_name: Optional[str] = None,
+        db_user: Optional[str] = None,
+        db_password: Optional[str] = None,
+        max_posts: int = 1000,
+        max_storage_mb: int = 5000,
+        max_users: int = 10,
+    ) -> dict:
+        """
+        Create a new tenant (isolated WordPress instance)
 
-    Returns:
-        Tenant information including tenant_id
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured (missing ENCRYPTION_KEY)"}
+        Args:
+            name: Human-readable tenant name (e.g., "Acme Corporation")
+            slug: URL-safe identifier (e.g., "acme-corp")
+            wp_url: WordPress instance URL
+            wp_graphql_endpoint: WordPress GraphQL endpoint
+            wp_admin_user: WordPress admin username
+            wp_admin_email: WordPress admin email
+            db_host: Database host (optional, for separate DB)
+            db_name: Database name
+            db_user: Database username
+            db_password: Database password (will be encrypted)
+            max_posts: Maximum posts allowed
+            max_storage_mb: Maximum storage in MB
+            max_users: Maximum users allowed
 
-    # Get current user from context
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+        Returns:
+            Tenant information including tenant_id
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured (missing ENCRYPTION_KEY)"}
 
-    user = get_current_user()
-    if not user:
-        return {"error": "Authentication required"}
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
-    try:
-        tenant_id = tenant_manager.create_tenant(
-            name=name,
-            slug=slug,
-            owner_user_id=user["id"],
-            wp_url=wp_url,
-            wp_graphql_endpoint=wp_graphql_endpoint,
-            wp_admin_user=wp_admin_user,
-            wp_admin_email=wp_admin_email,
-            db_host=db_host,
-            db_name=db_name,
-            db_user=db_user,
-            db_password=db_password,
-            max_posts=max_posts,
-            max_storage_mb=max_storage_mb,
-            max_users=max_users,
-        )
+        user = get_current_user()
+        if not user:
+            return {"error": "Authentication required"}
 
-        return {
-            "success": True,
-            "tenant_id": tenant_id,
-            "name": name,
-            "slug": slug,
-            "message": f"Tenant '{name}' created successfully",
-        }
+        try:
+            tenant_id = tenant_manager.create_tenant(
+                name=name,
+                slug=slug,
+                owner_user_id=user["id"],
+                wp_url=wp_url,
+                wp_graphql_endpoint=wp_graphql_endpoint,
+                wp_admin_user=wp_admin_user,
+                wp_admin_email=wp_admin_email,
+                db_host=db_host,
+                db_name=db_name,
+                db_user=db_user,
+                db_password=db_password,
+                max_posts=max_posts,
+                max_storage_mb=max_storage_mb,
+                max_users=max_users,
+            )
 
-    except Exception as e:
-        logger.error(f"Failed to create tenant: {e}")
-        return {"error": f"Failed to create tenant: {str(e)}"}
-
-
-@mcp.tool()
-async def list_my_tenants() -> dict:
-    """
-    List all tenants accessible by the current user
-
-    Returns:
-        List of tenant information
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured"}
-
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
-
-    user = get_current_user()
-    if not user:
-        return {"error": "Authentication required"}
-
-    try:
-        tenants = tenant_manager.get_user_tenants(user["id"])
-
-        return {
-            "success": True,
-            "tenants": tenants,
-            "count": len(tenants),
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to list tenants: {e}")
-        return {"error": f"Failed to list tenants: {str(e)}"}
-
-
-@mcp.tool()
-async def get_tenant_details(tenant_id: str) -> dict:
-    """
-    Get detailed information about a specific tenant
-
-    Args:
-        tenant_id: UUID of the tenant
-
-    Returns:
-        Tenant details including usage statistics
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured"}
-
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
-
-    user = get_current_user()
-    if not user:
-        return {"error": "Authentication required"}
-
-    try:
-        tenant = tenant_manager.get_tenant(tenant_id)
-        if not tenant:
-            return {"error": "Tenant not found"}
-
-        # Get usage statistics
-        usage = tenant_manager.get_tenant_usage(tenant_id)
-
-        return {
-            "success": True,
-            "tenant": tenant,
-            "usage": usage,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to get tenant details: {e}")
-        return {"error": f"Failed to get tenant details: {str(e)}"}
-
-
-@mcp.tool()
-async def update_tenant_status(tenant_id: str, status: str) -> dict:
-    """
-    Update tenant status (active, suspended, deleted)
-
-    Args:
-        tenant_id: UUID of the tenant
-        status: New status (active, suspended, deleted)
-
-    Returns:
-        Success confirmation
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured"}
-
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
-
-    user = get_current_user()
-    if not user:
-        return {"error": "Authentication required"}
-
-    try:
-        # Verify user has permission (owner or admin)
-        success = tenant_manager.update_tenant_status(tenant_id, status)
-
-        if success:
             return {
                 "success": True,
                 "tenant_id": tenant_id,
-                "status": status,
-                "message": f"Tenant status updated to {status}",
+                "name": name,
+                "slug": slug,
+                "message": f"Tenant '{name}' created successfully",
             }
-        else:
-            return {"error": "Tenant not found or no permission"}
 
-    except Exception as e:
-        logger.error(f"Failed to update tenant status: {e}")
-        return {"error": f"Failed to update tenant status: {str(e)}"}
+        except Exception as e:
+            logger.error("Failed to create tenant: %s", e)
+            return {"error": f"Failed to create tenant: {str(e)}"}
 
+    @mcp.tool()
+    async def list_my_tenants() -> dict:
+        """
+        List all tenants accessible by the current user
 
-@mcp.tool()
-async def add_user_to_tenant(
-    tenant_id: str, user_email: str, role: str = "viewer"
-) -> dict:
-    """
-    Add a user to a tenant with specified role
+        Returns:
+            List of tenant information
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured"}
 
-    Args:
-        tenant_id: UUID of the tenant
-        user_email: Email of the user to add
-        role: Role to assign (owner, admin, editor, viewer)
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
-    Returns:
-        Success confirmation
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured"}
+        user = get_current_user()
+        if not user:
+            return {"error": "Authentication required"}
 
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
-    from articulate_mcp.database import get_connection  # type: ignore[attr-defined]
+        try:
+            tenants = tenant_manager.get_user_tenants(user["id"])
 
-    current_user = get_current_user()
-    if not current_user:
-        return {"error": "Authentication required"}
+            return {
+                "success": True,
+                "tenants": tenants,
+                "count": len(tenants),
+            }
 
-    try:
-        # Find user by email
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
-        target_user = cursor.fetchone()
-        cursor.close()
+        except Exception as e:
+            logger.error("Failed to list tenants: %s", e)
+            return {"error": f"Failed to list tenants: {str(e)}"}
 
-        if not target_user:
-            return {"error": f"User not found: {user_email}"}
+    @mcp.tool()
+    async def get_tenant_details(tenant_id: str) -> dict:
+        """
+        Get detailed information about a specific tenant
 
-        # Add user to tenant
-        tenant_manager.add_user_to_tenant(tenant_id, target_user["id"], role)
+        Args:
+            tenant_id: UUID of the tenant
 
-        return {
-            "success": True,
-            "tenant_id": tenant_id,
-            "user_email": user_email,
-            "role": role,
-            "message": f"User {user_email} added to tenant with role {role}",
-        }
+        Returns:
+            Tenant details including usage statistics
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured"}
 
-    except Exception as e:
-        logger.error(f"Failed to add user to tenant: {e}")
-        return {"error": f"Failed to add user to tenant: {str(e)}"}
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
+        user = get_current_user()
+        if not user:
+            return {"error": "Authentication required"}
 
-@mcp.tool()
-async def remove_user_from_tenant(tenant_id: str, user_email: str) -> dict:
-    """
-    Remove a user from a tenant
+        try:
+            tenant = tenant_manager.get_tenant(tenant_id)
+            if not tenant:
+                return {"error": "Tenant not found"}
 
-    Args:
-        tenant_id: UUID of the tenant
-        user_email: Email of the user to remove
+            usage = tenant_manager.get_tenant_usage(tenant_id)
 
-    Returns:
-        Success confirmation
-    """
-    if not tenant_manager:
-        return {"error": "Multi-tenancy not configured"}
+            return {
+                "success": True,
+                "tenant": tenant,
+                "usage": usage,
+            }
 
-    from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
-    from articulate_mcp.database import get_connection  # type: ignore[attr-defined]
+        except Exception as e:
+            logger.error("Failed to get tenant details: %s", e)
+            return {"error": f"Failed to get tenant details: {str(e)}"}
 
-    current_user = get_current_user()
-    if not current_user:
-        return {"error": "Authentication required"}
+    @mcp.tool()
+    async def update_tenant_status(tenant_id: str, status: str) -> dict:
+        """
+        Update tenant status (active, suspended, deleted)
 
-    try:
-        # Find user by email
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
-        target_user = cursor.fetchone()
-        cursor.close()
+        Args:
+            tenant_id: UUID of the tenant
+            status: New status (active, suspended, deleted)
 
-        if not target_user:
-            return {"error": f"User not found: {user_email}"}
+        Returns:
+            Success confirmation
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured"}
 
-        # Remove user from tenant
-        success = tenant_manager.remove_user_from_tenant(tenant_id, target_user["id"])
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
 
-        if success:
+        user = get_current_user()
+        if not user:
+            return {"error": "Authentication required"}
+
+        try:
+            success = tenant_manager.update_tenant_status(tenant_id, status)
+
+            if success:
+                return {
+                    "success": True,
+                    "tenant_id": tenant_id,
+                    "status": status,
+                    "message": f"Tenant status updated to {status}",
+                }
+            else:
+                return {"error": "Tenant not found or no permission"}
+
+        except Exception as e:
+            logger.error("Failed to update tenant status: %s", e)
+            return {"error": f"Failed to update tenant status: {str(e)}"}
+
+    @mcp.tool()
+    async def add_user_to_tenant(
+        tenant_id: str, user_email: str, role: str = "viewer"
+    ) -> dict:
+        """
+        Add a user to a tenant with specified role
+
+        Args:
+            tenant_id: UUID of the tenant
+            user_email: Email of the user to add
+            role: Role to assign (owner, admin, editor, viewer)
+
+        Returns:
+            Success confirmation
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured"}
+
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
+        from articulate_mcp.database import get_connection  # type: ignore[attr-defined]
+
+        current_user = get_current_user()
+        if not current_user:
+            return {"error": "Authentication required"}
+
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
+            target_user = cursor.fetchone()
+            cursor.close()
+
+            if not target_user:
+                return {"error": f"User not found: {user_email}"}
+
+            tenant_manager.add_user_to_tenant(tenant_id, target_user["id"], role)
+
             return {
                 "success": True,
                 "tenant_id": tenant_id,
                 "user_email": user_email,
-                "message": f"User {user_email} removed from tenant",
+                "role": role,
+                "message": f"User {user_email} added to tenant with role {role}",
             }
-        else:
-            return {"error": "User not in tenant or cannot be removed"}
 
-    except ValueError as e:
-        return {"error": str(e)}
-    except Exception as e:
-        logger.error(f"Failed to remove user from tenant: {e}")
-        return {"error": f"Failed to remove user from tenant: {str(e)}"}
+        except Exception as e:
+            logger.error("Failed to add user to tenant: %s", e)
+            return {"error": f"Failed to add user to tenant: {str(e)}"}
+
+    @mcp.tool()
+    async def remove_user_from_tenant(tenant_id: str, user_email: str) -> dict:
+        """
+        Remove a user from a tenant
+
+        Args:
+            tenant_id: UUID of the tenant
+            user_email: Email of the user to remove
+
+        Returns:
+            Success confirmation
+        """
+        if not tenant_manager:
+            return {"error": "Multi-tenancy not configured"}
+
+        from articulate_mcp.middleware import get_current_user  # type: ignore[attr-defined]
+        from articulate_mcp.database import get_connection  # type: ignore[attr-defined]
+
+        current_user = get_current_user()
+        if not current_user:
+            return {"error": "Authentication required"}
+
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
+            target_user = cursor.fetchone()
+            cursor.close()
+
+            if not target_user:
+                return {"error": f"User not found: {user_email}"}
+
+            success = tenant_manager.remove_user_from_tenant(tenant_id, target_user["id"])
+
+            if success:
+                return {
+                    "success": True,
+                    "tenant_id": tenant_id,
+                    "user_email": user_email,
+                    "message": f"User {user_email} removed from tenant",
+                }
+            else:
+                return {"error": "User not in tenant or cannot be removed"}
+
+        except ValueError as e:
+            return {"error": str(e)}
+        except Exception as e:
+            logger.error("Failed to remove user from tenant: %s", e)
+            return {"error": f"Failed to remove user from tenant: {str(e)}"}

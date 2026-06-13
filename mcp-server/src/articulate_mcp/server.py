@@ -29,6 +29,7 @@ from articulate_mcp.tools import (
     export_tools, generated, capabilities as capabilities_tools, wp_users,
     learnpress as learnpress_tools,
     products as product_tools,
+    tenants as tenant_tools,
 )
 
 # Import route handlers
@@ -160,18 +161,74 @@ capabilities_tools.register(mcp)
 wp_users.register(mcp)
 learnpress_tools.register(mcp)
 product_tools.register(mcp)
+tenant_tools.register(mcp)
+
+
+# §6 health tool — uniform health contract for federation supergraph
+@mcp.tool(name="__health")
+async def __health_tool() -> dict:
+    """Return server health status per §6 of the MCP gateway architecture.
+
+    Returns a JSON object with keys: status, server, version, checks, ts.
+    status is "ok", "degraded", or "down".
+    ts is an RFC3339 timestamp.
+    """
+    import datetime
+    from importlib.metadata import version as pkg_version, PackageNotFoundError
+
+    try:
+        _ver = pkg_version("articulate-mcp")
+    except PackageNotFoundError:
+        _ver = "0.0.0"
+
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    checks: dict = {}
+    overall = "ok"
+
+    # DB check
+    try:
+        from articulate_mcp.database import db  # type: ignore[attr-defined]
+        if getattr(db, "_pool", None) or getattr(db, "pool", None):
+            checks["db"] = "ok"
+        else:
+            checks["db"] = "degraded"
+            overall = "degraded"
+    except Exception as exc:
+        logger.warning("__health: db check failed: %s", exc)
+        checks["db"] = "down"
+        overall = "down"
+
+    # Redis/cache check
+    try:
+        from articulate_mcp.cache import cache  # type: ignore[attr-defined]
+        if getattr(cache, "_redis", None) or getattr(cache, "client", None):
+            checks["cache"] = "ok"
+        else:
+            checks["cache"] = "degraded"
+            if overall == "ok":
+                overall = "degraded"
+    except Exception as exc:
+        logger.warning("__health: cache check failed: %s", exc)
+        checks["cache"] = "degraded"
+        if overall == "ok":
+            overall = "degraded"
+
+    return {
+        "status": overall,
+        "server": "articulate",
+        "version": _ver,
+        "checks": checks,
+        "ts": ts,
+    }
+
 
 logger.info("Articulate MCP Server initialized")
 logger.info("Transport: %s", config.mcp_transport)
 logger.info("WordPress URL: %s", config.wp_url)
 
 # Create Starlette app for custom routing
-mcp._app = Starlette()  # type: ignore[attr-defined]
-logger.info("Created Starlette app for custom JSON-RPC handling")
-
-
 # Exception handlers for clean error responses
-@mcp._app.exception_handler(APIException)  # type: ignore[attr-defined]
 async def api_exception_handler(request, exc: APIException):
     """Handle custom API exceptions."""
     response_data: dict[str, Any] = {"error": exc.message}
@@ -180,20 +237,27 @@ async def api_exception_handler(request, exc: APIException):
     return StarletteJSONResponse(response_data, status_code=exc.status_code)
 
 
-@mcp._app.exception_handler(ValueError)  # type: ignore[attr-defined]
 async def value_error_handler(request, exc: ValueError):
     """Handle ValueError as 400 Bad Request."""
     return StarletteJSONResponse({"error": str(exc)}, status_code=400)
 
 
-@mcp._app.exception_handler(Exception)  # type: ignore[attr-defined]
 async def generic_exception_handler(request, exc: Exception):
     """Handle unexpected exceptions."""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
     return StarletteJSONResponse(
         {"error": "Internal server error"},
         status_code=500
     )
+
+
+# Create Starlette app for custom routing (exception_handlers wired at construction)
+mcp._app = Starlette(exception_handlers={  # type: ignore[attr-defined]
+    APIException: api_exception_handler,
+    ValueError: value_error_handler,
+    Exception: generic_exception_handler,
+})
+logger.info("Created Starlette app for custom JSON-RPC handling")
 
 
 # Create uploads directory if it doesn't exist
@@ -362,13 +426,6 @@ mcp._app = RequestLoggingMiddleware(mcp._app)  # type: ignore[attr-defined]
 logger.info("Request logging middleware enabled")
 
 
-# Register startup event
-@bare_starlette_app.on_event("startup")
-async def on_startup():
-    """Initialize services on startup."""
-    await startup()
-
-
 async def startup():
     """Initialize services on startup."""
     from articulate_mcp.cache import cache
@@ -394,20 +451,43 @@ def main() -> None:
     transport = config.mcp_transport
 
     if transport in ("streamable-http", "sse"):
-        # For HTTP/SSE transport, use uvicorn to serve FastMCP's ASGI app
         import uvicorn
+        from contextlib import asynccontextmanager
 
-        # Get the wrapped app (middleware wrapping Starlette)
-        wrapped_app = getattr(mcp, '_app', None) or getattr(mcp, 'app', None) or mcp
+        # Build the canonical HTTP app: FastMCP's own streamable-http ASGI
+        # provides the /mcp (MCP protocol) endpoint; we mount our custom
+        # REST/monitoring/auth routes on the same Starlette app so there is
+        # one app, one middleware stack, one lifespan.
+        http_base = mcp.streamable_http_app()  # Starlette with /mcp + session lifespan
+
+        # Extend with our custom routes (health, auth, org, etc.)
+        # bare_starlette_app holds the routes registered at module level.
+        http_base.routes.extend(bare_starlette_app.routes)
+
+        # Combine lifespans: FastMCP session manager (already set) + our startup.
+        _fmcp_lifespan = http_base.router.lifespan_context
+
+        @asynccontextmanager
+        async def combined_lifespan(app):
+            await startup()
+            async with _fmcp_lifespan(app):
+                yield
+
+        http_base.router.lifespan_context = combined_lifespan
+
+        # Wrap with our middleware stack (auth + request logging)
+        from articulate_mcp.middleware.auth import AuthMiddleware
+        from articulate_mcp.middleware.logging import RequestLoggingMiddleware
+        consolidated = RequestLoggingMiddleware(AuthMiddleware(http_base))
 
         uvicorn.run(
-            wrapped_app,  # type: ignore[arg-type]
+            consolidated,  # type: ignore[arg-type]
             host=config.mcp_host,
             port=config.mcp_port,
             log_level="info",
         )
     else:
-        # Default to stdio for local development
+        # stdio: FastMCP handles the full MCP protocol natively.
         mcp.run(transport="stdio")
 
 
