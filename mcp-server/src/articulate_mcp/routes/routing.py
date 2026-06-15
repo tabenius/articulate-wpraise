@@ -68,7 +68,7 @@ async def proxy_tenant_request(request: Request) -> Response:
         # Tenant/external-host misses should not leak into control plane.
         if parsed is not None:
             return Response("Tenant not found", status_code=404)
-        return RedirectResponse("https://app.ragbaz.xyz", status_code=302)
+        return RedirectResponse("https://app.ragbaz.cc", status_code=302)
 
     # Build upstream URL — strip /routing/proxy prefix added by Caddy
     path = request.path_params.get("path", "")
@@ -124,8 +124,8 @@ async def tls_check(request: Request) -> Response:
     if not domain:
         return Response(status_code=404)
 
-    # Allow all *.ragbaz.xyz (covered by wildcard cert)
-    if domain.endswith(".ragbaz.xyz"):
+    # Allow all *.ragbaz.cc (covered by wildcard cert)
+    if domain.endswith(".ragbaz.cc"):
         return Response(status_code=200)
 
     # Check custom domains

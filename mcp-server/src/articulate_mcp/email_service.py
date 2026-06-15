@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 SMTP_HOST = os.getenv("SMTP_HOST", "postfix")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "25"))
-MAIL_FROM = os.getenv("MAIL_FROM", "verify@ragbaz.xyz")
+MAIL_FROM = os.getenv("MAIL_FROM", "verify@ragbaz.cc")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Articulate")
-APP_URL = os.getenv("APP_URL", "https://app.ragbaz.xyz")
+APP_URL = os.getenv("APP_URL", "https://app.ragbaz.cc")
 
 
 def _send(to: str, subject: str, html: str, text: str) -> bool:

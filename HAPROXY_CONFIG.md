@@ -1,4 +1,4 @@
-# HAProxy Configuration for app.ragbaz.xyz and my.ragbaz.xyz
+# HAProxy Configuration for app.ragbaz.cc and my.ragbaz.cc
 
 Add this configuration to your HAProxy setup. HAProxy will handle SSL termination and forward HTTP traffic to Caddy.
 
@@ -56,7 +56,7 @@ frontend http_frontend
 
 # Frontend for HTTPS traffic
 frontend https_frontend
-    bind *:443 ssl crt /etc/haproxy/certs/ragbaz.xyz.pem alpn h2,http/1.1
+    bind *:443 ssl crt /etc/haproxy/certs/ragbaz.cc.pem alpn h2,http/1.1
     mode http
     
     # Security headers (added by HAProxy)
@@ -73,14 +73,14 @@ frontend https_frontend
     http-request add-header X-Real-IP %[src]
     
     # ACL for domain matching
-    acl is_app_domain hdr(host) -i app.ragbaz.xyz
-    acl is_my_domain hdr(host) -i my.ragbaz.xyz
-    acl is_www_app hdr(host) -i www.app.ragbaz.xyz
-    acl is_www_my hdr(host) -i www.my.ragbaz.xyz
+    acl is_app_domain hdr(host) -i app.ragbaz.cc
+    acl is_my_domain hdr(host) -i my.ragbaz.cc
+    acl is_www_app hdr(host) -i www.app.ragbaz.cc
+    acl is_www_my hdr(host) -i www.my.ragbaz.cc
     
     # WWW redirects
-    redirect prefix https://app.ragbaz.xyz code 301 if is_www_app
-    redirect prefix https://my.ragbaz.xyz code 301 if is_www_my
+    redirect prefix https://app.ragbaz.cc code 301 if is_www_app
+    redirect prefix https://my.ragbaz.cc code 301 if is_www_my
     
     # Route to backends based on domain
     use_backend app_backend if is_app_domain
@@ -89,14 +89,14 @@ frontend https_frontend
     # Default backend (app)
     default_backend app_backend
 
-# Backend for app.ragbaz.xyz (Next.js + APIs via Caddy)
+# Backend for app.ragbaz.cc (Next.js + APIs via Caddy)
 backend app_backend
     mode http
     balance roundrobin
 
     # Health check (HAProxy 2.x+ syntax)
     option httpchk
-    http-check send meth GET uri /health ver HTTP/1.1 hdr Host app.ragbaz.xyz
+    http-check send meth GET uri /health ver HTTP/1.1 hdr Host app.ragbaz.cc
     http-check expect status 200
 
     # Caddy server (running in Docker)
@@ -106,14 +106,14 @@ backend app_backend
     http-reuse safe
     timeout server 30s
 
-# Backend for my.ragbaz.xyz (WordPress via Caddy)
+# Backend for my.ragbaz.cc (WordPress via Caddy)
 backend wp_backend
     mode http
     balance roundrobin
 
     # Health check (HAProxy 2.x+ syntax)
     option httpchk
-    http-check send meth GET uri /wp-json/ ver HTTP/1.1 hdr Host my.ragbaz.xyz
+    http-check send meth GET uri /wp-json/ ver HTTP/1.1 hdr Host my.ragbaz.cc
     http-check expect status 200
 
     # Caddy server (running in Docker)
@@ -145,7 +145,7 @@ listen stats
 If you're using HAProxy 1.8 or older and get errors about the `http-check` syntax, use this simpler format:
 
 ```haproxy
-# Backend for app.ragbaz.xyz
+# Backend for app.ragbaz.cc
 backend app_backend
     mode http
     balance roundrobin
@@ -157,7 +157,7 @@ backend app_backend
     http-reuse safe
     timeout server 30s
 
-# Backend for my.ragbaz.xyz
+# Backend for my.ragbaz.cc
 backend wp_backend
     mode http
     balance roundrobin
@@ -198,7 +198,7 @@ Since you're using Cloudflare, get an Origin Certificate:
 2. Click "Create Certificate"
 3. Select:
    - Private key type: RSA (2048)
-   - Hostnames: `*.ragbaz.xyz`, `ragbaz.xyz`
+   - Hostnames: `*.ragbaz.cc`, `ragbaz.cc`
    - Validity: 15 years
 4. Click "Create"
 5. Save the certificate and private key:
@@ -206,17 +206,17 @@ Since you're using Cloudflare, get an Origin Certificate:
 ```bash
 # On your server
 sudo mkdir -p /etc/haproxy/certs
-sudo nano /etc/haproxy/certs/ragbaz.xyz.crt   # Paste certificate
-sudo nano /etc/haproxy/certs/ragbaz.xyz.key   # Paste private key
+sudo nano /etc/haproxy/certs/ragbaz.cc.crt   # Paste certificate
+sudo nano /etc/haproxy/certs/ragbaz.cc.key   # Paste private key
 
 # Combine cert and key for HAProxy
-sudo cat /etc/haproxy/certs/ragbaz.xyz.crt \
-         /etc/haproxy/certs/ragbaz.xyz.key \
-         > /etc/haproxy/certs/ragbaz.xyz.pem
+sudo cat /etc/haproxy/certs/ragbaz.cc.crt \
+         /etc/haproxy/certs/ragbaz.cc.key \
+         > /etc/haproxy/certs/ragbaz.cc.pem
 
 # Set permissions
-sudo chmod 600 /etc/haproxy/certs/ragbaz.xyz.pem
-sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.xyz.pem
+sudo chmod 600 /etc/haproxy/certs/ragbaz.cc.pem
+sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.cc.pem
 ```
 
 ### Option 2: Let's Encrypt with Certbot
@@ -226,19 +226,19 @@ sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.xyz.pem
 sudo apt install certbot
 
 # Get certificate (use DNS challenge for wildcard)
-sudo certbot certonly --standalone -d app.ragbaz.xyz -d my.ragbaz.xyz
+sudo certbot certonly --standalone -d app.ragbaz.cc -d my.ragbaz.cc
 
 # Combine for HAProxy
-sudo cat /etc/letsencrypt/live/app.ragbaz.xyz/fullchain.pem \
-         /etc/letsencrypt/live/app.ragbaz.xyz/privkey.pem \
-         > /etc/haproxy/certs/ragbaz.xyz.pem
+sudo cat /etc/letsencrypt/live/app.ragbaz.cc/fullchain.pem \
+         /etc/letsencrypt/live/app.ragbaz.cc/privkey.pem \
+         > /etc/haproxy/certs/ragbaz.cc.pem
 
 # Set permissions
-sudo chmod 600 /etc/haproxy/certs/ragbaz.xyz.pem
-sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.xyz.pem
+sudo chmod 600 /etc/haproxy/certs/ragbaz.cc.pem
+sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.cc.pem
 
 # Auto-renewal (add to crontab)
-0 0 * * * certbot renew --post-hook "cat /etc/letsencrypt/live/app.ragbaz.xyz/fullchain.pem /etc/letsencrypt/live/app.ragbaz.xyz/privkey.pem > /etc/haproxy/certs/ragbaz.xyz.pem && systemctl reload haproxy"
+0 0 * * * certbot renew --post-hook "cat /etc/letsencrypt/live/app.ragbaz.cc/fullchain.pem /etc/letsencrypt/live/app.ragbaz.cc/privkey.pem > /etc/haproxy/certs/ragbaz.cc.pem && systemctl reload haproxy"
 ```
 
 ## Testing HAProxy Configuration
@@ -273,7 +273,7 @@ Caddy (Port 4555) - HTTP routing to services
 ┌─────────────────┬──────────────────┐
 ↓                 ↓                  ↓
 Next.js (3000)    WordPress (80)     MCP (8000)
-app.ragbaz.xyz    my.ragbaz.xyz      (internal)
+app.ragbaz.cc    my.ragbaz.cc      (internal)
 ```
 
 ## Ports Summary
@@ -300,7 +300,7 @@ sudo ufw enable
 Update WordPress to recognize the new domain in `.env`:
 
 ```bash
-WP_DOMAIN=https://my.ragbaz.xyz
+WP_DOMAIN=https://my.ragbaz.cc
 ```
 
 And update `docker-compose.production.yml`:
@@ -309,8 +309,8 @@ And update `docker-compose.production.yml`:
 wordpress:
   environment:
     WORDPRESS_CONFIG_EXTRA: |
-      define('WP_HOME', 'https://my.ragbaz.xyz');
-      define('WP_SITEURL', 'https://my.ragbaz.xyz');
+      define('WP_HOME', 'https://my.ragbaz.cc');
+      define('WP_SITEURL', 'https://my.ragbaz.cc');
 ```
 
 Then restart WordPress:

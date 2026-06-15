@@ -1,12 +1,12 @@
 # Caddy configuration for WP-AI with split domains
 # Architecture: Cloudflare → HAProxy (SSL termination) → Caddy (HTTP) → Services
-# - app.ragbaz.xyz: Next.js web app + APIs
-# - my.ragbaz.xyz: WordPress backend
+# - app.ragbaz.cc: Next.js web app + APIs
+# - my.ragbaz.cc: WordPress backend
 #
 # Caddy listens on HTTP only - HAProxy handles HTTPS
 
 # Main web application - All frontend endpoints
-http://app.ragbaz.xyz {
+http://app.ragbaz.cc {
     # HAProxy forwards HTTP traffic after SSL termination
     # Trust X-Forwarded-* headers from HAProxy
 
@@ -90,7 +90,7 @@ http://app.ragbaz.xyz {
 }
 
 # WordPress backend - Full WordPress access
-http://my.ragbaz.xyz {
+http://my.ragbaz.cc {
     # HAProxy forwards HTTP traffic after SSL termination
 
     # Logging

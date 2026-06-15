@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-APP_URL = os.getenv("APP_URL", "https://app.ragbaz.xyz")
+APP_URL = os.getenv("APP_URL", "https://app.ragbaz.cc")
 
 
 # ---------------------------------------------------------------------------

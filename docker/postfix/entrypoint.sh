@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-DOMAIN="${MAIL_DOMAIN:-ragbaz.xyz}"
-HOSTNAME="${MAIL_HOSTNAME:-mail.ragbaz.xyz}"
+DOMAIN="${MAIL_DOMAIN:-ragbaz.cc}"
+HOSTNAME="${MAIL_HOSTNAME:-mail.ragbaz.cc}"
 
 echo "Configuring Postfix for domain: $DOMAIN (hostname: $HOSTNAME)"
 

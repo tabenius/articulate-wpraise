@@ -1,8 +1,8 @@
 """Route resolver for Caddy dynamic upstream resolution.
 
 Subdomain scheme (flat, single-level for wildcard SSL compatibility):
-  - {tenant}.ragbaz.xyz              → bare tenant (uses default view)
-  - {view}-{tenant}.ragbaz.xyz       → specific view (wordpress, faust, astro)
+  - {tenant}.ragbaz.cc              → bare tenant (uses default view)
+  - {view}-{tenant}.ragbaz.cc       → specific view (wordpress, faust, astro)
   - External domains                  → looked up in tenant_domains table
 """
 
@@ -30,9 +30,9 @@ _VIEW_PREFIX_RE = "|".join(re.escape(v) for v in sorted(VIEWS))
 class RouteResolver:
     """Resolves Host headers to Docker container upstreams."""
 
-    def __init__(self, base_domain: str = "ragbaz.xyz"):
+    def __init__(self, base_domain: str = "ragbaz.cc"):
         self.base_domain = base_domain
-        # Match a single subdomain level: {something}.ragbaz.xyz
+        # Match a single subdomain level: {something}.ragbaz.cc
         self.subdomain_re = re.compile(
             rf"^(?P<subdomain>[^.]+)\.{re.escape(base_domain)}$"
         )
@@ -45,10 +45,10 @@ class RouteResolver:
         """Parse a Host header into tenant/view info.
 
         Flat subdomain scheme (single-level, wildcard-cert compatible):
-          - {view}-{tenant}.ragbaz.xyz → {"tenant_name": str, "view": str}
-          - {tenant}.ragbaz.xyz        → {"tenant_name": str, "view": None}
+          - {view}-{tenant}.ragbaz.cc → {"tenant_name": str, "view": str}
+          - {tenant}.ragbaz.cc        → {"tenant_name": str, "view": None}
           - external.example.com       → {"external_domain": str}
-          - app.ragbaz.xyz (reserved)  → None
+          - app.ragbaz.cc (reserved)  → None
 
         Returns None for control plane subdomains and invalid hosts.
         """

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 
-tenants = ["ragbaz.xyz", "survivors.se"]
+tenants = ["ragbaz.cc", "survivors.se"]
 key = b's4lta&peppra_nyckelbarnbarnsbarntrollungar'
 
 import os

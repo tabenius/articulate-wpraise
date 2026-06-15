@@ -8,12 +8,12 @@ Evolve Articulate from a single-tenant WordPress stack into a multi-tenant platf
 
 ## Subdomain Scheme
 
-Each tenant gets subdomains on `ragbaz.xyz`:
+Each tenant gets subdomains on `ragbaz.cc`:
 
-- `wordpress.tenant1.ragbaz.xyz` — WordPress admin/backend
-- `faust.tenant1.ragbaz.xyz` — Faust.js headless frontend
-- `astro.tenant1.ragbaz.xyz` — Astro SSR headless frontend
-- `tenant1.ragbaz.xyz` — routes to whichever view the owner chooses (`default_view`)
+- `wordpress.tenant1.ragbaz.cc` — WordPress admin/backend
+- `faust.tenant1.ragbaz.cc` — Faust.js headless frontend
+- `astro.tenant1.ragbaz.cc` — Astro SSR headless frontend
+- `tenant1.ragbaz.cc` — routes to whichever view the owner chooses (`default_view`)
 
 Users can also map external domains (e.g. `tenant1.com`) to a specific view via CNAME + verification.
 
@@ -65,7 +65,7 @@ Secrets encrypted at rest with `ENCRYPTION_KEY`.
                    +--------+--------+
                             |
                    +--------v--------+
-                   |     Caddy        |  Wildcard *.ragbaz.xyz
+                   |     Caddy        |  Wildcard *.ragbaz.cc
                    |                  |  On-demand TLS for custom domains
                    +--+-----+-----+--+
                       |     |     |
@@ -146,8 +146,8 @@ Single wildcard config, no regeneration. Dynamic upstream resolution via subrequ
 
 Caddy calls MCP server's `/routing/resolve` endpoint for every request:
 
-1. `faust.tenant1.ragbaz.xyz` → lookup tenant by name → `tenant_{id}_faust:3000`
-2. `tenant1.ragbaz.xyz` → lookup tenant + `default_view` → appropriate upstream
+1. `faust.tenant1.ragbaz.cc` → lookup tenant by name → `tenant_{id}_faust:3000`
+2. `tenant1.ragbaz.cc` → lookup tenant + `default_view` → appropriate upstream
 3. `tenant1.com` → lookup `tenant_domains` → upstream if verified
 4. Unknown → 404
 
@@ -199,4 +199,4 @@ Both consume WordPress GraphQL for content rendering (posts, pages, navigation).
 - Celery workers — gain tenant provisioning tasks
 - Redis — shared, adds routing cache
 - docs site — unchanged
-- Existing `app.ragbaz.xyz` and `my.ragbaz.xyz` routes — unchanged
+- Existing `app.ragbaz.cc` and `my.ragbaz.cc` routes — unchanged

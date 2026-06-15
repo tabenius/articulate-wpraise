@@ -34,7 +34,7 @@ async def test_create_tenant_returns_tenant_id(manager):
     result = await manager.create_tenant(name="testsite", owner_user_id=1)
     assert "tenant_id" in result
     assert result["name"] == "testsite"
-    assert result["domain"] == "testsite.ragbaz.xyz"
+    assert result["domain"] == "testsite.ragbaz.cc"
     assert result["default_view"] == "wordpress"
     assert result["status"] == "running"
 

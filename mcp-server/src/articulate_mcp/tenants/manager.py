@@ -25,7 +25,7 @@ class TenantManager:
     def __init__(
         self,
         encryption_key: str,
-        base_domain: str = "ragbaz.xyz",
+        base_domain: str = "ragbaz.cc",
         template_dir: str | None = None,
         compose_output_dir: str | None = None,
     ):

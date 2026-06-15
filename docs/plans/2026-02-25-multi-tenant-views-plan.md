@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Evolve Articulate into a multi-tenant platform where each tenant gets an isolated WordPress + Faust + Astro stack, routed via subdomains on ragbaz.xyz with support for custom external domains.
+**Goal:** Evolve Articulate into a multi-tenant platform where each tenant gets an isolated WordPress + Faust + Astro stack, routed via subdomains on ragbaz.cc with support for custom external domains.
 
-**Architecture:** Shared control plane (webedit, MCP server, Celery, Redis, shared MariaDB) manages per-tenant Docker Compose projects (WordPress + MariaDB + Faust + Astro). Caddy uses wildcard `*.ragbaz.xyz` with dynamic upstream resolution via a route resolver endpoint on the MCP server. Custom external domains use on-demand TLS.
+**Architecture:** Shared control plane (webedit, MCP server, Celery, Redis, shared MariaDB) manages per-tenant Docker Compose projects (WordPress + MariaDB + Faust + Astro). Caddy uses wildcard `*.ragbaz.cc` with dynamic upstream resolution via a route resolver endpoint on the MCP server. Custom external domains use on-demand TLS.
 
 **Tech Stack:** Python 3.12, python-on-whales (Docker SDK), Jinja2 templates, Caddy dynamic upstreams, Faust.js, Astro SSR, aiomysql, Fernet encryption, Celery
 
@@ -258,8 +258,8 @@ services:
       WORDPRESS_DB_USER: wp
       WORDPRESS_DB_PASSWORD: "{{DB_PASSWORD}}"
       WORDPRESS_CONFIG_EXTRA: |
-        define('WP_HOME', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
-        define('WP_SITEURL', 'https://wordpress.{{TENANT_NAME}}.ragbaz.xyz');
+        define('WP_HOME', 'https://wordpress.{{TENANT_NAME}}.ragbaz.cc');
+        define('WP_SITEURL', 'https://wordpress.{{TENANT_NAME}}.ragbaz.cc');
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 200
@@ -320,7 +320,7 @@ services:
       NEXT_PUBLIC_WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
       NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
       TENANT_NAME: "{{TENANT_NAME}}"
-      SITE_URL: "https://faust.{{TENANT_NAME}}.ragbaz.xyz"
+      SITE_URL: "https://faust.{{TENANT_NAME}}.ragbaz.cc"
     mem_limit: 256m
     cpus: 0.5
     labels:
@@ -340,7 +340,7 @@ services:
       WORDPRESS_URL: http://tenant_{{TENANT_ID}}_wordpress:80
       WORDPRESS_GRAPHQL_URL: http://tenant_{{TENANT_ID}}_wordpress:80/graphql
       TENANT_NAME: "{{TENANT_NAME}}"
-      SITE_URL: "https://astro.{{TENANT_NAME}}.ragbaz.xyz"
+      SITE_URL: "https://astro.{{TENANT_NAME}}.ragbaz.cc"
     mem_limit: 256m
     cpus: 0.5
     labels:
@@ -695,26 +695,26 @@ from wp_mcp.tenants.routing import RouteResolver
 
 @pytest.fixture
 def resolver():
-    return RouteResolver(base_domain="ragbaz.xyz")
+    return RouteResolver(base_domain="ragbaz.cc")
 
 
 def test_parse_view_subdomain(resolver):
-    result = resolver.parse_host("faust.tenant1.ragbaz.xyz")
+    result = resolver.parse_host("faust.tenant1.ragbaz.cc")
     assert result == {"tenant_name": "tenant1", "view": "faust"}
 
 
 def test_parse_astro_subdomain(resolver):
-    result = resolver.parse_host("astro.mysite.ragbaz.xyz")
+    result = resolver.parse_host("astro.mysite.ragbaz.cc")
     assert result == {"tenant_name": "mysite", "view": "astro"}
 
 
 def test_parse_wordpress_subdomain(resolver):
-    result = resolver.parse_host("wordpress.tenant1.ragbaz.xyz")
+    result = resolver.parse_host("wordpress.tenant1.ragbaz.cc")
     assert result == {"tenant_name": "tenant1", "view": "wordpress"}
 
 
 def test_parse_bare_subdomain(resolver):
-    result = resolver.parse_host("tenant1.ragbaz.xyz")
+    result = resolver.parse_host("tenant1.ragbaz.cc")
     assert result == {"tenant_name": "tenant1", "view": None}
 
 
@@ -724,12 +724,12 @@ def test_parse_external_domain(resolver):
 
 
 def test_parse_control_plane_returns_none(resolver):
-    assert resolver.parse_host("app.ragbaz.xyz") is None
-    assert resolver.parse_host("my.ragbaz.xyz") is None
+    assert resolver.parse_host("app.ragbaz.cc") is None
+    assert resolver.parse_host("my.ragbaz.cc") is None
 
 
 def test_upstream_for_view():
-    resolver = RouteResolver(base_domain="ragbaz.xyz")
+    resolver = RouteResolver(base_domain="ragbaz.cc")
     assert resolver.upstream_for("abc123", "wordpress") == "tenant_abc123_wordpress:80"
     assert resolver.upstream_for("abc123", "faust") == "tenant_abc123_faust:3000"
     assert resolver.upstream_for("abc123", "astro") == "tenant_abc123_astro:4321"
@@ -770,9 +770,9 @@ RESERVED_SUBDOMAINS = {"app", "my", "www", "api", "docs", "mail", "smtp"}
 class RouteResolver:
     """Resolves Host headers to Docker container upstreams."""
 
-    def __init__(self, base_domain: str = "ragbaz.xyz"):
+    def __init__(self, base_domain: str = "ragbaz.cc"):
         self.base_domain = base_domain
-        # Match: {view}.{tenant}.ragbaz.xyz or {tenant}.ragbaz.xyz
+        # Match: {view}.{tenant}.ragbaz.cc or {tenant}.ragbaz.cc
         self.subdomain_re = re.compile(
             rf"^(?:(?P<view>[^.]+)\.)?(?P<tenant>[^.]+)\.{re.escape(base_domain)}$"
         )
@@ -798,15 +798,15 @@ class RouteResolver:
             if tenant in RESERVED_SUBDOMAINS and view is None:
                 return None
 
-            # {view}.{tenant}.ragbaz.xyz
+            # {view}.{tenant}.ragbaz.cc
             if view and view in VIEWS:
                 return {"tenant_name": tenant, "view": view}
 
-            # {tenant}.ragbaz.xyz (view is None, or view is actually the tenant name)
+            # {tenant}.ragbaz.cc (view is None, or view is actually the tenant name)
             if view is None:
                 return {"tenant_name": tenant, "view": None}
 
-            # {something}.{tenant}.ragbaz.xyz where something is not a known view
+            # {something}.{tenant}.ragbaz.cc where something is not a known view
             # Treat the full thing as tenant_name=view, view=None?
             # Actually this is: view=something, tenant=tenant — but view is unknown
             # Fall through to external domain handling
@@ -900,8 +900,8 @@ async def tls_check(request: Request) -> Response:
     if not domain:
         return Response(status_code=404)
 
-    # Allow all *.ragbaz.xyz (covered by wildcard cert)
-    if domain.endswith(".ragbaz.xyz"):
+    # Allow all *.ragbaz.cc (covered by wildcard cert)
+    if domain.endswith(".ragbaz.cc"):
         return Response(status_code=200)
 
     # Check custom domains
@@ -979,7 +979,7 @@ async def test_create_tenant_returns_tenant_id(manager):
     result = await manager.create_tenant(name="testsite", owner_user_id=1)
     assert "tenant_id" in result
     assert result["name"] == "testsite"
-    assert result["domain"] == "testsite.ragbaz.xyz"
+    assert result["domain"] == "testsite.ragbaz.cc"
 
 
 @pytest.mark.asyncio
@@ -1046,7 +1046,7 @@ class TenantManager:
     def __init__(
         self,
         encryption_key: str,
-        base_domain: str = "ragbaz.xyz",
+        base_domain: str = "ragbaz.cc",
         template_dir: str | None = None,
         compose_output_dir: str | None = None,
     ):
@@ -1492,11 +1492,11 @@ Update Caddyfile for wildcard routing with dynamic upstreams.
 
 **Step 1: Add wildcard block to Caddyfile**
 
-Append after the existing `http://my.ragbaz.xyz` block:
+Append after the existing `http://my.ragbaz.cc` block:
 
 ```
 # Tenant wildcard routing — dynamic upstream via MCP route resolver
-*.ragbaz.xyz {
+*.ragbaz.cc {
     # Use internal TLS for subdomain routing
     tls internal
 
@@ -1948,10 +1948,10 @@ docker compose -f docker-compose.production.yml restart mcp-server
 **Step 4: Verify routing endpoints work**
 
 ```bash
-curl -H "Host: faust.testsite.ragbaz.xyz" http://localhost:8000/routing/resolve
+curl -H "Host: faust.testsite.ragbaz.cc" http://localhost:8000/routing/resolve
 # Should return 404 (no tenant exists yet)
 
-curl "http://localhost:8000/routing/tls-check?domain=anything.ragbaz.xyz"
+curl "http://localhost:8000/routing/tls-check?domain=anything.ragbaz.cc"
 # Should return 200
 ```
 

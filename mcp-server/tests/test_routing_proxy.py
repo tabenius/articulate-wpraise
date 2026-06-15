@@ -20,7 +20,7 @@ def _build_request(host: str) -> Request:
 
 @pytest.mark.asyncio
 async def test_proxy_tenant_miss_returns_404(monkeypatch):
-    request = _build_request("my.ragbaz.xyz")
+    request = _build_request("my.ragbaz.cc")
 
     monkeypatch.setattr(
         routing_routes.resolver,
@@ -40,7 +40,7 @@ async def test_proxy_tenant_miss_returns_404(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_proxy_control_plane_miss_redirects_to_app(monkeypatch):
-    request = _build_request("app.ragbaz.xyz")
+    request = _build_request("app.ragbaz.cc")
 
     monkeypatch.setattr(routing_routes.resolver, "parse_host", lambda _: None)
 
@@ -51,4 +51,4 @@ async def test_proxy_control_plane_miss_redirects_to_app(monkeypatch):
 
     response = await routing_routes.proxy_tenant_request(request)
     assert response.status_code == 302
-    assert response.headers.get("location") == "https://app.ragbaz.xyz"
+    assert response.headers.get("location") == "https://app.ragbaz.cc"

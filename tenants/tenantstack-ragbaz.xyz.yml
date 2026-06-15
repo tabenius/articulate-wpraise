@@ -1,6 +1,6 @@
 
 # TEMPLATE: docker-compose-tenant.yml
-# DOMAIN: ragbaz.xyz
+# DOMAIN: ragbaz.cc
 # ID: 48a5fa68894027e9258540cf5ac34bd2
  
 version: "3.9"
@@ -48,7 +48,7 @@ services:
 
     # Caddy integration (example via labels if using docker discovery)
     labels:
-      caddy: ragbaz.xyz
+      caddy: ragbaz.cc
       caddy.reverse_proxy: "tenant_48a5fa68894027e9258540cf5ac34bd2_wordpress:9000"
 
   mariadb:

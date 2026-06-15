@@ -99,8 +99,8 @@ services:
     container_name: articulate-postfix
     restart: unless-stopped
     environment:
-      MAIL_DOMAIN: ragbaz.xyz
-      MAIL_HOSTNAME: mail.ragbaz.xyz
+      MAIL_DOMAIN: ragbaz.cc
+      MAIL_HOSTNAME: mail.ragbaz.cc
     ports:
       - "127.0.0.1:2525:25"    # SMTP for HAProxy
       - "127.0.0.1:5587:587"   # Submission for HAProxy
@@ -137,9 +137,9 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       SMTP_HOST: postfix
       SMTP_PORT: 25
-      MAIL_FROM: verify@ragbaz.xyz
+      MAIL_FROM: verify@ragbaz.cc
       MAIL_FROM_NAME: Articulate
-      APP_URL: https://app.ragbaz.xyz
+      APP_URL: https://app.ragbaz.cc
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
@@ -212,7 +212,7 @@ services:
       - mcp-server
     environment:
       MCP_SERVER_URL: http://mcp-server:8000
-      DEFAULT_WP_NAME: ${DEFAULT_WP_NAME:-ragbaz.xyz WordPress}
+      DEFAULT_WP_NAME: ${DEFAULT_WP_NAME:-ragbaz.cc WordPress}
       DEFAULT_WP_URL: http://wordpress:80
       DEFAULT_WP_GRAPHQL_ENDPOINT: http://wordpress:80/graphql
       DEFAULT_WP_USER: ${WP_ADMIN_USER}
@@ -254,7 +254,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      - DOMAIN=${DOMAIN:-ragbaz.xyz}
+      - DOMAIN=${DOMAIN:-ragbaz.cc}
     networks:
       - articulate-internal  # Access to WordPress, MCP, and other internal services
       - articulate-proxy     # Receive traffic from HAProxy/external

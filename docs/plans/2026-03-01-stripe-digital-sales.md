@@ -742,7 +742,7 @@ logger = logging.getLogger(__name__)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-APP_URL = os.getenv("APP_URL", "https://app.ragbaz.xyz")
+APP_URL = os.getenv("APP_URL", "https://app.ragbaz.cc")
 
 
 async def create_checkout_endpoint(request: Request) -> JSONResponse:
@@ -1764,7 +1764,7 @@ Expected: All three tables described with correct columns.
 curl -s -b "session=<SESSION_ID>" -X POST \
   -H "Content-Type: application/json" \
   -d '{"product_id": 1}' \
-  "https://app.ragbaz.xyz/api/payments/checkout"
+  "https://app.ragbaz.cc/api/payments/checkout"
 ```
 
 Expected: Either `{"checkout_url": "...", "session_id": "..."}` (if Stripe configured) or `{"error": "Stripe not configured"}` (if env vars not set yet).
@@ -1772,7 +1772,7 @@ Expected: Either `{"checkout_url": "...", "session_id": "..."}` (if Stripe confi
 **Step 7: Test public product listing**
 
 ```bash
-curl -s "https://app.ragbaz.xyz/api/payments/products"
+curl -s "https://app.ragbaz.cc/api/payments/products"
 ```
 
 Expected: `[]` (empty array — no products yet).
@@ -1782,7 +1782,7 @@ Expected: `[]` (empty array — no products yet).
 ```bash
 curl -s -X POST -H "Content-Type: application/json" \
   -d '{"token": "nonexistent"}' \
-  "https://app.ragbaz.xyz/api/payments/validate-token"
+  "https://app.ragbaz.cc/api/payments/validate-token"
 ```
 
 Expected: `{"valid": false}`
@@ -1813,7 +1813,7 @@ Go to https://dashboard.stripe.com and create/log in to your account.
 **Step 3: Create webhook endpoint**
 
 - Go to Developers > Webhooks > Add endpoint
-- URL: `https://app.ragbaz.xyz/api/payments/webhook`
+- URL: `https://app.ragbaz.cc/api/payments/webhook`
 - Events to listen for: `checkout.session.completed`
 - Copy the **Webhook signing secret** (starts with `whsec_`)
 
@@ -1837,7 +1837,7 @@ docker compose -f docker-compose.production.yml up -d mcp-server
 
 ```bash
 # Install Stripe CLI and forward webhooks locally for testing
-stripe listen --forward-to https://app.ragbaz.xyz/api/payments/webhook
+stripe listen --forward-to https://app.ragbaz.cc/api/payments/webhook
 stripe trigger checkout.session.completed
 ```
 

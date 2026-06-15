@@ -2,7 +2,7 @@
 
 ## DNS Records to Create
 
-In your Cloudflare dashboard for `ragbaz.xyz`, create the following DNS records:
+In your Cloudflare dashboard for `ragbaz.cc`, create the following DNS records:
 
 ### 1. Web Application
 ```
@@ -26,12 +26,12 @@ TTL: Auto
 ```
 Type: CNAME
 Name: www.app
-Content: app.ragbaz.xyz
+Content: app.ragbaz.cc
 Proxy status: ✓ Proxied
 
 Type: CNAME
 Name: www.my
-Content: my.ragbaz.xyz
+Content: my.ragbaz.cc
 Proxy status: ✓ Proxied
 ```
 
@@ -102,7 +102,7 @@ Proxy status: ✓ Proxied
    ```
    If incoming requests match:
    - URI Path equals "/wp-login.php"
-   - Hostname equals "my.ragbaz.xyz"
+   - Hostname equals "my.ragbaz.cc"
    
    Then:
    - Throttle requests when rate exceeds: 5 requests / 1 minute
@@ -114,7 +114,7 @@ Proxy status: ✓ Proxied
    ```
    If incoming requests match:
    - URI Path starts with "/wp-json/"
-   - Hostname equals "my.ragbaz.xyz"
+   - Hostname equals "my.ragbaz.cc"
    
    Then:
    - Throttle requests when rate exceeds: 100 requests / 1 minute
@@ -148,7 +148,7 @@ Navigate to: Rules → Page Rules
 
 **Rule 1: Cache WordPress static assets**
 ```
-If URL matches: my.ragbaz.xyz/wp-content/*
+If URL matches: my.ragbaz.cc/wp-content/*
 Then:
 - Cache Level: Cache Everything
 - Edge Cache TTL: 1 month
@@ -157,7 +157,7 @@ Then:
 
 **Rule 2: Bypass cache for WordPress admin**
 ```
-If URL matches: my.ragbaz.xyz/wp-admin/*
+If URL matches: my.ragbaz.cc/wp-admin/*
 Then:
 - Cache Level: Bypass
 ```
@@ -166,33 +166,33 @@ Then:
 
 After DNS propagation (can take up to 48 hours, usually 5-15 minutes):
 
-1. **Test app.ragbaz.xyz**
+1. **Test app.ragbaz.cc**
    ```bash
-   curl -I https://app.ragbaz.xyz
+   curl -I https://app.ragbaz.cc
    # Should return 200 OK with Next.js content
    ```
 
-2. **Test my.ragbaz.xyz**
+2. **Test my.ragbaz.cc**
    ```bash
-   curl -I https://my.ragbaz.xyz
+   curl -I https://my.ragbaz.cc
    # Should return 200 OK with WordPress content
    ```
 
 3. **Test HTTPS redirect**
    ```bash
-   curl -I http://app.ragbaz.xyz
-   # Should redirect to https://app.ragbaz.xyz
+   curl -I http://app.ragbaz.cc
+   # Should redirect to https://app.ragbaz.cc
    ```
 
 4. **Verify SSL**
    ```bash
-   openssl s_client -connect app.ragbaz.xyz:443 -servername app.ragbaz.xyz
+   openssl s_client -connect app.ragbaz.cc:443 -servername app.ragbaz.cc
    # Should show valid Cloudflare SSL certificate
    ```
 
 5. **Check security headers**
    ```bash
-   curl -I https://app.ragbaz.xyz | grep -E "Strict-Transport|X-Content-Type|X-Frame"
+   curl -I https://app.ragbaz.cc | grep -E "Strict-Transport|X-Content-Type|X-Frame"
    # Should show security headers from Caddy
    ```
 
@@ -200,7 +200,7 @@ After DNS propagation (can take up to 48 hours, usually 5-15 minutes):
 
 ### DNS not resolving
 - Wait for DNS propagation (5-15 minutes)
-- Check with: `dig app.ragbaz.xyz` or `nslookup app.ragbaz.xyz`
+- Check with: `dig app.ragbaz.cc` or `nslookup app.ragbaz.cc`
 
 ### SSL errors
 - Ensure Cloudflare SSL mode is "Full (strict)"

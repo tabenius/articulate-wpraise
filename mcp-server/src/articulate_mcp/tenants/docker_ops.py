@@ -66,7 +66,7 @@ class TenantDockerOps:
         tenant_name: str,
         admin_password: str,
         admin_email: str = "",
-        base_domain: str = "ragbaz.xyz",
+        base_domain: str = "ragbaz.cc",
     ) -> str | None:
         """Install WordPress core, plugins, and mu-plugins in a tenant container.
 

@@ -81,8 +81,8 @@ Follow the prompts to configure your domain, proxy type, and SSL.
 ./scripts/configure.py
 
 # Select HAProxy mode (option 1)
-# Enter app domain: app.ragbaz.xyz
-# Enter WordPress domain: my.ragbaz.xyz
+# Enter app domain: app.ragbaz.cc
+# Enter WordPress domain: my.ragbaz.cc
 
 # Script will:
 # - Check DNS resolution for both domains

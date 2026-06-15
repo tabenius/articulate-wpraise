@@ -143,7 +143,7 @@ export default function SitesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create site");
 
-      toast({ title: "Site created", description: `${data.name}.ragbaz.xyz is now running` });
+      toast({ title: "Site created", description: `${data.name}.ragbaz.cc is now running` });
       setIsCreateOpen(false);
       setNewName("");
       loadTenants();
@@ -185,7 +185,7 @@ export default function SitesPage() {
       });
       if (!res.ok) throw new Error("Failed to update default view");
 
-      toast({ title: "Default view updated", description: `${tenant.name}.ragbaz.xyz now points to ${VIEW_LABELS[view as View]}` });
+      toast({ title: "Default view updated", description: `${tenant.name}.ragbaz.cc now points to ${VIEW_LABELS[view as View]}` });
       loadTenants();
     } catch (error) {
       toast({
@@ -245,7 +245,7 @@ export default function SitesPage() {
                       pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
                       required
                     />
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">.ragbaz.xyz</span>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">.ragbaz.cc</span>
                   </div>
                   {newName.length >= 2 && (
                     <p className={`text-xs flex items-center gap-1 ${
@@ -256,9 +256,9 @@ export default function SitesPage() {
                       {isCheckingName ? (
                         <><Loader2 className="h-3 w-3 animate-spin" /> Checking availability...</>
                       ) : nameAvailable === true ? (
-                        <>{newName}.ragbaz.xyz is available</>
+                        <>{newName}.ragbaz.cc is available</>
                       ) : nameAvailable === false ? (
-                        <>{newName}.ragbaz.xyz is already taken</>
+                        <>{newName}.ragbaz.cc is already taken</>
                       ) : null}
                     </p>
                   )}
@@ -269,9 +269,9 @@ export default function SitesPage() {
                 <div className="rounded-lg border p-3 space-y-1 text-sm">
                   <p className="font-medium">This will create:</p>
                   <ul className="text-muted-foreground space-y-0.5 ml-4 list-disc">
-                    <li>WordPress at wordpress-{newName || "name"}.ragbaz.xyz</li>
-                    <li>Faust (Next.js) at faust-{newName || "name"}.ragbaz.xyz</li>
-                    <li>Astro SSR at astro-{newName || "name"}.ragbaz.xyz</li>
+                    <li>WordPress at wordpress-{newName || "name"}.ragbaz.cc</li>
+                    <li>Faust (Next.js) at faust-{newName || "name"}.ragbaz.cc</li>
+                    <li>Astro SSR at astro-{newName || "name"}.ragbaz.cc</li>
                     <li>Dedicated MariaDB database</li>
                   </ul>
                 </div>
@@ -437,7 +437,7 @@ function TenantCard({
       if (!res.ok) throw new Error(data.error || "Failed to generate login token");
 
       // Open WP-Admin with the one-time token
-      const wpLoginUrl = `https://wordpress-${tenant.name}.ragbaz.xyz/wp-login.php?articulate_token=${data.token}`;
+      const wpLoginUrl = `https://wordpress-${tenant.name}.ragbaz.cc/wp-login.php?articulate_token=${data.token}`;
       window.open(wpLoginUrl, "_blank");
     } catch (error) {
       toast({
@@ -531,7 +531,7 @@ function TenantCard({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {VIEWS.map((view) => {
               const isDefault = tenant.default_view === view;
-              const subdomain = `${view}-${tenant.name}.ragbaz.xyz`;
+              const subdomain = `${view}-${tenant.name}.ragbaz.cc`;
               return (
                 <div
                   key={view}
@@ -563,7 +563,7 @@ function TenantCard({
         {/* Default View Selector */}
         <div className="flex items-center gap-4">
           <Label className="text-sm whitespace-nowrap">
-            Default view for {tenant.name}.ragbaz.xyz:
+            Default view for {tenant.name}.ragbaz.cc:
           </Label>
           <Select value={tenant.default_view} onValueChange={onDefaultViewChange}>
             <SelectTrigger className="w-48">

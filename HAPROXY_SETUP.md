@@ -1,4 +1,4 @@
-# HAProxy Setup for ragbaz.xyz
+# HAProxy Setup for ragbaz.cc
 
 This guide helps you configure HAProxy for Articulate production deployment.
 
@@ -41,19 +41,19 @@ tail -n +3 haproxy.cfg.patch | sudo tee -a /etc/haproxy/haproxy.cfg
 sudo systemctl stop haproxy
 
 # Get certificate
-sudo certbot certonly --standalone -d ragbaz.xyz
+sudo certbot certonly --standalone -d ragbaz.cc
 
 # Create HAProxy certificate directory
 sudo mkdir -p /etc/haproxy/certs
 
 # Combine cert and key for HAProxy
-sudo cat /etc/letsencrypt/live/ragbaz.xyz/fullchain.pem \
-         /etc/letsencrypt/live/ragbaz.xyz/privkey.pem \
-         | sudo tee /etc/haproxy/certs/ragbaz.xyz.pem
+sudo cat /etc/letsencrypt/live/ragbaz.cc/fullchain.pem \
+         /etc/letsencrypt/live/ragbaz.cc/privkey.pem \
+         | sudo tee /etc/haproxy/certs/ragbaz.cc.pem
 
 # Secure the certificate
-sudo chmod 600 /etc/haproxy/certs/ragbaz.xyz.pem
-sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.xyz.pem
+sudo chmod 600 /etc/haproxy/certs/ragbaz.cc.pem
+sudo chown haproxy:haproxy /etc/haproxy/certs/ragbaz.cc.pem
 
 # Restart HAProxy
 sudo systemctl start haproxy
@@ -65,11 +65,11 @@ sudo systemctl start haproxy
 # Create renewal hook
 sudo tee /etc/letsencrypt/renewal-hooks/post/haproxy-reload.sh << 'EOF'
 #!/bin/bash
-cat /etc/letsencrypt/live/ragbaz.xyz/fullchain.pem \
-    /etc/letsencrypt/live/ragbaz.xyz/privkey.pem \
-    > /etc/haproxy/certs/ragbaz.xyz.pem
-chmod 600 /etc/haproxy/certs/ragbaz.xyz.pem
-chown haproxy:haproxy /etc/haproxy/certs/ragbaz.xyz.pem
+cat /etc/letsencrypt/live/ragbaz.cc/fullchain.pem \
+    /etc/letsencrypt/live/ragbaz.cc/privkey.pem \
+    > /etc/haproxy/certs/ragbaz.cc.pem
+chmod 600 /etc/haproxy/certs/ragbaz.cc.pem
+chown haproxy:haproxy /etc/haproxy/certs/ragbaz.cc.pem
 systemctl reload haproxy
 EOF
 
@@ -82,8 +82,8 @@ sudo chmod +x /etc/letsencrypt/renewal-hooks/post/haproxy-reload.sh
 ```bash
 sudo mkdir -p /etc/haproxy/certs
 sudo cat /path/to/your/cert.crt /path/to/your/key.key \
-    | sudo tee /etc/haproxy/certs/ragbaz.xyz.pem
-sudo chmod 600 /etc/haproxy/certs/ragbaz.xyz.pem
+    | sudo tee /etc/haproxy/certs/ragbaz.cc.pem
+sudo chmod 600 /etc/haproxy/certs/ragbaz.cc.pem
 ```
 
 ### 3. Test and Apply
@@ -106,10 +106,10 @@ sudo tail -f /var/log/haproxy.log
 
 Test the following URLs:
 
-- **Frontend**: https://ragbaz.xyz
-- **Documentation**: https://ragbaz.xyz/docs
-- **WordPress Admin**: https://ragbaz.xyz/wp-admin
-- **GraphQL**: https://ragbaz.xyz/graphql
+- **Frontend**: https://ragbaz.cc
+- **Documentation**: https://ragbaz.cc/docs
+- **WordPress Admin**: https://ragbaz.cc/wp-admin
+- **GraphQL**: https://ragbaz.cc/graphql
 
 ## Troubleshooting
 
@@ -118,10 +118,10 @@ Test the following URLs:
 If you see SSL errors:
 ```bash
 # Check certificate file exists
-sudo ls -la /etc/haproxy/certs/ragbaz.xyz.pem
+sudo ls -la /etc/haproxy/certs/ragbaz.cc.pem
 
 # Verify certificate is valid
-sudo openssl x509 -in /etc/haproxy/certs/ragbaz.xyz.pem -text -noout
+sudo openssl x509 -in /etc/haproxy/certs/ragbaz.cc.pem -text -noout
 ```
 
 ### 503 Service Unavailable
@@ -164,7 +164,7 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 
 ### Frontends
 
-- **wpai_https** (port 443): Handles HTTPS traffic for ragbaz.xyz
+- **wpai_https** (port 443): Handles HTTPS traffic for ragbaz.cc
 - **wpai_http** (port 80): Redirects HTTP to HTTPS
 
 ### Backends
@@ -175,7 +175,7 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 
 ### ACLs (Access Control Lists)
 
-- `is_wpai`: Matches ragbaz.xyz domain
+- `is_wpai`: Matches ragbaz.cc domain
 - `is_docs`: Matches /docs/* paths
 - `is_graphql`: Matches /graphql path
 - `is_wp_admin`: Matches WordPress admin paths
@@ -204,7 +204,7 @@ frontend your_existing_frontend
     bind *:443 ssl crt /path/to/certs
 
     # Add Articulate ACLs
-    acl is_wpai hdr(host) -i ragbaz.xyz
+    acl is_wpai hdr(host) -i ragbaz.cc
     acl is_docs path_beg /docs
     acl is_graphql path_beg /graphql
 
